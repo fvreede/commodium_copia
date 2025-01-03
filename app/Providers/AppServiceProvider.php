@@ -21,5 +21,12 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Vite::prefetch(concurrency: 3);
+
+        // Add URL generation for asset paths
+        if (!app()->runningInConsole()) {
+            $this->app->singleton('storage.url', function () {
+                return url('storage');
+            });
+        }
     }
 }

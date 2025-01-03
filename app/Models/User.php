@@ -21,6 +21,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
     ];
 
     /**
@@ -44,5 +45,19 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Automatically assigns it a customer role after registering new users
+     * 
+     * @return void
+     */
+    protected static function booted()
+    {
+        static::creating(function ($user) {
+            if (empty($user->role)) {
+                $user->role = 'customer'; // Default to customer roles
+            }
+        });
     }
 }

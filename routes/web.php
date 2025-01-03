@@ -6,13 +6,67 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
+    return Inertia::render('HomePage');
 });
+
+Route::get('/categories', function () {
+    return Inertia::render('CategoryPage');
+})->name('AllCategories');
+
+Route::get('/subcategories/{categoryId}', function ($categoryId) {
+    // TEMPORARY: Use MockData for test, after test use database or CMS
+    $mockDataPath = resource_path('js/Data/mockData.json');
+
+    if (!file_exists($mockDataPath)) {
+        abort(500, 'Mock data file not found');
+    }
+
+    $mockData = json_decode(file_get_contents($mockDataPath), true);
+
+    $category = collect($mockData)->firstWhere('id', (int) $categoryId);
+
+    if(!$category) {
+        abort(404, 'Category not found');
+    }
+
+    return Inertia::render('SubcategoryPage', [
+        'categoryId' => (string) $categoryId,
+        'categoryName' => $category['name'],
+        'bannerSrc' => $category['bannerSrc'],
+        'subcategories' => $category['subcategories'] ?? [],
+    ]);
+})->name('subcategories.show');
+
+Route::get('/product/{id}/{subcategoryName}/{categoryId}', function ($id, $subcategoryName, $categoryId) {
+    $mockData = json_decode(file_get_contents(base_path('resources/js/Data/mockData.json')), true);
+    
+    $category = collect($mockData)->firstWhere('id', (int) $categoryId);
+    
+    if (!$category) {
+        abort(404, 'Category not found');
+    }
+    
+    $subcategory = collect($category['subcategories'])->firstWhere('name', $subcategoryName);
+    
+    if (!$subcategory) {
+        abort(404, 'Subcategory not found');
+    }
+    
+    $product = collect($subcategory['products'])->firstWhere('id', (int) $id);
+    
+    if (!$product) {
+        abort(404, 'Product not found');
+    }
+    
+    return Inertia::render('ProductPage', [
+        'id' => (string) $id,
+        'product' => $product,
+        'bannerSrc' => $category['bannerSrc'],
+        'categoryName' => $category['name'],
+        'subcategoryName' => $subcategory['name'],
+        'categoryId' => (string) $categoryId
+    ]);
+})->name('product.show');
 
 Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');

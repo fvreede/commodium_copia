@@ -1,66 +1,151 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Commodium Copia
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## Inhoudsopgave
+1.  [Inleiding](#inleiding)
+2.  [Projectbeschrijving](#projectbeschrijving)
+3.  [Gebruikte tools](#gebruikte-tools)
+4.  [Projectstructuur](#projectstructuur)
+5.  [Installatie en Setup](#installatie-en-setup)
+6.  [Toekomstige ontwikkelingen](#toekomstige-ontwikkelingen)
+7.  [Feedback](#feedback)
 
-## About Laravel
+---
+## Inleiding
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+Dit is mijn complete huiswerkopdracht voor de MBO4 Softwareontwikkeling aan de LOI. Het project combineert Vue.js en TailwindCSS voor een gebruiksvriendelijke en responsieve frontend met Laravel als backend. Samen vormen ze een volledig en dynamisch systeem voor mijn e-commerce website, Commodium Copia.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+**Live Demo (frontend-only)**: [Commodium Copia](https://commodium-copia-fe-67wm.vercel.app)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Projectbeschrijving
 
-## Learning Laravel
+De supermarkt Commodium Copia, vanaf hier genoemd 'klant', wil een nieuwe website laten ontwikkelen om haar concurrentiepositie in de huidige markt te behouden. Zij richt hiervoor een aparte bv op voor de online verkoop, die integreert met de huidige distributie- en ICT-systemen.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+Het belangrijkste onderdeel van deze nieuwe website is het thuis kunnen laten bezorgen van producten bij klanten. Andere supermarktketens lopen op dit moment voor in deze ontwikkeling: Halbert Eijn, Jombu en Vamor bieden allemaal al mogelijkheden om hun producten thuis te laten bezorgen.
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Gebruikte tools
 
-## Laravel Sponsors
+### Frontend:
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+1. Vue.js 3.5.11
+2. Vue Router 4.4.5
+3. Tailwind.css 3.4.1
+4. Heroicons/Headless UI
+5. Postcss 8.4.38
+6. Autoprefixer 0.4.19
+7. Fontawesome brands icons (for Social media icons)
+8. Pinia 2.2.4 for state management
 
-### Premium Partners
+ ### Backend:
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+1. Laravel 11.22.0 (PHP v8.3.11)
+2. MariaDB
+3. Laravel Breeze
+4. ButterCMS
+5. Inertia
+0--[p-0o-[0o--[]]]
+---
 
-## Contributing
+## Projectstructuur
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Hier volgt een overzicht van de belangrijkste bestanden en mappen binnen het project, inclusief een korte beschrijving van hun functies:
 
-## Code of Conduct
+## Frontend
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### src/components
 
-## Security Vulnerabilities
+- [**NavBar.vue**](src/components/NavBar.vue)  
+  De navigatiebalk voor eenvoudige toegang tot de belangrijkste pagina’s van de website.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+- [**PromoSection.vue**](src/components/PromoSection.vue)  
+  Bevat een seizoensgebonden promotie met een visuele achtergrond en een CTA-knop. Momenteel ligt de focus op herfstproducten, en er is een actieknop om direct naar de winkelpagina te gaan en een korting te claimen.
 
-## License
+- [**ProductGrid.vue**](src/components/ProductGrid.vue)  
+  Een gridweergave van de producten, met afbeeldingen, namen en prijzen.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+- [**NewsSection.vue**](src/components/NewsSection.vue)  
+  Deze sectie toont nieuws en updates van Commodium Copia.
+
+- [**Footer.vue**](src/components/Footer.vue)  
+  De voettekst die op elke pagina verschijnt, samengesteld uit de volgende componenten:
+  - [**SocialLinks.vue**](src/components/SocialLinks.vue): Bevat links naar de sociale media-accounts van Commodium Copia.
+  - [**NewsLetterSignup.vue**](src/components/NewsLetterSignup.vue): Een compact inschrijfformulier voor de nieuwsbrief van Commodium Copia.
+  - [**CustomerService.vue**](src/components/CustomerService.vue): Bevat de contactgegevens van de klantenservice, inclusief telefoonnummer, openingstijden en e-mailadres. Deze sectie biedt klanten een gemakkelijke manier om contact op te nemen met de klantenservice en om te weten wanneer ze bereikbaar zijn.
+
+### src/view
+
+- [**HomePage.vue**](src/views/Homepage.vue)  
+  De layout van de startpagina van Commodium Copia, samengesteld uit:
+  - **NavBar.vue**
+  - **PromoSection.vue**
+  - **ProductGrid.vue**
+  - **NewsSection.vue**
+  - **Footer.vue**
+
+- [**CategoryPage.vue](src/views/CategoryPage.vue), [SubcategoryPage.vue](src/views/SubcategoryPage.vue), [ProductPage.vue**](src/views/ProductPage.vue)  
+  Deze drie views zorgen voor de navigatie tussen productcategorieën, subcategorieën en productdetails, met koppelingen via `router-link` voor een naadloze gebruikerservaring.
+
+### src/data
+
+- [**mockData.json**](src/data/mockData.json)  
+  Alle data voor **CategoryPage.vue**, **SubcategoryPage.vue**, en **ProductPage.vue** is opgeslagen in dit bestand. Na goedkeuring door de docent zal deze data worden omgezet naar een database voor verdere ontwikkeling.
+
+### src/router
+
+- [**index.js**](src/router/index.js)  
+  Bevat de routerconfiguratie om navigatie tussen pagina’s mogelijk te maken.
+
+## Backend
+
+
+## Installatie en Setup
+
+### Vereisten:
+Voor het draaien van dit project zijn de volgende vereisten nodig:
+
+- [**PHP**](https://www..php.net) (v8.3.13 of hoger)
+- [**Composer**](https://getcomposer.org/download/) (v2.5.0 of hoger)
+- [**Node.js**](https://www.nodejs.org/en) (v16.0.0 of hoger)
+- [**npm**](https://www.npmjs.com) (v8.0.0 of hoger)
+
+Controleer of deze zijn geïnstalleerd met de volgende commando’s:
+```bash
+php -v
+composer --version
+node -v
+npm -v
+```
+---
+### Installatiestappen
+
+1. **Pak het project uit**
+   - Download en pak het projectbestand uit in de gewenste map.
+
+2. **Installeer afhankelijkheden**
+   - Open een terminal in de root-directory van het project en voer het volgende commando uit:
+     ```bash
+     npm install
+     ```
+   - Dit installeert alle noodzakelijke afhankelijkheden die zijn vermeld in het `package.json`-bestand.
+
+3. **Start het project lokaal**
+   - Om de ontwikkelserver te starten:
+     ```bash
+     npm run dev
+     ```
+   - De server zal starten op `http://localhost:5173`. Open deze URL in je webbrowser.
+
+## Toekomstige ontwikkelingen
+
+- Backend integratie met Laravel
+- Authenticatie en authorisatie met Breeze
+- API integratie met Inertia
+- Implementatie van een winkelwagen systeem
+- Implementatie van een CMS
+
+## Feedback
+De feedback van de docent heeft geleid tot de volgende aanpassingen:
+- **Headers en Commentaar**: Toegevoegd in alle componenten voor betere documentatie en leesbaarheid.
+- **Bestandsgrootte**: Gecontroleerd en beperkt tot een maximale grootte van 200 MB.
+- **Projectstructuur**: De front-end is gestructureerd met 4 views: een homepage en drie productgerelateerde pagina's.
+- **Leesmijbestand**: Beschrijving van alle gebruikte bestanden, installatie-instructies, en projectstructuur toegevoegd. 

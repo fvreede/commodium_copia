@@ -16,7 +16,7 @@
         <!-- Nieuws card met promotie-informatie -->
         <div class="news-card bg-white p-6 rounded shadow mx-auto max-w-lg">
             <!-- Afbeelding van de promotie -->
-            <img :src="newsItem.image" :alt="newsItem.imageAlt" class="w-full h-48 object-cover mb-4 rounded">
+            <img :src="resolveImagePath(newsItem.image)" :alt="newsItem.imageAlt" class="w-full h-48 object-cover mb-4 rounded">
             <!-- Titel van de promotie -->
             <h3 class="text-xl font-semibold">{{ newsItem.title }}</h3>
             <!-- Beschrijving van de promotie -->
@@ -27,24 +27,25 @@
     </section>
 </template>
 
-<script>
+<script setup>
 /**
  * Export van de NewsSection component met data voor nieuwsitems.
  * Deze data bevat een titel, samenvatting en afbeelding van de promotie.
  */
+import { ref } from 'vue';
 
-export default {
-    data() {
-        return {
-            newsItem: {
-            title: "Herfst Promoties zijn hier!",
-            summary: "Ontdek onze nieuwste herfstaanbiedingen en geniet van geweldige kortingen!",
-            image: "resources/js/src/assets/images/herfstPromotion.jpg",
-            imageAlt: "Herfst promotie"
-            },
-        };
-    },
+const newsItem = ref({
+    title: "Herfst Promoties zijn hier!",
+    summary: "Ontdek onze nieuwste herfstaanbiedingen en geniet van geweldige kortingen!",
+    image: "herfstPromotion.jpg",
+    imageAlt: "Herfst promotie"
+});
+
+const resolveImagePath = (path) => {
+    if (!path) return '';
+    return `/storage/images/promotions/${path}`;
 };
+
 </script>
 
 <style scoped>

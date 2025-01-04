@@ -77,13 +77,13 @@
                             <MenuItems class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-slate-50 py-1 shadow-md ring-1 ring-black ring-opacity-5 focus:outline-none">
                                 <!-- -->
                                 <template v-if="!isAuthenticated">
-                                    <MenuItem v-if="canLogin" v-slot="{ active }">
-                                        <Link href="/login" :class="[active ? 'bg-gray-500' : '', 'block px-4 py-2 text-sm text-black']">
+                                    <MenuItem v-slot="{ active }">
+                                        <Link :href="route('login')" :class="[active ? 'bg-gray-500' : '', 'block px-4 py-2 text-sm text-black']">
                                             Login
                                         </Link>
                                     </MenuItem>
-                                    <MenuItem v-if="canRegister" v-slot="{ active }">
-                                        <Link href="/register" :class="[active ? 'bg-gray-500' : '', 'block px-4 py-2 text-sm text-black']">
+                                    <MenuItem v-slot="{ active }">
+                                        <Link :href="route('register')" :class="[active ? 'bg-gray-500' : '', 'block px-4 py-2 text-sm text-black']">
                                             Sign Up
                                         </Link>
                                     </MenuItem>
@@ -186,10 +186,6 @@ const closeCart = () => {
 // Get the current user from Inertia's shared data
 const user = computed(() => usePage().props.auth.user);
 const isAuthenticated = computed(() => !!user.value);
-
-const logout = () => {
-    router.post('/logout')
-}
 
 const canLogin = computed(() => usePage().props.auth.canLogin);
 const canRegister = computed(() => usePage().props.auth.canRegister);

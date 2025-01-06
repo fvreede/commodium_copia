@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\AdminController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -67,6 +68,11 @@ Route::get('/product/{id}/{subcategoryName}/{categoryId}', function ($id, $subca
         'categoryId' => (string) $categoryId
     ]);
 })->name('product.show');
+
+Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
+    Route::get('/', [AdminController::class, 'dashboard'])->name('admin.dashboard');
+    // Add more admin routes...
+});
 
 Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');

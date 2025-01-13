@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\UsersController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\AdminController;
 use Illuminate\Foundation\Application;
@@ -69,9 +70,13 @@ Route::get('/product/{id}/{subcategoryName}/{categoryId}', function ($id, $subca
     ]);
 })->name('product.show');
 
-Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
-    Route::get('/', [AdminController::class, 'dashboard'])->name('admin.dashboard');
-    // Add more admin routes...
+Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
+    
+    // Add more admin routes here
+    Route::resource('users', UsersController::class)->except(['show', 'create', 'edit']);
+    Route::patch('users/{user}/update-role', [UsersController::class, 'updateRole'])->name('users.update-role');
+    Route::patch('users/{user}/toggle-status', [UsersController::class, 'toggleStatus'])->name('users.toggle-status');
 });
 
 Route::get('/dashboard', function () {

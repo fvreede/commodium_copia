@@ -6,6 +6,8 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import { EyeIcon, EyeSlashIcon } from '@heroicons/vue/24/outline';
+import { ref } from 'vue';
 
 defineProps({
     canResetPassword: {
@@ -27,11 +29,22 @@ const submit = () => {
         onFinish: () => form.reset('password'),
     });
 };
+
+// Toggle password visibility methods
+const passwordVisible = ref(false);
+
+const togglePasswordVisibility = () => {
+    passwordVisible.value = !passwordVisible.value;
+}
 </script>
 
 <template>
     <GuestLayout>
-        <Head title="Log in" />
+        <Head title="Inloggen" />
+
+        <div class="max-w-md mx-auto text-center p-8 bg-white">
+            <h2 class="text-xl font-bold text-gray-900">Even inloggen   </h2>
+        </div>
 
         <div v-if="status" class="mb-4 text-sm font-medium text-green-600">
             {{ status }}
@@ -39,7 +52,7 @@ const submit = () => {
 
         <form @submit.prevent="submit">
             <div>
-                <InputLabel for="email" value="Email" />
+                <InputLabel for="email" value="Emailadres" />
 
                 <TextInput
                     id="email"
@@ -54,17 +67,26 @@ const submit = () => {
                 <InputError class="mt-2" :message="form.errors.email" />
             </div>
 
-            <div class="mt-4">
-                <InputLabel for="password" value="Password" />
+            <div class="mt-4 relative">
+                <InputLabel for="password" value="Wachtwoord" />
 
                 <TextInput
                     id="password"
-                    type="password"
+                    :type="passwordVisible ? 'text' : 'password'"
                     class="mt-1 block w-full"
                     v-model="form.password"
                     required
                     autocomplete="current-password"
                 />
+
+                <button
+                    type="button"
+                    @click="togglePasswordVisibility"
+                    class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 mt-6"
+                >
+                    <EyeIcon v-if="!passwordVisible" class="h-5 w-5"/>
+                    <EyeSlashIcon v-else class="h-5 w-5"/>
+                </button>
 
                 <InputError class="mt-2" :message="form.errors.password" />
             </div>
@@ -73,7 +95,7 @@ const submit = () => {
                 <label class="flex items-center">
                     <Checkbox name="remember" v-model:checked="form.remember" />
                     <span class="ms-2 text-sm text-gray-600"
-                        >Remember me</span
+                        >Onthoud mij</span
                     >
                 </label>
             </div>
@@ -84,7 +106,7 @@ const submit = () => {
                     :href="route('password.request')"
                     class="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                 >
-                    Forgot your password?
+                    Wachtwoord vergeten?
                 </Link>
 
                 <PrimaryButton
@@ -92,7 +114,7 @@ const submit = () => {
                     :class="{ 'opacity-25': form.processing }"
                     :disabled="form.processing"
                 >
-                    Log in
+                    Inloggen
                 </PrimaryButton>
             </div>
         </form>

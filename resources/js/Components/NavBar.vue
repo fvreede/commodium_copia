@@ -1,3 +1,4 @@
+<!-- Main website navbar -->
 /**
  * Bestandsnaam: NavBar.vue
  * Auteur: Fabio Vreede
@@ -25,11 +26,11 @@
                         <ApplicationLogo />
                     </Link>
 
-                    <!-- Zoekbalk, alleen zichtbaar op grotere schermen
+                    <!-- Zoekbalk, alleen zichtbaar op grotere schermen -->
                     <div class="hidden sm:ml-6 sm:block">
                         <input type="search" placeholder="Zoek een product" v-model="searchQuery" class="w-full max-w-md rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 shadow-sm"/>
                     </div>
- -->
+
                     <!-- Navigatieknoppen voor desktop -->
                     <div class="hidden sm:ml-6 sm:block">
                         <div class="flex space-x-4">
@@ -191,7 +192,7 @@ const canLogin = computed(() => usePage().props.auth.canLogin);
 const canRegister = computed(() => usePage().props.auth.canRegister);
 </script>
 
-<style scoped>
+<style scoped>  
 /* Stijl voor schaalvergroting animatie bij winkelwagen update */
 .scale-110 {
     animation: pulse 0.3s ease-in-out;

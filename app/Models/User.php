@@ -10,8 +10,20 @@ use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
+    
+    /**
+     * User account statuses.
+     * 
+     * These constants define the possible states of a user account.
+     * 
+     * @var string
+     */
+    const STATUS_ACTIVE = 'active';
+    const STATUS_SUSPENDED = 'suspended';
+
     /**
      * @method bool hasRole(string|array $roles, string $guard = null)
+     * @method bool can(string $permission, string $guard = null)
      */
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, HasRoles;
@@ -25,6 +37,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'status',
     ];
 
     /**
@@ -58,6 +71,10 @@ class User extends Authenticatable
     protected static function booted()
     {
         static::creating(function ($user) {
+            // Get default status
+            $user->status = User::STATUS_ACTIVE;
+
+            // Assign customer role for non-admin users
             if (!$user->hasAnyRole() && $user->email !== 'admin@cc.nl') {
                 $user->assignRole('customer'); // Default to customer roles
             }

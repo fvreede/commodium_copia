@@ -53,25 +53,33 @@ class UsersController extends Controller
 
     public function update(Request $request, User $user)
     {
+        if ($user->isSystemAdmin()) {
+            return redirect()->back()->with('error', 'System administrator account cannot be modified.');
+        }
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
             'role' => 'required|exists:roles,name',
         ]);
 
-        $user->update([
-            'name' => $request->name,
-            'email' => $request->email,
-        ]);
+        try {
+            $user->update([
+                'name' => $request->name,
+                'email' => $request->email,
+            ]);
 
-        $user->syncRoles([$request->role]);
+            $user->syncRoles([$request->role]);
 
-        return redirect()->back()->with('success', 'User updated successfully.');
+            return redirect()->back()->with('success', 'User updated successfully.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'An error occurred while updating the user.' . $e->getMessage());
+        }
     }
 
     public function destroy(User $user)
     {
-        if ($user->email === 'admin@cc.nl') {
+        if ($user->isSystemAdmin()) {
             return redirect()->back()->with('error', 'Cannot delete admin user.');
         }
 
@@ -81,7 +89,7 @@ class UsersController extends Controller
 
     public function toggleStatus(User $user)
     {
-        if ($user->email === 'admin@cc.nl') {
+        if ($user->isSystemAdmin()) {
             return redirect()->back()->with('error', 'Cannot modify admin status.');
         }
 

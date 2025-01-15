@@ -20,7 +20,7 @@ class User extends Authenticatable
      */
     const STATUS_ACTIVE = 'active';
     const STATUS_SUSPENDED = 'suspended';
-
+    const SYSTEM_ADMIN_ROLE = 'admin';
     /**
      * @method bool hasRole(string|array $roles, string $guard = null)
      * @method bool can(string $permission, string $guard = null)
@@ -64,6 +64,16 @@ class User extends Authenticatable
     }
 
     /**
+     * Checks if the user has the system administrator role.
+     * 
+     * @return bool True if the user has the system admin role, otherwise false.
+     */
+    public function isSystemAdmin(): bool
+    {
+        return $this->hasRole(self::SYSTEM_ADMIN_ROLE);
+    }
+
+    /**
      * Automatically assigns it a customer role after registering new users
      * 
      * @return void
@@ -75,7 +85,7 @@ class User extends Authenticatable
             $user->status = User::STATUS_ACTIVE;
 
             // Assign customer role for non-admin users
-            if (!$user->hasAnyRole() && $user->email !== 'admin@cc.nl') {
+            if (!$user->hasAnyRole()) {
                 $user->assignRole('customer'); // Default to customer roles
             }
         });

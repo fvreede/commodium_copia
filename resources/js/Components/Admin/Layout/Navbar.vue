@@ -24,7 +24,9 @@
                     </button>
 
                     <!-- Logout Button -->
-                    <button class="ml-4 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-zinc-700 hover:bg-zinc-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transform ease-in-out duration-150 uppercase" >
+                    <button 
+                        @click="logout"
+                        class="ml-4 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-zinc-700 hover:bg-zinc-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transform ease-in-out duration-150 uppercase" >
                         Logout
                     </button>
                 </div>

@@ -53,6 +53,10 @@ const submit = () => {
         },
     });
 };
+
+const hasRole = (user, roleName) => {
+    return user.roles.some(role => role.name === roleName);
+};
 </script>
 
 <template>

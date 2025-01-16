@@ -38,4 +38,9 @@
 <script setup>
 import { Disclosure } from '@headlessui/vue';
 import { BellIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline';
+import { router } from '@inertiajs/vue3';
+
+const logout = () => {
+    router.post(route('logout'))
+}
 </script>

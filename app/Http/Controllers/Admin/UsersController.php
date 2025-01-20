@@ -101,4 +101,31 @@ class UsersController extends Controller
 
         return redirect()->back()->with('success', 'User status updated successfully.');
     }
+
+    // Search query for users
+    public function search(Request $request)
+    {
+        try {
+            $query = $request->input('query');
+    
+            $users = User::with('roles')
+                ->where('name', 'LIKE', "%{$query}%")
+                ->orWhere('email', 'LIKE', "%{$query}%")
+                ->limit(10)
+                ->get()
+                ->map(function ($user) {
+                    return [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'role' => $user->roles->first()?->name ?? 'No role',
+                        'status' => $user->status
+                    ];
+                });
+    
+            return response()->json($users);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
 }

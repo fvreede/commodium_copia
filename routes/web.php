@@ -70,6 +70,7 @@ Route::get('/product/{id}/{subcategoryName}/{categoryId}', function ($id, $subca
     ]);
 })->name('product.show');
 
+// Admin routes
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
     
@@ -77,9 +78,18 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::resource('users', UsersController::class)->except(['show', 'create', 'edit']);
     Route::patch('users/{user}/update-role', [UsersController::class, 'updateRole'])->name('users.update-role');
     Route::patch('users/{user}/toggle-status', [UsersController::class, 'toggleStatus'])->name('users.toggle-status');
+
+    // Search users API endpoint for Admin dashboard
+    Route::get('/api/users/search', [UsersController::class, 'search'])->name('api.users.search')->middleware('auth');
 });
 
+// Editor routes
+// TODO: Create an editor routes here
+
 Route::get('/dashboard', function () {
+    if (auth()->user()->isSystemAdmin()) {
+        return redirect()->route('admin.dashboard');
+    } // TODO: Add an editor user dashboard here
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 

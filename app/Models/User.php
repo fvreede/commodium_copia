@@ -8,6 +8,35 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 
+/**
+ * User Model
+ * 
+ * Represents a user in the system with authentication and role capabilities.
+ * 
+ * @property int $id The unique identifier
+ * @property string $name The user's full name
+ * @property string $email The user's email address
+ * @property \DateTime|null $email_verified_at When the email was verified
+ * @property string $password The hashed password
+ * @property string $status The user's account status (active/suspended)
+ * @property string|null $remember_token The remember me token
+ * @property \DateTime $created_at When the user was created
+ * @property \DateTime $updated_at When the user was last updated
+ * 
+ * @method static \Database\Factories\UserFactory factory($count = null, $state = [])
+ * @method bool hasRole(string|array $roles, string $guard = null)
+ * @method bool hasAnyRole(string|array $roles)
+ * @method void assignRole(string|array $roles)
+ * @method bool can(string $permission, string $guard = null)
+ * 
+ * @property-read \Illuminate\Database\Eloquent\Collection|\Spatie\Permission\Models\Role[] $roles
+ * @property-read \Illuminate\Database\Eloquent\Collection|\Spatie\Permission\Models\Permission[] $permissions
+ * 
+ * @uses \Illuminate\Database\Eloquent\Factories\HasFactory
+ * @uses \Illuminate\Notifications\Notifiable
+ * @uses \Spatie\Permission\Traits\HasRoles
+ */
+
 class User extends Authenticatable
 {
     

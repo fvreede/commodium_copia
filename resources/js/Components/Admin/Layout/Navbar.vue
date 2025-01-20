@@ -2,7 +2,7 @@
 import { ref, watch } from 'vue';
 import * as vueuse from '@vueuse/core';
 import { Disclosure } from '@headlessui/vue';
-import { BellIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline';
+import { MagnifyingGlassIcon } from '@heroicons/vue/24/outline';
 import { router } from '@inertiajs/vue3';
 import { useUserStore } from '@/Stores/useUserStore';
 
@@ -75,11 +75,6 @@ const logout = () => {
 
                 <!-- Right: Icons & Profile -->
                 <div class="flex items-center space-x-6">
-                    <!-- Notification Icon -->
-                    <button class="p-2 rounded-full text-zinc-700 hover:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transform ease-in-out duration-150">
-                        <BellIcon class="h-6 w-6" aria-hidden="true" />
-                    </button>
-
                     <!-- Logout Button -->
                     <button 
                         @click="logout"

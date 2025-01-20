@@ -1,5 +1,4 @@
 import { defineStore } from "pinia";
-import { router } from '@inertiajs/vue3';
 
 export const useUserStore = defineStore('users', {
     state: () => ({
@@ -23,7 +22,6 @@ export const useUserStore = defineStore('users', {
             this.isLoading = true;
 
             try {
-                // TODO: create this route to Laravel backend
                 const response = await fetch(route('admin.api.users.search', { query: this.searchQuery }));
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);

@@ -3,7 +3,7 @@
 use App\Http\Controllers\Admin\UsersController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\AdminController;
-use Illuminate\Foundation\Application;
+use App\Http\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -81,6 +81,10 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
     // Search users API endpoint for Admin dashboard
     Route::get('/api/users/search', [UsersController::class, 'search'])->name('api.users.search')->middleware('auth');
+
+    // Admin settings routes
+    Route::get('settings', [SettingsController::class, 'index'])->name('settings');
+    Route::post('settings/password', [SettingsController::class, 'updatePassword'])->name('settings.password');
 });
 
 // Editor routes

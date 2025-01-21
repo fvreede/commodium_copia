@@ -6,7 +6,11 @@ import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
-import { ExclamationTriangleIcon } from '@heroicons/vue/24/outline';
+import FlashModal from '@/Components/FlashModal.vue';
+import { ExclamationTriangleIcon, EyeIcon, EyeSlashIcon } from '@heroicons/vue/24/outline';
+
+const showFlashModal = ref(false);
+const flashMessage = ref('');
 
 const passwordForm = useForm({
     current_password: '',
@@ -19,59 +23,49 @@ const updatePassword = () => {
         preserveScroll: true,
         onSuccess: () => {
             passwordForm.reset();
-
-            // Set flash message when password update is successful
-            if ($page.props.flash.success) {
-                showFlashMessage.value = true;
-                flashMessage.value = $page.props.flash.success;
-
-                // Hide message after 5 seconds
-                setTimeout(() => {
-                    showFlashMessage.value = false;
-                }, 5000);
-            }
+            flashMessage.value = 'Password updated successfully.';
+            showFlashModal.value = true;
         },
     });
 };
+
+const closeFlashModal = () => {
+    showFlashModal.value = false;
+};
+
+// Toggle password visibility methods
+const currentPasswordVisible = ref(false);
+const newPasswordVisible = ref(false);
+const confirmPasswordVisible = ref(false);
+
+const toggleCurrentPasswordVisibility = () => {
+    currentPasswordVisible.value = !currentPasswordVisible.value;
+}
+
+const toggleNewPasswordVisibility = () => {
+    newPasswordVisible.value = !newPasswordVisible.value;
+}
+
+const toggleConfirmPasswordVisibility = () => {
+    confirmPasswordVisible.value = !confirmPasswordVisible.value;
+}
 </script>
 
 <template>
     <AdminLayout>
         <Head title="Admin Settings" />
         <div class="py-12">
-            <!-- Timed Flash Message -->
-            <Transition
-                enter-active-class="transition-duration-300 ease-out"
-                enter-from-class="transform -translate-y-2 opacity-0"
-                enter-to-class="transform translate-y-0 opacity-100"
-                leave-active-class="transition duration-300 ease-in"
-                leave-from-class="transform translate-y-0 opacity-100"
-                leave-to-class="transform -translate-y-2 opacity-0"
-            >
-                <div 
-                    v-if="showFlashMessage"
-                    class="max-w-7xl mx-auto sm:px-6 lg:px-8 mb-4">
-                    <div 
-                        class="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded relative flex justify-between items-center" 
-                        role="alert"
-                    >
-                        <span>{{ flashMessage }}</span>
-                        <button 
-                            @click="showFlashMessage = false" 
-                            class="text-green-700 hover:text-green-900"
-                        >
-                            <span class="sr-only">Close</span>
-                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path 
-                                    fill-rule="evenodd" 
-                                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" 
-                                    clip-rule="evenodd"
-                                />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </Transition>
+            
+            <!-- Flash Message -->
+            <FlashModal
+                :show="showFlashModal"
+                :message="flashMessage"
+                :type="'success'"
+                :duration="4000"
+                @close="closeFlashModal"
+            />
+
+            <!-- Password Update Form -->
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
                 <!-- Password Update Section -->
                 <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
@@ -84,39 +78,63 @@ const updatePassword = () => {
                         </header>
 
                         <form @submit.prevent="updatePassword" class="mt-6 space-y-6">
-                            <div>
+                            <div class="relative">
                                 <InputLabel for="current_password" value="Current Password" />
                                 <TextInput
                                     id="current_password"
                                     v-model="passwordForm.current_password"
-                                    type="password"
+                                    :type="currentPasswordVisible? 'text' : 'password'"
                                     class="mt-1 block w-full"
                                     autocomplete="current-password"
                                 />
+                                <button
+                                    type="button"
+                                    @click="toggleCurrentPasswordVisibility"
+                                    class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 mt-6"
+                                >
+                                    <EyeIcon v-if="!currentPasswordVisible" class="h-5 w-5"/>
+                                    <EyeSlashIcon v-else class="h-5 w-5"/>
+                                </button>
                                 <InputError :message="passwordForm.errors.current_password" class="mt-2" />
                             </div>
 
-                            <div>
+                            <div class="relative">
                                 <InputLabel for="password" value="New Password" />
                                 <TextInput
                                     id="password"
                                     v-model="passwordForm.password"
-                                    type="password"
+                                    :type="newPasswordVisible? 'text' : 'password'"
                                     class="mt-1 block w-full"
                                     autocomplete="new-password"
                                 />
+                                <button
+                                    type="button"
+                                    @click="toggleNewPasswordVisibility"
+                                    class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 mt-6"
+                                >
+                                    <EyeIcon v-if="!newPasswordVisible" class="h-5 w-5"/>
+                                    <EyeSlashIcon v-else class="h-5 w-5"/>
+                                </button>
                                 <InputError :message="passwordForm.errors.password" class="mt-2" />
                             </div>
 
-                            <div>
+                            <div class="relative">
                                 <InputLabel for="password_confirmation" value="Confirm Password" />
                                 <TextInput
                                     id="password_confirmation"
                                     v-model="passwordForm.password_confirmation"
-                                    type="password"
+                                    :type="confirmPasswordVisible? 'text' : 'password'"
                                     class="mt-1 block w-full"
                                     autocomplete="new-password"
                                 />
+                                <button
+                                    type="button"
+                                    @click="toggleConfirmPasswordVisibility"
+                                    class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 mt-6"
+                                >
+                                    <EyeIcon v-if="!confirmPasswordVisible" class="h-5 w-5"/>
+                                    <EyeSlashIcon v-else class="h-5 w-5"/>
+                                </button>
                                 <InputError :message="passwordForm.errors.password_confirmation" class="mt-2" />
                             </div>
 

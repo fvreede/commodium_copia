@@ -10,7 +10,7 @@
 
 <template>
     <!-- Navigatiebalk met vaste positie aan de bovenkant -->
-    <Disclosure as="nav" class="bg-slate-100 fixed w-full top-0 z-[1000]" v-slot="{ open }">
+    <Disclosure as="nav" class="bg-slate-100 fixed w-full top-0 z-[1000] shadow-md" v-slot="{ open }">
         <div class="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
             <div class="relative flex h-16 items-center justify-between">
                 <div class="flex flex-1 items-center justify-center sm:items-stretch sm:justify-start">

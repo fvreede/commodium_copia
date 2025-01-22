@@ -4,7 +4,7 @@ import { Head, router } from '@inertiajs/vue3';
 import AdminLayout from '@/Layouts/Admin/AdminLayout.vue';
 import CreateUser from './Create.vue';
 import EditUser from './Edit.vue';
-import { UserIcon, UserMinusIcon, UserPlusIcon, PencilIcon, TrashIcon } from '@heroicons/vue/24/outline';
+import { UserMinusIcon, UserPlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline';
 import Modal from '@/Components/Modal.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 
@@ -18,6 +18,18 @@ const showCreateModal = ref(false);
 const showEditModal = ref(false);
 const showDeleteModal = ref(false);
 const selectedUser = ref(null);
+const searchQuery = ref('');
+
+const filteredUsers = computed(() => {
+    if (!searchQuery.value) return props.users.data;
+    
+    const query = searchQuery.value.toLowerCase();
+    return props.users.data.filter(user => 
+        user.name.toLowerCase().includes(query) ||
+        user.email.toLowerCase().includes(query) ||
+        (user.roles[0]?.name || '').toLowerCase().includes(query)
+    );
+});
 
 const openEditModal = (user) => {
     selectedUser.value = user;
@@ -60,9 +72,20 @@ const hasRole = (user, roleName) => {
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="bg-white overflow-hidden shadow-sm rounded-lg">
                     <div class="p-4 sm:p-6">
-                        <!-- Header with Add User Button -->
+                        <!-- Header with Search and Add User Button -->
                         <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
                             <h2 class="text-xl sm:text-2xl font-semibold text-gray-800">Users</h2>
+                            <div class="flex flex-col sm:flex-row items-center justify-center gap-4 flex-grow">
+                                <div class="relative w-full max-w-md">
+                                    <input
+                                        v-model="searchQuery"
+                                        type="text"
+                                        placeholder="Search users..."
+                                        class="w-full pr-10 pl-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent"
+                                    />
+                                    <MagnifyingGlassIcon class="absolute right-2 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                </div>
+                            </div>
                             <PrimaryButton @click="showCreateModal = true" class="w-full sm:w-auto justify-center">
                                 Add New User
                             </PrimaryButton>
@@ -81,7 +104,7 @@ const hasRole = (user, roleName) => {
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
-                                    <tr v-for="user in users.data" :key="user.id">
+                                    <tr v-for="user in filteredUsers" :key="user.id">
                                         <td class="px-6 py-4 whitespace-nowrap">{{ user.name }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap">{{ user.email }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap">{{ user.roles[0]?.name || 'No role' }}</td>

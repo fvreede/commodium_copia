@@ -27,10 +27,6 @@ class SettingsController extends Controller
         ]);
 
         $request->user()->update([
-            'passsword' => Hash::make($request->password)
-        ]);
-
-        $request->user()->update([
             'password' => Hash::make($request->password)
         ]);
 

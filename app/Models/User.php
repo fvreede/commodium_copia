@@ -50,6 +50,7 @@ class User extends Authenticatable
     const STATUS_ACTIVE = 'active';
     const STATUS_SUSPENDED = 'suspended';
     const SYSTEM_ADMIN_ROLE = 'admin';
+    const EDITOR_ROLE = 'editor';
     /**
      * @method bool hasRole(string|array $roles, string $guard = null)
      * @method bool can(string $permission, string $guard = null)
@@ -100,6 +101,16 @@ class User extends Authenticatable
     public function isSystemAdmin(): bool
     {
         return $this->hasRole(self::SYSTEM_ADMIN_ROLE);
+    }
+
+    /**
+     * Checks if the user has the editor role.
+     * 
+     * @return bool True if the user has the editor role, otherwise false.
+     */
+    public function isEditor(): bool
+    {
+        return $this->hasRole(self::EDITOR_ROLE);
     }
 
     /**

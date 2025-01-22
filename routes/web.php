@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\UsersController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\EditorController;
 use App\Http\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -88,12 +89,22 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 });
 
 // Editor routes
-// TODO: Create an editor routes here
+Route::middleware(['auth', 'role:editor'])->prefix('editor')->name('editor.')->group(function () {
+    Route::get('/', [EditorController::class, 'dashboard'])->name('dashboard');
+
+    // Add more editor routes here
+    
+    // Editor settings routes
+    Route::get('settings', [SettingsController::class, 'index'])->name('settings');
+    Route::post('settings/password', [SettingsController::class, 'updatePassword'])->name('settings.password');
+});
 
 Route::get('/dashboard', function () {
     if (auth()->user()->isSystemAdmin()) {
         return redirect()->route('admin.dashboard');
-    } // TODO: Add an editor user dashboard here
+    } else if (auth()->user()->isEditor()) {
+        return redirect()->route('editor.dashboard');
+    }
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 

@@ -14,7 +14,9 @@ class SettingsController extends Controller
     {
         if (auth()->user()->isSystemAdmin()) {
             return Inertia::render('Admin/Settings/Index');
-        } // TODO: Add an editor settings route here (later)
+        } else if (auth()->user()->isEditor()) {
+            return Inertia::render('Editor/Settings/Index');
+        }
     }
 
     public function updatePassword(Request $request)

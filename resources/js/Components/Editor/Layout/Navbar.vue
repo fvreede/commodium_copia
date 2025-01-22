@@ -13,7 +13,7 @@ const logout = () => {
             <div class="flex justify-between items-center h-16">
                 <!-- Left: Logo & Search Bar -->
                 <div class="flex items-center">
-                    <span class="text-2xl font-bold text-gray-800">Admin Dashboard</span>
+                    <span class="text-2xl font-bold text-gray-800">Editor Dashboard</span>
                 </div>
 
                 <!-- Right: Icons & Profile -->

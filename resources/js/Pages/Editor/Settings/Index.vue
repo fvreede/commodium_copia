@@ -169,7 +169,6 @@ const toggleConfirmPasswordVisibility = () => {
                                 <p>As an Editor, your account has elevated privileges. Please ensure you:</p>
                                 <ul class="list-disc list-inside mt-2 space-y-1">
                                     <li>Use a strong, unique password</li>
-                                    <li>Enable two-factor authentication if available</li>
                                     <li>Never share your login credentials</li>
                                     <li>Log out when accessing from shared devices</li>
                                 </ul>

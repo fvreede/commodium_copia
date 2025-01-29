@@ -11,7 +11,7 @@ class NewsArticle extends Model
         'content',
         'image_path',
         'is_published',
-        'published_at',
+        'published_at'
     ];
 
     protected $casts = [

@@ -15,11 +15,12 @@ return new class extends Migration
             $table->id();
             $table->foreignId('subcategory_id')->constrained()->cascadeOnDelete();
             $table->string('name');
-            $table->text('description');
-            $table->text('fullDescription');
+            $table->text('short_description');
+            $table->text('full_description');
             $table->decimal('price', 8, 2);
             $table->string('image_path');
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Subcategory extends Model
 {
+    use SoftDeletes;
+    protected $fillable = ['category_id', 'name'];
     public function category()
     {
         return $this->belongsTo(Category::class);
@@ -15,6 +18,4 @@ class Subcategory extends Model
     {
         return $this->hasMany(Product::class);
     }
-
-    protected $fillable = ['category_id', 'name'];
 }

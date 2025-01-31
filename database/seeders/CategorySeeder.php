@@ -3,8 +3,8 @@
 namespace Database\Seeders;
 
 use App\Models\Category;
-use App\Models\Subcategory;
-use App\Models\Product;
+// use App\Models\Subcategory;
+// use App\Models\Product;
 use Illuminate\Database\Seeder;
 
 class CategorySeeder extends Seeder
@@ -14,6 +14,7 @@ class CategorySeeder extends Seeder
      */
     public function run(): void
     {
+        /*
         $mockDataPath = resource_path('js/Data/mockData.json');
         $mockData = json_decode(file_get_contents($mockDataPath), true);
 
@@ -42,6 +43,26 @@ class CategorySeeder extends Seeder
                     ]);
                 }
             }
+        }
+        */
+
+        $categories = [
+            [
+                'name' => 'Groenten en Fruit',
+                'banner_path' => 'images/subcategories/banners/groentenFruitBanner.jpg',
+            ],
+            [
+                'name' => 'Bakkerij en Brood',
+                'banner_path' => 'images/subcategories/banners/bakkerijBroodBanner.jpg', 
+            ],
+            [
+                'name' => 'Zuivel en Eieren',
+                'banner_path' => 'images/subcategories/banners/zuivelEierenBanner.jpg',
+            ],
+        ];
+
+        foreach ($categories as $category) {
+            Category::create($category);
         }
     }
 }

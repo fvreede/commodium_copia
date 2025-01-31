@@ -1,6 +1,6 @@
 <script setup>
 import { Link } from '@inertiajs/vue3';
-import { HomeIcon, UsersIcon, Cog6ToothIcon  } from '@heroicons/vue/24/outline';
+import { HomeIcon, UsersIcon, Cog6ToothIcon, Square3Stack3DIcon, QueueListIcon  } from '@heroicons/vue/24/outline';
 </script>
 
 <template>
@@ -26,6 +26,28 @@ import { HomeIcon, UsersIcon, Cog6ToothIcon  } from '@heroicons/vue/24/outline';
                 >
                     <UsersIcon class="w-5 h-5 mr-3" />
                     Users
+                </Link>
+            </div>
+
+            <div class="pt-4">
+                <div class="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Catalog Structure
+                </div>
+                <Link
+                    :href="route('admin.categories.index')"
+                    class="flex items-center px-4 py-2 mt-2 text-gray-700 hover:bg-gray-100 rounded-md"
+                    :class="{ 'bg-gray-100': route().current('admin.categories.*') }"
+                >
+                    <Square3Stack3DIcon class="w-5 h-5 mr-3" />
+                    Categories
+                </Link>
+                <Link 
+                    :href="route('admin.subcategories.index')"
+                    class="flex items-center px-4 py-2 mt-2 text-gray-700 hover:bg-gray-100 rounded-md"
+                    :class="{ 'bg-gray-100': route().current('admin.subcategories.*') }"
+                >
+                    <QueueListIcon class="w-5 h-5 mr-3" />
+                    Subcategories
                 </Link>
             </div>
 

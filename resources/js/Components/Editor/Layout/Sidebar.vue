@@ -45,14 +45,6 @@ import { HomeIcon, NewspaperIcon, TagIcon, PhotoIcon, Square3Stack3DIcon, Shoppi
                     Catalogus beheer
                 </div>
                 <Link
-                    :href="route('editor.categories.index')"
-                    class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md"
-                >
-                    <Square3Stack3DIcon class="w-4 h-4 mr-2" />
-                    <span>Categorieën</span>
-                </Link>
-
-                <Link
                     :href="route('editor.products.index')"
                     class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md"
                 >

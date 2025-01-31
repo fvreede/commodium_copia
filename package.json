@@ -3,7 +3,8 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "postinstall": "cp -r node_modules/tinymce/skins public/tinymce-skins && cp -r node_modules/tinymce/themes public/tinymce-themes && cp -r node_modules/tinymce/icons public/tinymce-icons && cp -r node_modules/tinymce/models public/tinymce-models"
     },
     "devDependencies": {
         "@inertiajs/vue3": "^2.0.0",
@@ -27,6 +28,7 @@
         "@tailwindcss/aspect-ratio": "^0.4.2",
         "@vueuse/core": "^12.4.0",
         "pinia": "^2.2.6",
+        "tinymce": "^7.6.1",
         "vue": "^3.4.0"
     }
 }

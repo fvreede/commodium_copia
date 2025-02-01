@@ -8,8 +8,8 @@ import { HomeIcon, UsersIcon, Cog6ToothIcon, Square3Stack3DIcon, QueueListIcon  
         <nav class="mt-5 px-2">
             <Link 
                 :href="route('admin.dashboard')"
-                class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md"
-                :class="{ 'bg-gray-100': route().current('admin.dashboard') }"
+                class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-md"
+                :class="{ 'bg-gray-200': route().current('admin.dashboard') }"
             >
                 <HomeIcon class="w-5 h-5 mr-3" />
                 Dashboard
@@ -21,8 +21,8 @@ import { HomeIcon, UsersIcon, Cog6ToothIcon, Square3Stack3DIcon, QueueListIcon  
                 </div>
                 <Link 
                     :href="route('admin.users.index')"
-                    class="flex items-center px-4 py-2 mt-2 text-gray-700 hover:bg-gray-100 rounded-md"
-                    :class="{ 'bg-gray-100': route().current('admin.users.*') }"
+                    class="flex items-center px-4 py-2 mt-2 text-gray-700 hover:bg-gray-200 rounded-md"
+                    :class="{ 'bg-gray-200': route().current('admin.users.*') }"
                 >
                     <UsersIcon class="w-5 h-5 mr-3" />
                     Gebruikers
@@ -35,16 +35,16 @@ import { HomeIcon, UsersIcon, Cog6ToothIcon, Square3Stack3DIcon, QueueListIcon  
                 </div>
                 <Link
                     :href="route('admin.categories.index')"
-                    class="flex items-center px-4 py-2 mt-2 text-gray-700 hover:bg-gray-100 rounded-md"
-                    :class="{ 'bg-gray-100': route().current('admin.categories.*') }"
+                    class="flex items-center px-4 py-2 mt-2 text-gray-700 hover:bg-gray-200 rounded-md"
+                    :class="{ 'bg-gray-200': route().current('admin.categories.*') }"
                 >
                     <Square3Stack3DIcon class="w-5 h-5 mr-3" />
                     Categorieën
                 </Link>
                 <Link 
                     :href="route('admin.subcategories.index')"
-                    class="flex items-center px-4 py-2 mt-2 text-gray-700 hover:bg-gray-100 rounded-md"
-                    :class="{ 'bg-gray-100': route().current('admin.subcategories.*') }"
+                    class="flex items-center px-4 py-2 mt-2 text-gray-700 hover:bg-gray-200 rounded-md"
+                    :class="{ 'bg-gray-200': route().current('admin.subcategories.*') }"
                 >
                     <QueueListIcon class="w-5 h-5 mr-3" />
                     Subcategorieën
@@ -54,8 +54,8 @@ import { HomeIcon, UsersIcon, Cog6ToothIcon, Square3Stack3DIcon, QueueListIcon  
             <div class="pt-4">
                 <Link 
                     :href="route('admin.settings')"
-                    class="flex items-center px-4 py-2 mt-2 text-gray-700 hover:bg-gray-100 rounded-md"
-                    :class="{ 'bg-gray-100': route().current('admin.settings') }"
+                    class="flex items-center px-4 py-2 mt-2 text-gray-700 hover:bg-gray-200 rounded-md"
+                    :class="{ 'bg-gray-200': route().current('admin.settings') }"
                 >
                     <Cog6ToothIcon class="w-5 h-5 mr-3" />
                     Instellingen

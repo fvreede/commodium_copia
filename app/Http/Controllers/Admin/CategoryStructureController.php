@@ -5,13 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class CategoryStructureController extends Controller
 {
     public function index()
     {
-        $categories = Category::withCount(['subcategories' => function ($query) {
+        $categories = Category::withCount(['subcategories' => function($query) {
             $query->withoutTrashed();
         }])->withoutTrashed()->get();
 
@@ -20,10 +21,15 @@ class CategoryStructureController extends Controller
         ]);
     }
 
+    public function create()
+    {
+        return Inertia::render('Admin/Categories/Create');
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' =>'required|string|max:255|unique:categories,name,NULL,id,deleted_at,NULL',
+            'name' => ['required', 'string', 'max:255', Rule::unique('categories')],
         ]);
 
         Category::create([
@@ -34,10 +40,17 @@ class CategoryStructureController extends Controller
         return redirect()->route('admin.categories.index');
     }
 
+    public function edit(Category $category)
+    {
+        return Inertia::render('Admin/Categories/Edit', [
+            'category' => $category
+        ]);
+    }
+
     public function update(Request $request, Category $category)
     {
         $validated = $request->validate([
-            'name' =>'required|string|max:255|unique:categories,name,'.$category->id.',id,deleted_at,NULL',
+            'name' => ['required', 'string', 'max:255', Rule::unique('categories')->ignore($category->id)],
         ]);
 
         $category->update([
@@ -49,14 +62,13 @@ class CategoryStructureController extends Controller
 
     public function destroy(Category $category)
     {
-        // Checks if category has active subcategories
         if ($category->subcategories()->withoutTrashed()->exists()) {
             return back()->withErrors([
                 'error' => 'Cannot delete category that has active subcategories.'
             ]);
         }
 
-        $category->delete(); // This is a soft delete
+        $category->delete();
         return redirect()->route('admin.categories.index');
     }
 }

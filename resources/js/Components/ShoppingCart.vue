@@ -15,6 +15,32 @@
                     <!-- Dialog title and close button -->
                     <div class="flex items-start justify-between">
                       <DialogTitle class="text-2xl font-bold text-gray-900">Winkelwagen</DialogTitle>
+
+                      <!-- Add this right after the DialogTitle section in your code -->
+
+    <!-- Sort button - Only show if there are items -->
+    <div v-if="cartStore.items.length > 0" class="flex items-center space-x-2 ml-auto mr-4">
+        <select 
+            v-model="cartStore.sortBy"
+            class="text-sm border-gray-300 rounded-md"
+            @change="cartStore.setSorting($event.target.value)"
+        >
+            <option value="name">Naam</option>
+            <option value="price">Prijs</option>
+            <option value="quantity">Aantal</option>
+        </select>
+        <button 
+            @click="cartStore.sortDirection = cartStore.sortDirection === 'asc' ? 'desc' : 'asc'"
+            class="p-1 text-gray-500 hover:text-gray-700"
+        >
+            <ArrowUpIcon v-if="cartStore.sortDirection === 'asc'" class="h-4 w-4" />
+            <ArrowDownIcon v-else class="h-4 w-4" />
+        </button>
+    </div>
+   
+
+
+
                       <div class="ml-3 flex h-7 items-center">
                         <button type="button" class="relative -m-2 p-2 text-gray-400 hover:text-gray-500" @click="$emit('close')">
                           <span class="absolute -inset-0.5" />
@@ -127,7 +153,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue';
-import { XMarkIcon, TrashIcon, PlusIcon, MinusIcon, ShoppingCartIcon } from '@heroicons/vue/24/outline';
+import { XMarkIcon, TrashIcon, PlusIcon, MinusIcon, ShoppingCartIcon, ArrowUpIcon, ArrowDownIcon } from '@heroicons/vue/24/outline';
 import { useCartStore } from '@/stores/cart';
 
 // Props

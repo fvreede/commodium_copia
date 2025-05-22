@@ -28,7 +28,7 @@
 
                     <!-- Zoekbalk, alleen zichtbaar op grotere schermen -->
                     <div class="hidden sm:ml-6 sm:block">
-                        <input type="search" placeholder="Zoek een product" v-model="searchQuery" class="w-full max-w-md rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 shadow-sm"/>
+                        <input type="search" placeholder="Zoek een product"  class="w-full max-w-md rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 shadow-sm"/>
                     </div>
 
                     <!-- Navigatieknoppen voor desktop -->
@@ -50,9 +50,9 @@
                 </div>
                 <!-- End menu button - mobile -->
                  
-                <!-- Winkelwagenknop, inclusief badge voor item aantal -->
+                <!-- Winkelwagenknop, inclusief badge voor item aantal 
                 <div class="absolute inset-y-0 right-10 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
-                    <!-- Shopping cart button -->
+                     Shopping cart button --
                     <div class="relative">
                         <button @click.stop="toggleCart" type="button" class="relative rounded-full bg-slate-50 p-1 text-gray-700 hover:bg-slate-200 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-200">
                             <span class="absolute -inset-1.5"/>
@@ -63,9 +63,59 @@
                             </span>
                         </button>
                     </div>
-                    <!-- End shopping cart button -->
-                    
-                    <!-- Profiel dropdown met account-opties -->
+                    </div>
+                    -- End shopping cart button -->
+
+<!-- Winkelwagen en profiel container -->
+<div class="absolute inset-y-0 right-10 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
+    <div class="relative">
+        <button @click="toggleCart" type="button" class="relative rounded-full bg-slate-50 p-1 text-gray-700 hover:bg-slate-200 hover:text-gray-900">
+            <ShoppingCartIcon class="h-6 w-6" />
+            <span v-if="cartItemCount > 0" class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs">
+                {{ cartItemCount }}
+            </span>
+        </button>
+    </div>
+    <!-- Profielmenu -->
+    <Menu as="div" class="relative ml-3">
+        <div>
+            <MenuButton 
+                @click="toggleButton('profile')" 
+                class="relative flex rounded-full bg-slate-50 p-1 text-gray-700 hover:bg-slate-200 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-200"
+            >
+                <span class="absolute -inset-1.5"/>
+                <span class="sr-only">Open user menu</span>
+                <UserIcon class="h-6 w-6" aria-hidden="true"/>
+            </MenuButton>
+        </div>
+        <Transition 
+            enter-active-class="transition ease-out duration-100" 
+            enter-from-class="transform opacity-0 scale-95" 
+            enter-to-class="transform opacity-100 scale-100" 
+            leave-active-class="transition ease-in duration-75" 
+            leave-from-class="transform opacity-100 scale-100" 
+            leave-to-class="transform opacity-0 scale-95"
+        >
+            <MenuItems class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-slate-50 py-1 shadow-md ring-1 ring-black ring-opacity-5 focus:outline-none">
+                <template v-if="!isAuthenticated">
+                    <MenuItem v-slot="{ active }">
+                        <Link :href="route('login')" :class="[active ? 'bg-gray-500' : '', 'block px-4 py-2 text-sm text-black']">
+                            Inloggen
+                        </Link>
+                    </MenuItem>
+                    <MenuItem v-slot="{ active }">
+                        <Link :href="route('register')" :class="[active ? 'bg-gray-500' : '', 'block px-4 py-2 text-sm text-black']">
+                            Registreren
+                        </Link>
+                    </MenuItem>
+                </template>
+            </MenuItems>
+        </Transition>
+    </Menu>
+</div>
+
+                    <!-- Profiel dropdown met account-opties 
+                     TODO: Verander de layout naar iets moderns 
                     <Menu as="div" class="relative ml-3">
                         <div>
                             <MenuButton @click="toggleButton('profile')" class="relative flex rounded-full bg-slate-50 p-1 text-gray-700 hover:bg-slate-200 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-200">
@@ -76,23 +126,23 @@
                         </div>
                         <Transition enter-active-class="transition ease-out duration-100" enter-from-class="transform opacity-0 scale-95" enter-to-class="transform opacity-100 scale-100" leave-active-class="transition ease-in duration-75" leave-from-class="transform opacity-100 scale-100" leave-to-class="transform opacity-0 scale-95">
                             <MenuItems class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-slate-50 py-1 shadow-md ring-1 ring-black ring-opacity-5 focus:outline-none">
-                                <!-- -->
+                                <!-- Login and Registering button --
                                 <template v-if="!isAuthenticated">
                                     <MenuItem v-slot="{ active }">
                                         <Link :href="route('login')" :class="[active ? 'bg-gray-500' : '', 'block px-4 py-2 text-sm text-black']">
-                                            Login
+                                            Inloggen
                                         </Link>
                                     </MenuItem>
                                     <MenuItem v-slot="{ active }">
                                         <Link :href="route('register')" :class="[active ? 'bg-gray-500' : '', 'block px-4 py-2 text-sm text-black']">
-                                            Sign Up
+                                            Registreren
                                         </Link>
                                     </MenuItem>
                                 </template>
                             </MenuItems>
                         </Transition>
-                    </Menu>
-                </div>
+                    </Menu> -->
+
             </div>
         </div>
 
@@ -123,7 +173,7 @@
 import { computed, ref, watch } from 'vue'
 import { Disclosure, DisclosureButton, DisclosurePanel, Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/vue'
 import { Bars3Icon, XMarkIcon, ShoppingCartIcon, UserIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline'
-import ShoppingCart from '../Components/ShoppingCart.vue'
+import ShoppingCart from '@/Components/ShoppingCart.vue'
 import { useCartStore } from '@/Stores/cart'
 import NavLink from './NavLink.vue'
 import { usePage, Link, router } from '@inertiajs/vue3'
@@ -175,13 +225,15 @@ const toggleButton = (button) => {
     }
 };
 
-// Methoden om de winkelwagen te openen, sluiten en de status te togglen
+// Methoden om de winkelwagen te beheren
 const toggleCart = () => {
-    isCartOpen.value = !isCartOpen.value;
+    console.log('toggleCart called, current state:', isCartOpen.value)
+    isCartOpen.value = !isCartOpen.value
 }
 
 const closeCart = () => {
-    isCartOpen.value = false;
+    console.log('closeCart called')
+    isCartOpen.value = false
 }
 
 // Get the current user from Inertia's shared data

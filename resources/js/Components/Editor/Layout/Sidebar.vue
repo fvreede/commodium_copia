@@ -74,7 +74,7 @@ import { HomeIcon, NewspaperIcon, TagIcon, PhotoIcon, Square3Stack3DIcon, Shoppi
                     :class="{ 'bg-gray-200': route().current('editor.settings') }"
                 >
                     <Cog6ToothIcon class="w-5 h-5 mr-3" />
-                    <span>Account Instellingen</span>
+                    <span>Instellingen</span>
                 </Link>
             </div>
         </nav>

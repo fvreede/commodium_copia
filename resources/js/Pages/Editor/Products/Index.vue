@@ -61,16 +61,17 @@ const formatPrice = (price) => {
                         <tr v-for="product in products" :key="product.id">
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <img 
-                                    :src="`/storage/${product.image.path}`" 
+                                    :src="`/storage/images/products/${product.image?.path || product.image || product.name + '.jpg'}`" 
                                     :alt="product.name"
                                     class="h-12 w-12 object-cover rounded-md"
+                                    @error="$event.target.src = '/storage/images/products/default.jpg'"
                                 />
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 {{ product.name }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                {{ product.subcategory.name }}
+                                {{ product.subcategory?.name || 'N/A' }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 {{ formatPrice(product.price) }}

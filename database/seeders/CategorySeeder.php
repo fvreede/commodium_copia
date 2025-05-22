@@ -50,14 +50,20 @@ class CategorySeeder extends Seeder
             [
                 'name' => 'Groenten en Fruit',
                 'banner_path' => 'images/subcategories/banners/groentenFruitBanner.jpg',
+                'description' => 'Ontdek de lekkerste groenten en fruit van het seizoen.',
+                'image_path' => 'images/categories/groenten-fruit.jpg'
             ],
             [
                 'name' => 'Bakkerij en Brood',
-                'banner_path' => 'images/subcategories/banners/bakkerijBroodBanner.jpg', 
+                'banner_path' => 'images/subcategories/banners/bakkerijBroodBanner.jpg',
+                'description' => 'Vers brood en gebak, elke dag vers gebakken.',
+                'image_path' => 'images/categories/bakkerij-brood.jpg'
             ],
             [
                 'name' => 'Zuivel en Eieren',
                 'banner_path' => 'images/subcategories/banners/zuivelEierenBanner.jpg',
+                'description' => 'Verse zuivel en eieren, rechtstreeks van de boerderij.',
+                'image_path' => 'images/categories/zuivel-eieren.jpg'
             ],
         ];
 

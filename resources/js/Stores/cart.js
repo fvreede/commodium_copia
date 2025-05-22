@@ -1,94 +1,108 @@
-/**
- * @file cart.js
- * @version v1.0.2
- * @date 2024-10-29 17:54:42
- * @author Fabio Vreede
- * @description Store voor het beheren van de winkelwagenfunctionaliteit in Commodium Copia. Biedt acties voor het toevoegen, bijwerken, en verwijderen van items in de winkelwagen, en berekent de totalen en hoeveelheden voor weergave in de UI.
- * 
- * @dependencies:
- * - Pinia (defineStore)
- * - mockData.json: Mock data bestand voor productgegevens
- */
+// @/Stores/cart.js
+import { defineStore } from 'pinia'
+import { router } from '@inertiajs/vue3'
+import axios from 'axios'
 
-import { defineStore } from 'pinia'; // Importeer Pinia's defineStore functie voor het maken van de store
-import mockData from '@/data/mockData.json'; // Importeer mock data als tijdelijke productgegevens
-
-// Definieer de winkelwagen-store met de naam 'cart'
 export const useCartStore = defineStore('cart', {
-  // Definieer de initiële state van de winkelwagen
-  state: () => ({
-    items: [] // Een lege array om producten in de winkelwagen bij te houden
-  }),
-  
-  getters: {
-    // Getter om het totale aantal artikelen in de winkelwagen te berekenen
-    totalItems: (state) => state.items.reduce((total, item) => total + item.quantity, 0),
-    
-    // Bestaande getters om de subtotaalprijs te berekenen
-    subtotal: (state) => state.items.reduce((total, item) => total + (item.price * item.quantity), 0),
+    state: () => ({
+        items: [],
+        sortBy: 'name',
+        sortDirection: 'asc',
+        isLoading: false
+    }),
 
-    // Berekent de totaalprijs inclusief verzendkosten (vast bedrag van €5)                                                                    
-    total: (state) => state.items.reduce((total, item) => total + (item.price * item.quantity), 0) + 5,       
+    getters: {
+        totalItems: (state) => state.items.reduce((total, item) => total + item.quantity, 0),
+        
+        subtotal: (state) => state.items.reduce((total, item) => total + (item.price * item.quantity), 0),
 
-    // Geformatteerde subtotaalprijs voor weergave in het EUR-format
-    formattedSubtotal: (state) => { 
-      return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(state.subtotal); 
-    }, 
+        total: (state) => {
+            const subtotal = state.items.reduce((total, item) => total + (item.price * item.quantity), 0)
+            const deliveryCost = 0
+            return subtotal + deliveryCost
+        },
 
-    // Geformatteerde totaalprijs voor weergave in het EUR-format
-    formattedTotal: (state) => { 
-      return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(state.total); 
-    }
-  },
-  
-  actions: {
-    // Voeg een product toe aan de winkelwagen
-    addToCart(product) {
-      // Controleer of het product al in de winkelwagen zit
-      const existingItem = this.items.find((item) => item.id === product.id);
-      if (existingItem) {
-        // Verhoog de hoeveelheid als het product al bestaat
-        existingItem.quantity++;
-      } else {
-        // Voeg het product toe met een initiële hoeveelheid van 1 als het nog niet bestaat
-        this.items.push({ ...product, quantity: 1 });
-      }
-    },
-    
-    // Verwijder een product volledig uit de winkelwagen
-    removeFromCart(product) {
-      this.items = this.items.filter((item) => item.id !== product.id);
-    },
-    
-    // Werk de hoeveelheid van een product bij op basis van de opgegeven waarde
-    updateQuantity(product, quantity) {
-      const item = this.items.find((i) => i.id === product.id);
-      if (item) {
-        // Zorg ervoor dat de hoeveelheid niet negatief wordt
-        if (quantity > 0) {
-          item.quantity = quantity;
-        } else {
-          this.removeFromCart(product); // Verwijder het product als de hoeveelheid nul of negatief is
+        sortedItems: (state) => {
+            return [...state.items].sort((a, b) => {
+                let compareA = a[state.sortBy]
+                let compareB = b[state.sortBy]
+                
+                if (state.sortBy === 'price') {
+                    compareA = compareA * a.quantity
+                    compareB = compareB * b.quantity
+                }
+
+                if (compareA < compareB) return state.sortDirection === 'asc' ? -1 : 1
+                if (compareA > compareB) return state.sortDirection === 'asc' ? 1 : -1
+                return 0
+            })
         }
-      }
     },
-    
-    // Leeg de winkelwagen door alle items te verwijderen
-    clearCart() {
-      this.items = [];
-    },
-    
-    // Verlaag de hoeveelheid van een product met 1
-    decrementQuantity(product) {
-      const item = this.items.find((i) => i.id === product.id);
-      if (item) {
-        // Verwijder het product als de hoeveelheid 1 bereikt, anders verlaag de hoeveelheid
-        if (item.quantity > 1) {
-          item.quantity--;
-        } else {
-          this.removeFromCart(product);
+
+    actions: {
+        async loadCart() {
+            try {
+                this.isLoading = true
+                const response = await axios.get(route('cart.index'))
+                this.items = response.data.cartItems || []
+            } catch (error) {
+                console.error('Fout bij laden winkelwagen:', error)
+            } finally {
+                this.isLoading = false
+            }
+        },
+
+        async addToCart(product) {
+            try {
+                const response = await axios.post(route('cart.add'), {
+                    product_id: product.id,
+                    quantity: 1,
+                    price: product.price,
+                    name: product.name,
+                    image_path: product.image_path
+                })
+                await this.loadCart() // Herlaad de winkelwagen na toevoegen
+            } catch (error) {
+                console.error('Fout bij toevoegen aan winkelwagen:', error)
+            }
+        },
+
+        async removeFromCart(product) {
+            try {
+                await axios.delete(route('cart.remove', product.id))
+                await this.loadCart() // Herlaad de winkelwagen na verwijderen
+            } catch (error) {
+                console.error('Fout bij verwijderen uit winkelwagen:', error)
+            }
+        },
+
+        async updateQuantity(product, quantity) {
+            try {
+                await axios.patch(route('cart.update', product.id), {
+                    quantity: quantity
+                })
+                await this.loadCart() // Herlaad de winkelwagen na update
+            } catch (error) {
+                console.error('Fout bij bijwerken hoeveelheid:', error)
+            }
+        },
+
+        async clearCart() {
+            try {
+                await axios.delete(route('cart.clear'))
+                this.items = []
+            } catch (error) {
+                console.error('Fout bij legen winkelwagen:', error)
+            }
+        },
+
+        setSorting(sortBy) {
+            if (this.sortBy === sortBy) {
+                this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc'
+            } else {
+                this.sortBy = sortBy
+                this.sortDirection = 'asc'
+            }
         }
-      }
     }
-  }
-});
+})

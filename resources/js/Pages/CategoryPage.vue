@@ -29,7 +29,7 @@
               <div class="aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-lg bg-gray-200">
 
                 <!-- Dynamische afbeelding voor de categorie -->
-                <img :src="category.imageSrc" :alt="category.imageAlt" class="h-full w-full object-cover object-center group-hover:opacity-75"/>
+                <img :src="`/storage/${category.image_path}`" :alt="category.imageAlt" class="h-full w-full object-cover object-center group-hover:opacity-75"/>
               </div>
 
               <!-- Naam van de categorie -->
@@ -57,38 +57,13 @@ import Footer from '@/Components/Footer.vue';
 
 import { Link } from '@inertiajs/vue3';
 
-// Import van afbeeldingen voor de categorieën
-import groentenFruitImg from '@/assets/images/categories/groenten-fruit.jpg';
-import bakkerijBroodImg from '@/assets/images/categories/bakkerij-brood.jpg';
-import zuivelEierenImg from '@/assets/images/categories/zuivel-eieren.jpg';
-
 /**
  * Array van categorieën die de ID, naam, afbeelding, alt-text en beschrijving van alle categorie bevat.
  */
-const categories = [
-  {
-    id: 1,
-    name: 'Groenten en Fruit',
-    imageSrc: groentenFruitImg,
-    imageAlt: 'Groenten en fruit',
-    href: '#',
-    description: 'Ontdek de lekkerste groenten en fruit van het seizoen.'
-  },
-  {
-    id: 2,
-    name: 'Bakkerij en Brood',
-    imageSrc: bakkerijBroodImg,
-    imageAlt: 'Bakkerij en brood',
-    href: '#',
-    description: 'Vers brood en gebak, elke dag vers gebakken.'
-  },
-  {
-    id: 3,
-    name: 'Zuivel en Eieren',
-    imageSrc: zuivelEierenImg,
-    imageAlt: 'Zuivel en eieren',
-    href: '#',
-    description: 'Verse zuivel en eieren, rechtstreeks van de boerderij.'
+const props = defineProps({
+  categories: {
+    type: Array,
+    required: true
   }
-]
+});
 </script>

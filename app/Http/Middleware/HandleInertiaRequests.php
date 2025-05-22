@@ -40,6 +40,12 @@ class HandleInertiaRequests extends Middleware
                     'roles' => $request->user()->roles->pluck('name')->toArray(),
                 ] : null,
             ],
+            'ziggy' => [
+                'url' => config('app.url'),
+                'port' => null,
+                'defaults' => [],
+                'routes' => fn () => Route::getRoutes()->getRoutesByName(),
+            ],
         ];
     }
 }

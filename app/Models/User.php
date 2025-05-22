@@ -8,6 +8,8 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 
+use Illuminate\Support\Facades\Log;
+
 /**
  * User Model
  * 
@@ -119,15 +121,33 @@ class User extends Authenticatable
      * @return void
      */
     protected static function booted()
-    {
-        static::creating(function ($user) {
-            // Get default status
-            $user->status = User::STATUS_ACTIVE;
+{
+    static::creating(function ($user) {
+        Log::info('Creating new user', ['email' => $user->email]);
+        
+        // Get default status
+        $user->status = User::STATUS_ACTIVE;
+        Log::info('Status set', ['status' => $user->status]);
 
-            // Assign customer role for non-admin users
-            if (!$user->hasAnyRole()) {
-                $user->assignRole('customer'); // Default to customer roles
+        // Assign customer role for non-admin users
+        if (!$user->hasAnyRole()) {
+            try {
+                $user->assignRole('customer');
+                Log::info('Role assigned successfully');
+            } catch (\Exception $e) {
+                Log::error('Failed to assign role', ['error' => $e->getMessage()]);
             }
-        });
+        }
+    });
+}
+
+    /**
+     * Get all orders for the user.
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
     }
 }

@@ -8,6 +8,7 @@ use App\Models\Subcategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
+use App\Models\Category;
 
 class ProductController extends Controller
 {
@@ -24,9 +25,9 @@ class ProductController extends Controller
 
     public function create()
     {
-        $subcategories = Subcategory::all();
         return Inertia::render('Editor/Products/Create', [
-            'subcategories' => $subcategories
+            'categories' => Category::all(),
+            'subcategories' => Subcategory::with('category')->get()
         ]);
     }
 
@@ -41,7 +42,7 @@ class ProductController extends Controller
             'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
 
-        $subcategory = Subcategory::find($validated['subcategory_id']);
+        $subcategory = Subcategory::with('category')->find($validated['subcategory_id']);
         $categoryName = strtolower(str_replace(' ', '_', $subcategory->category->name));
         $subcategoryName = strtolower(str_replace(' ', '_', $subcategory->name));
         
@@ -49,8 +50,8 @@ class ProductController extends Controller
 
         Product::create([
             'name' => $validated['name'],
-            'short_description' => $validated['description'],
-            'full_description' => $validated['fullDescription'],
+            'short_description' => $validated['short_description'],
+            'full_description' => $validated['full_description'],
             'price' => $validated['price'],
             'subcategory_id' => $validated['subcategory_id'],
             'image_path' => $path
@@ -61,10 +62,10 @@ class ProductController extends Controller
 
     public function edit(Product $product)
     {
-        $subcategories = Subcategory::all();
         return Inertia::render('Editor/Products/Edit', [
-            'product' => $product,
-            'subcategories' => $subcategories
+        'product' => $product,
+        'categories' => Category::all(),
+        'subcategories' => Subcategory::with('category')->get()
         ]);
     }
 
@@ -82,7 +83,7 @@ class ProductController extends Controller
         if ($request->hasFile('image')) {
             Storage::disk('public')->delete($product->image_path);
             
-            $subcategory = Subcategory::find($validated['subcategory_id']);
+            $subcategory = Subcategory::with('category')->find($validated['subcategory_id']);
             $categoryName = strtolower(str_replace(' ', '_', $subcategory->category->name));
             $subcategoryName = strtolower(str_replace(' ', '_', $subcategory->name));
             

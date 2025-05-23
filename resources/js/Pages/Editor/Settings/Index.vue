@@ -71,15 +71,15 @@ const toggleConfirmPasswordVisibility = () => {
                 <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
                     <section class="max-w-xl">
                         <header>
-                            <h2 class="text-lg font-medium text-gray-900">Update Password</h2>
+                            <h2 class="text-lg font-medium text-gray-900">Wachtwoord bijwerken</h2>
                             <p class="mt-1 text-sm text-gray-600">
-                                Ensure your account is using a long, random password to stay secure.
+                                Zorg ervoor dat je een lang en willekeurig wachtwoord gebruikt om je account veilig te houden.
                             </p>
                         </header>
 
                         <form @submit.prevent="updatePassword" class="mt-6 space-y-6">
                             <div class="relative">
-                                <InputLabel for="current_password" value="Current Password" />
+                                <InputLabel for="current_password" value="Huidig wachtwoord" />
                                 <TextInput
                                     id="current_password"
                                     v-model="passwordForm.current_password"
@@ -99,7 +99,7 @@ const toggleConfirmPasswordVisibility = () => {
                             </div>
 
                             <div class="relative">
-                                <InputLabel for="password" value="New Password" />
+                                <InputLabel for="password" value="Nieuw wachtwoord" />
                                 <TextInput
                                     id="password"
                                     v-model="passwordForm.password"
@@ -119,7 +119,7 @@ const toggleConfirmPasswordVisibility = () => {
                             </div>
 
                             <div class="relative">
-                                <InputLabel for="password_confirmation" value="Confirm Password" />
+                                <InputLabel for="password_confirmation" value="Bevestig wachtwoord" />
                                 <TextInput
                                     id="password_confirmation"
                                     v-model="passwordForm.password_confirmation"
@@ -139,7 +139,7 @@ const toggleConfirmPasswordVisibility = () => {
                             </div>
 
                             <div class="flex items-center gap-4">
-                                <PrimaryButton :disabled="passwordForm.processing">Save</PrimaryButton>
+                                <PrimaryButton :disabled="passwordForm.processing">Opslaan</PrimaryButton>
 
                                 <Transition
                                     enter-active-class="transition ease-in-out"
@@ -147,7 +147,7 @@ const toggleConfirmPasswordVisibility = () => {
                                     leave-active-class="transition ease-in-out"
                                     leave-to-class="opacity-0"
                                 >
-                                    <p v-if="passwordForm.recentlySuccessful" class="text-sm text-green-600">Saved.</p>
+                                    <p v-if="passwordForm.recentlySuccessful" class="text-sm text-green-600">Opgeslagen.</p>
                                 </Transition>
                             </div>
                         </form>
@@ -161,16 +161,16 @@ const toggleConfirmPasswordVisibility = () => {
                             <header>
                                 <div class="flex items-center space-x-2">
                                     <ExclamationTriangleIcon class="h-5 w-5 text-yellow-500" />
-                                    <h2 class="text-lg font-medium text-gray-900">Security Notice</h2>
+                                    <h2 class="text-lg font-medium text-gray-900">Beveiligingsmelding</h2>
                                 </div>
                             </header>
 
                             <div class="text-sm text-gray-600">
-                                <p>As an Editor, your account has elevated privileges. Please ensure you:</p>
+                                <p>Als beheerder heb je verhoogde bevoegdheden. Zorg ervoor dat je:</p>
                                 <ul class="list-disc list-inside mt-2 space-y-1">
-                                    <li>Use a strong, unique password</li>
-                                    <li>Never share your login credentials</li>
-                                    <li>Log out when accessing from shared devices</li>
+                                    <li>Een sterk, uniek wachtwoord gebruikt</li>
+                                    <li>Je inloggegevens nooit deelt</li>
+                                    <li>Uitlogt wanneer je werkt op gedeelde apparaten</li>
                                 </ul>
                             </div>
                         </section>

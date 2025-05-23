@@ -15,6 +15,7 @@ const form = useForm({
     short_description: props.product.short_description,
     full_description: props.product.full_description,
     price: props.product.price,
+    category_id: props.product.subcategory?.category?.id ?? '',
     subcategory_id: props.product.subcategory_id,
     image: null,
     _method: 'PUT'
@@ -43,8 +44,30 @@ const handleBack = () => {
 };
 
 const submit = () => {
-    form.post(route('editor.products.update', props.product.id));
+  console.log('Submitting with subcategory_id:', form.subcategory_id)
+  form.submit('post', route('editor.products.update', props.product.id), {
+    forceFormData: true,
+  });
 };
+
+import { computed } from 'vue';
+
+const groupedSubcategories = computed(() => {
+  const groups = {};
+
+  for (const sub of props.subcategories) {
+    const category = sub.category?.name ?? 'Onbekend';
+    if (!groups[category]) {
+      groups[category] = [];
+    }
+    groups[category].push(sub);
+  }
+
+  return Object.entries(groups).map(([category, subcategories]) => ({
+    category,
+    subcategories,
+  }));
+});
 </script>
 
 <template>
@@ -117,17 +140,19 @@ const submit = () => {
                         v-model="form.subcategory_id"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
                     >
-                        <option value="">Selecteer een subcategorie</option>
-                        <optgroup 
-                            v-for="category in subcategories" 
-                            :key="category.id"
-                            :label="category.category.name"
+                        <option disabled value="">Selecteer een subcategorie</option>
+                        
+                        <!-- Group by category -->
+                        <optgroup
+                            v-for="(group, index) in groupedSubcategories"
+                            :key="index"
+                            :label="group.category"
                         >
-                            <option 
-                                v-for="subcategory in category.subcategories" 
+                            <option
+                                v-for="subcategory in group.subcategories"
                                 :key="subcategory.id"
                                 :value="subcategory.id"
-                            >
+                        >
                                 {{ subcategory.name }}
                             </option>
                         </optgroup>

@@ -6,6 +6,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 
 const props = defineProps({
+    categories: Array,
     subcategories: Array
 });
 
@@ -14,6 +15,7 @@ const form = useForm({
     short_description: '',
     full_description: '',
     price: '',
+    category_id: '',
     subcategory_id: '',
     image: null
 });
@@ -41,8 +43,35 @@ const handleBack = () => {
 };
 
 const submit = () => {
-    form.post(route('editor.products.store'));
+    form.post(route('editor.products.store'), {
+        forceFormData: true
+    });
 };
+
+import { computed } from 'vue';
+
+const groupedSubcategories = computed(() => {
+  const groups = {};
+
+  for (const sub of props.subcategories) {
+    const category = sub.category?.name ?? 'Onbekend';
+    if (!groups[category]) {
+      groups[category] = [];
+    }
+    groups[category].push(sub);
+  }
+
+  return Object.entries(groups).map(([category, subcategories]) => ({
+    category,
+    subcategories,
+  }));
+});
+
+const filteredSubcategories = computed(() =>
+  props.subcategories.filter(
+    (sub) => sub.category?.id === parseInt(form.category_id)
+  )
+);
 </script>
 
 <template>
@@ -106,31 +135,36 @@ const submit = () => {
                     />
                 </div>
 
-                <!-- Subcategory Selection -->
+                <!-- Category Dropdown -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">
-                        Subcategorie
-                    </label>
-                    <select
-                        v-model="form.subcategory_id"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
-                    >
-                        <option value="">Selecteer een subcategorie</option>
-                        <optgroup
-                            v-for="category in subcategories"
-                            :key="category.id"
-                            :label="category.category.name"
+                    <label>Categorie</label>
+                    <select v-model="form.category_id" class="...">
+                        <option disabled value="">Selecteer een categorie</option>
+                        <option 
+                            v-for="cat in categoryList" 
+                            :key="cat.id" 
+                            :value="cat.id"
                         >
-                            <option
-                                v-for="subcategory in category.subcategories"
-                                :key="subcategory.id"
-                                :value="subcategory.id"
-                            >
-                                {{ subcategory.name }}
-                            </option>
-                        </optgroup>
+                            {{ cat.name }}
+                        </option>
                     </select>
                 </div>
+
+                <!-- Subcategory Dropdown -->
+                <div>
+                    <label>Subcategorie</label>
+                    <select v-model="form.subcategory_id" class="...">
+                        <option disabled value="">Selecteer een subcategorie</option>
+                        <option 
+                            v-for="sub in filteredSubcategories" 
+                            :key="sub.id" 
+                            :value="sub.id"
+                        >
+                            {{ sub.name }}
+                        </option>
+                    </select>
+                </div>
+
 
                 <!-- Image Upload -->
                 <div>

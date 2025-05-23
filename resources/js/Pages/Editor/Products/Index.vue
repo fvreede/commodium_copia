@@ -1,8 +1,9 @@
 <script setup>
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { PencilIcon, TrashIcon, PlusIcon } from '@heroicons/vue/24/outline';
 import EditorLayout from '@/Layouts/Editor/EditorLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
+import ConfirmModal from '@/Components/ConfirmModal.vue';
 
 const props = defineProps({
     products: Array,
@@ -14,6 +15,25 @@ const formatPrice = (price) => {
         style: 'currency',
         currency: 'EUR',
     }).format(price);
+};
+
+const showModal = ref(false);
+const productToDelete = ref(null);
+
+const confirmDelete = (productId) => {
+    productToDelete.value = productId;
+    showModal.value = true;
+}
+
+const deleteProduct = () => {
+    if (!productToDelete.value) return;
+
+    router.delete(route('editor.products.destroy', productToDelete.value), {
+        onFinish: () => {
+            showModal.value = false;
+            productToDelete.value = null;
+        }
+    });
 };
 </script>
 
@@ -98,21 +118,13 @@ const formatPrice = (price) => {
                                         >
                                             <PencilIcon class="h-4 w-4" />
                                         </Link>
-                                        <Link
-                                            :href="route('editor.products.destroy', product.id)"
-                                            method="delete"
-                                            as="button"
+                                        <button
+                                            @click="confirmDelete(product.id)"
                                             class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 transition-all duration-200 hover:scale-105"
-                                            type="button"
                                             title="Verwijderen"
-                                            @click="(e) => {
-                                                if (!confirm('Weet je zeker dat je dit product wilt verwijderen?')) {
-                                                    e.preventDefault();
-                                                }
-                                            }"
                                         >
                                             <TrashIcon class="h-4 w-4" />
-                                        </Link>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -137,4 +149,15 @@ const formatPrice = (price) => {
             </div>
         </div>
     </EditorLayout>
+
+    <!-- Confirmation modal -->
+    <ConfirmModal
+        :visible="showModal"
+        :title="'Product Verwijderen'"
+        :message="'Weet je zeker dat je dit product wilt verwijderen?'"
+        :cancelText="'Annuleren'"
+        :confirmText="'Verwijderen'"
+        @cancel="showModal = false"
+        @confirm="deleteProduct"
+    />
 </template>

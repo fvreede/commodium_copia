@@ -1,4 +1,5 @@
 <script setup>
+import { ref } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { PencilIcon, TrashIcon, PlusIcon } from '@heroicons/vue/24/outline';
 import EditorLayout from '@/Layouts/Editor/EditorLayout.vue';

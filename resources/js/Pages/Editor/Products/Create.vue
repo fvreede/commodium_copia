@@ -141,7 +141,7 @@ const filteredSubcategories = computed(() =>
                     <select v-model="form.category_id" class="...">
                         <option disabled value="">Selecteer een categorie</option>
                         <option 
-                            v-for="cat in categoryList" 
+                            v-for="cat in categories" 
                             :key="cat.id" 
                             :value="cat.id"
                         >

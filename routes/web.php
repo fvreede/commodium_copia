@@ -3,6 +3,8 @@
 // Web.php
 
 use App\Models\Category;
+use App\Models\Subcategory;
+use App\Models\Product;
 use App\Http\Controllers\Admin\UsersController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\AdminController;
@@ -33,59 +35,31 @@ Route::get('/categories', function () {
 })->name('AllCategories');
 
 Route::get('/subcategories/{categoryId}', function ($categoryId) {
-    // TEMPORARY: Use MockData for test, after test use database or CMS
-    $mockDataPath = resource_path('js/Data/mockData.json');
-
-    if (!file_exists($mockDataPath)) {
-        abort(500, 'Mock data file not found');
-    }
-
-    $mockData = json_decode(file_get_contents($mockDataPath), true);
-
-    $category = collect($mockData)->firstWhere('id', (int) $categoryId);
-
-    if(!$category) {
-        abort(404, 'Category not found');
-    }
-
+    $category = Category::with('subcategories.products')->findOrFail($categoryId);
+    
     return Inertia::render('SubcategoryPage', [
         'categoryId' => (string) $categoryId,
-        'categoryName' => $category['name'],
-        'bannerSrc' => $category['bannerSrc'],
-        'subcategories' => $category['subcategories'] ?? [],
+        'categoryName' => $category->name,
+        'bannerSrc' => $category->banner_image ?? 'default-banner.jpg',
+        'subcategories' => $category->subcategories->map(function ($subcategory) {
+            return [
+                'id' => $subcategory->id,
+                'name' => $subcategory->name,
+                'products' => $subcategory->products->map(function ($product) {
+                    return [
+                        'id' => $product->id,
+                        'name' => $product->name,
+                        'description' => $product->short_description,
+                        'price' => $product->price,
+                        'imageSrc' => $product->image_path,
+                    ];
+                })
+            ];
+        })
     ]);
 })->name('subcategories.show');
 
-Route::get('/product/{id}/{subcategoryName}/{categoryId}', function ($id, $subcategoryName, $categoryId) {
-    $mockData = json_decode(file_get_contents(base_path('resources/js/Data/mockData.json')), true);
-    
-    $category = collect($mockData)->firstWhere('id', (int) $categoryId);
-    
-    if (!$category) {
-        abort(404, 'Category not found');
-    }
-    
-    $subcategory = collect($category['subcategories'])->firstWhere('name', $subcategoryName);
-    
-    if (!$subcategory) {
-        abort(404, 'Subcategory not found');
-    }
-    
-    $product = collect($subcategory['products'])->firstWhere('id', (int) $id);
-    
-    if (!$product) {
-        abort(404, 'Product not found');
-    }
-    
-    return Inertia::render('ProductPage', [
-        'id' => (string) $id,
-        'product' => $product,
-        'bannerSrc' => $category['bannerSrc'],
-        'categoryName' => $category['name'],
-        'subcategoryName' => $subcategory['name'],
-        'categoryId' => (string) $categoryId
-    ]);
-})->name('product.show');
+Route::get('/product/{product}', [ProductController::class, 'show'])->name('product.show');
 
 // Admin routes
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {

@@ -60,6 +60,28 @@ class ProductController extends Controller
         return redirect()->route('editor.products.index');
     }
 
+    public function show(Product $product)
+    {
+        // Load the product with its relationships
+        $product->load(['subcategory.category']);
+        
+        return Inertia::render('ProductPage', [
+            'id' => (string) $product->id,
+            'product' => [
+                'id' => $product->id,
+                'name' => $product->name,
+                'description' => $product->short_description,
+                'fullDescription' => $product->full_description,
+                'price' => $product->price,
+                'imageSrc' => $product->image_path, // This will be processed by resolveImagePath in Vue
+            ],
+            'bannerSrc' => $product->subcategory->category->banner_image ?? 'default-banner.jpg',
+            'categoryName' => $product->subcategory->category->name,
+            'subcategoryName' => $product->subcategory->name,
+            'categoryId' => (string) $product->subcategory->category->id
+        ]);
+    }
+
     public function edit(Product $product)
     {
         return Inertia::render('Editor/Products/Edit', [

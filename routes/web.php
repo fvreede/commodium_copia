@@ -24,7 +24,33 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    return Inertia::render('HomePage');
+    $products = Product::with(['subcategory.category'])
+        ->whereIn('name', ['Biologische pompoen', 'Espresso Brownies', 'Red Velvet Muffins'])
+        ->get()
+        ->map(function ($product) {
+            return [
+                'id' => $product->id,
+                'name' => $product->name,
+                'short_description' => $product->short_description,
+                'full_description' => $product->full_description,
+                'price' => (float) $product->price,
+                'image_path' => $product->image_path,
+                'subcategory' => [
+                    'id' => $product->subcategory->id,
+                    'name' => $product->subcategory->name,
+                    'category' => [
+                        'id' => $product->subcategory->category->id,
+                        'name' => $product->subcategory->category->name,
+                        'banner_image' => $product->subcategory->category->banner_image ?? 'default-banner.jpg'
+                    ]
+                ]
+            ];
+        });
+
+    return Inertia::render('HomePage', [
+        'products' => $products,
+        'subcategories' => Subcategory::with('category')->get()
+    ]);
 });
 
 Route::get('/categories', function () {

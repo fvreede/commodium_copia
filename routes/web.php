@@ -1,6 +1,6 @@
 <?php
 
-// Web.php
+// Web.php - Fixed subcategories route
 
 use App\Models\Category;
 use App\Models\Subcategory;
@@ -40,7 +40,7 @@ Route::get('/subcategories/{categoryId}', function ($categoryId) {
     return Inertia::render('SubcategoryPage', [
         'categoryId' => (string) $categoryId,
         'categoryName' => $category->name,
-        'bannerSrc' => $category->banner_image ?? 'default-banner.jpg',
+        'bannerSrc' => $category->banner_path ?? 'default-banner.jpg',
         'subcategories' => $category->subcategories->map(function ($subcategory) {
             return [
                 'id' => $subcategory->id,
@@ -50,7 +50,7 @@ Route::get('/subcategories/{categoryId}', function ($categoryId) {
                         'id' => $product->id,
                         'name' => $product->name,
                         'description' => $product->short_description,
-                        'price' => $product->price,
+                        'price' => (float) $product->price, // Ensure it's a float
                         'imageSrc' => $product->image_path,
                     ];
                 })

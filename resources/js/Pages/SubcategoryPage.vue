@@ -1,3 +1,4 @@
+<!-- SubcategoryPage.vue -->
 <template>
     <NavBar/>
     <div class="bg-gray-100">

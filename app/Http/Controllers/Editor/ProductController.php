@@ -65,20 +65,31 @@ class ProductController extends Controller
         // Load the product with its relationships
         $product->load(['subcategory.category']);
         
+        $productData = [
+            'id' => $product->id,
+            'name' => $product->name,
+            'description' => $product->short_description,
+            'fullDescription' => $product->full_description,
+            'price' => (float) $product->price, // Ensure it's a float
+            'imageSrc' => $product->image_path,
+            'subcategory' => [
+                'id' => $product->subcategory->id,
+                'name' => $product->subcategory->name,
+                'category' => [
+                    'id' => $product->subcategory->category->id,
+                    'name' => $product->subcategory->category->name,
+                    'banner_path' => $product->subcategory->category->banner_path,
+                ]
+            ]
+        ];
+
         return Inertia::render('ProductPage', [
             'id' => (string) $product->id,
-            'product' => [
-                'id' => $product->id,
-                'name' => $product->name,
-                'description' => $product->short_description,
-                'fullDescription' => $product->full_description,
-                'price' => $product->price,
-                'imageSrc' => $product->image_path, // This will be processed by resolveImagePath in Vue
-            ],
-            'bannerSrc' => $product->subcategory->category->banner_image ?? 'default-banner.jpg',
+            'product' => $productData,
+            'bannerSrc' => $product->subcategory->category->banner_path ?? 'default-banner.jpg',
             'categoryName' => $product->subcategory->category->name,
             'subcategoryName' => $product->subcategory->name,
-            'categoryId' => (string) $product->subcategory->category->id
+            'categoryId' => (string) $product->subcategory->category->id,
         ]);
     }
 

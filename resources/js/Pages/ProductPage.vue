@@ -1,7 +1,7 @@
 /**
  * Bestandsnaam: ProductPage.vue
  * Auteur: Fabio Vreede
- * Versie: v1.6.0
+ * Versie: v1.7.0
  * Datum: 2024-10-29
  * Tijd: 13:41:07
  * Doel: Deze view toont de details van een product op een aparte pagina.
@@ -13,10 +13,10 @@
     <NavBar />
     <!-- Controleer of het product bestaat -->
     <div v-if="props.product" class="bg-gray-100">
-        <!-- Dynamische Banner met categorie-informatie -->
-        <div class="relative category-banner">
+        <!-- Dynamische Banner met subcategorie-informatie -->
+        <div v-if="bannerSrc" class="relative category-banner">
             <div class="absolute inset-0 bg-gradient-to-r from-black/70 to-black/20 z-10"></div>
-                <img :src="resolveImagePath(bannerSrc)" :alt="categoryName + ' banner'" class="w-full h-64 object-cover object-center" />
+                <img :src="resolveImagePath(bannerSrc)" :alt="subcategoryName + ' banner'" class="w-full h-64 object-cover object-center" />
             <div class="absolute inset-0 z-20 flex flex-col items-center justify-center p-4">
                 <h2 class="text-2xl font-bold tracking-tight h_text sm:text-2xl md:text-4xl lg:text-6xl text-center mb-4 md:mb-0 md:absolute md:left-6 md:top-1/2 md:transform md:-translate-y-1/2">{{ subcategoryName }}
                 </h2>
@@ -38,7 +38,6 @@
                 <div class="flex justify-center items-center aspect-w-1 aspect-h-1 w-full max-w-md lg:max-w-xs overflow-hidden rounded-lg lg:ml-40 ml-0">
                     <img :src="resolveImagePath(props.product.imageSrc)" :alt="props.product.name" class="w-full h-auto object-cover object-center sm:rounded-lg" />
                 </div>
-
 
                 <!-- Product Info -->
                 <div class="mt-10 px-4 sm:mt-16 sm:px-0 lg:mt-0">
@@ -125,15 +124,18 @@ const formatPrice = (price) => {
     if (typeof price !== 'number' || isNaN(price)) {
         price = 0;
     }
-    return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(price).replace('€', '');
+    return new Intl.NumberFormat('nl-NL', { 
+        minimumFractionDigits: 2, 
+        maximumFractionDigits: 2 
+    }).format(price);
 }
 
 /**
- * Functie om afbeeldingspad op te lossen.
+ * Functie om afbeeldingspad op te lossen voor producten EN banners.
  * @param { string } path - Pad naar de afbeelding
  * @returns { string } - absolute URL van de afbeelding
  */
- const resolveImagePath = (path) => {
+const resolveImagePath = (path) => {
     if (!path) return '';
     const cleanPath = path.replace(/^assets\//, '');
     return `/storage/${cleanPath}`;

@@ -18,6 +18,7 @@ use App\Http\Controllers\Editor\PromotionController;
 use App\Http\Controllers\Editor\NewsController;
 use App\Http\Controllers\Editor\BannerController;
 use App\Http\Controllers\EditorController;
+use App\Http\Controllers\SearchController;
 
 use App\Http\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
@@ -171,5 +172,10 @@ Route::middleware('auth')->group(function () {
         Route::delete('/clear', [CartController::class, 'clear'])->name('cart.clear');
     });
 });
+
+// Search routes
+Route::get('/search', [SearchController::class, 'index'])->name('search.index');
+Route::get('/search/suggestions', [SearchController::class, 'suggestions'])->name('search.suggestions');
+
 
 require __DIR__.'/auth.php';

@@ -1,13 +1,3 @@
-<!-- Main website navbar -->
-/**
- * Bestandsnaam: NavBar.vue
- * Auteur: Fabio Vreede
- * Versie: v1.9.0
- * Datum: 2024-10-29
- * Tijd: 13:41:07
- * Doel: Dit component definieert de navigatiebalk voor Commodium Copia, inclusief zoekfunctionaliteit, een winkelwagenicoon, een profielmenu en een mobiele versie van het menu. Het biedt gebruikers toegang tot verschillende pagina's en zorgt voor navigatie en interactie binnen de site.
- */
-
 <template>
     <!-- Navigatiebalk met vaste positie aan de bovenkant -->
     <Disclosure as="nav" class="bg-slate-100 fixed w-full top-0 z-[1000] shadow-md" v-slot="{ open }">
@@ -27,8 +17,58 @@
                     </Link>
 
                     <!-- Zoekbalk, alleen zichtbaar op grotere schermen -->
-                    <div class="hidden sm:ml-6 sm:block">
-                        <input type="search" placeholder="Zoek een product"  class="w-full max-w-md rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 shadow-sm"/>
+                    <div class="hidden sm:ml-6 sm:block relative">
+                        <div class="relative max-w-md">
+                            <input 
+                                type="search" 
+                                placeholder="Zoek een product"  
+                                v-model="searchQuery"
+                                @keyup.enter="performSearch"
+                                @input="handleSearchInput"
+                                @focus="showSuggestions = true"
+                                @blur="hideSuggestions"
+                                class="w-full max-w-md rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 shadow-sm pr-10"
+                            />
+                            <MagnifyingGlassIcon 
+                                class="absolute right-3 top-2.5 h-4 w-4 text-gray-400 cursor-pointer" 
+                                @click="performSearch"
+                            />
+                            
+                            <!-- Search Suggestions Dropdown -->
+                            <div 
+                                v-if="showSuggestions && suggestions.length > 0" 
+                                class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 max-h-80 overflow-y-auto"
+                            >
+                                <div
+                                    v-for="suggestion in suggestions"
+                                    :key="suggestion.id"
+                                    @mousedown="selectSuggestion(suggestion)"
+                                    class="flex items-center p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                >
+                                    <img 
+                                        :src="`/storage/${suggestion.image_path}`" 
+                                        :alt="suggestion.name"
+                                        class="w-10 h-10 object-cover rounded-md mr-3"
+                                        @error="handleImageError"
+                                    />
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-medium text-gray-900 truncate">{{ suggestion.name }}</p>
+                                        <p class="text-xs text-gray-500">{{ suggestion.category_name }} • {{ suggestion.subcategory_name }}</p>
+                                    </div>
+                                    <div class="text-sm font-semibold text-green-600">
+                                        €{{ suggestion.price.toFixed(2) }}
+                                    </div>
+                                </div>
+                                
+                                <!-- View all results option -->
+                                <div 
+                                    @mousedown="performSearch"
+                                    class="p-3 text-center text-sm text-blue-600 hover:bg-blue-50 cursor-pointer font-medium"
+                                >
+                                    Alle resultaten bekijken voor "{{ searchQuery }}"
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Navigatieknoppen voor desktop -->
@@ -48,85 +88,40 @@
                         <XMarkIcon v-else class="block h-6 w-6" aria-hidden="true"/>
                     </DisclosureButton>
                 </div>
-                <!-- End menu button - mobile -->
-                 
-                <!-- Winkelwagenknop, inclusief badge voor item aantal 
+
+                <!-- Winkelwagen en profiel container -->
                 <div class="absolute inset-y-0 right-10 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
-                     Shopping cart button --
                     <div class="relative">
-                        <button @click.stop="toggleCart" type="button" class="relative rounded-full bg-slate-50 p-1 text-gray-700 hover:bg-slate-200 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-200">
-                            <span class="absolute -inset-1.5"/>
-                            <span class="sr-only">Show shopping cart</span>
-                            <ShoppingCartIcon class="h-6 w-6" aria-hidden="true"/>
-                            <span v-if="cartItemCount > 0" class="absolute top-0 right-0 transform translate-x-1 -translate-y-1 bg-red-500 text-white rounded-full text-xs font-semibold leading-tight h-4 w-4 flex items-center justify-center" :class="{ 'scale-110': isCartUpdated }">
+                        <button @click="toggleCart" type="button" class="relative rounded-full bg-slate-50 p-1 text-gray-700 hover:bg-slate-200 hover:text-gray-900">
+                            <ShoppingCartIcon class="h-6 w-6" />
+                            <span v-if="cartItemCount > 0" class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs">
                                 {{ cartItemCount }}
                             </span>
                         </button>
                     </div>
-                    </div>
-                    -- End shopping cart button -->
-
-<!-- Winkelwagen en profiel container -->
-<div class="absolute inset-y-0 right-10 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
-    <div class="relative">
-        <button @click="toggleCart" type="button" class="relative rounded-full bg-slate-50 p-1 text-gray-700 hover:bg-slate-200 hover:text-gray-900">
-            <ShoppingCartIcon class="h-6 w-6" />
-            <span v-if="cartItemCount > 0" class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs">
-                {{ cartItemCount }}
-            </span>
-        </button>
-    </div>
-    <!-- Profielmenu -->
-    <Menu as="div" class="relative ml-3">
-        <div>
-            <MenuButton 
-                @click="toggleButton('profile')" 
-                class="relative flex rounded-full bg-slate-50 p-1 text-gray-700 hover:bg-slate-200 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-200"
-            >
-                <span class="absolute -inset-1.5"/>
-                <span class="sr-only">Open user menu</span>
-                <UserIcon class="h-6 w-6" aria-hidden="true"/>
-            </MenuButton>
-        </div>
-        <Transition 
-            enter-active-class="transition ease-out duration-100" 
-            enter-from-class="transform opacity-0 scale-95" 
-            enter-to-class="transform opacity-100 scale-100" 
-            leave-active-class="transition ease-in duration-75" 
-            leave-from-class="transform opacity-100 scale-100" 
-            leave-to-class="transform opacity-0 scale-95"
-        >
-            <MenuItems class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-slate-50 py-1 shadow-md ring-1 ring-black ring-opacity-5 focus:outline-none">
-                <template v-if="!isAuthenticated">
-                    <MenuItem v-slot="{ active }">
-                        <Link :href="route('login')" :class="[active ? 'bg-gray-500' : '', 'block px-4 py-2 text-sm text-black']">
-                            Inloggen
-                        </Link>
-                    </MenuItem>
-                    <MenuItem v-slot="{ active }">
-                        <Link :href="route('register')" :class="[active ? 'bg-gray-500' : '', 'block px-4 py-2 text-sm text-black']">
-                            Registreren
-                        </Link>
-                    </MenuItem>
-                </template>
-            </MenuItems>
-        </Transition>
-    </Menu>
-</div>
-
-                    <!-- Profiel dropdown met account-opties 
-                     TODO: Verander de layout naar iets moderns 
+                    
+                    <!-- Profielmenu -->
                     <Menu as="div" class="relative ml-3">
                         <div>
-                            <MenuButton @click="toggleButton('profile')" class="relative flex rounded-full bg-slate-50 p-1 text-gray-700 hover:bg-slate-200 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-200">
+                            <MenuButton 
+                                @click="toggleButton('profile')" 
+                                class="relative flex rounded-full bg-slate-50 p-1 text-gray-700 hover:bg-slate-200 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-200"
+                            >
                                 <span class="absolute -inset-1.5"/>
                                 <span class="sr-only">Open user menu</span>
                                 <UserIcon class="h-6 w-6" aria-hidden="true"/>
                             </MenuButton>
                         </div>
-                        <Transition enter-active-class="transition ease-out duration-100" enter-from-class="transform opacity-0 scale-95" enter-to-class="transform opacity-100 scale-100" leave-active-class="transition ease-in duration-75" leave-from-class="transform opacity-100 scale-100" leave-to-class="transform opacity-0 scale-95">
+                        
+                        <Transition 
+                            enter-active-class="transition ease-out duration-100" 
+                            enter-from-class="transform opacity-0 scale-95" 
+                            enter-to-class="transform opacity-100 scale-100" 
+                            leave-active-class="transition ease-in duration-75" 
+                            leave-from-class="transform opacity-100 scale-100" 
+                            leave-to-class="transform opacity-0 scale-95"
+                        >
                             <MenuItems class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-slate-50 py-1 shadow-md ring-1 ring-black ring-opacity-5 focus:outline-none">
-                                <!-- Login and Registering button --
                                 <template v-if="!isAuthenticated">
                                     <MenuItem v-slot="{ active }">
                                         <Link :href="route('login')" :class="[active ? 'bg-gray-500' : '', 'block px-4 py-2 text-sm text-black']">
@@ -141,14 +136,60 @@
                                 </template>
                             </MenuItems>
                         </Transition>
-                    </Menu> -->
-
+                    </Menu>
+                </div>
             </div>
         </div>
 
         <!-- Zoekveld specifiek voor mobiele weergave, weergegeven bij 'search' actie -->
         <div v-if="showSearch && !menuOpen" class="sm:hidden px-4 pb-3 pt-2">
-            <input type="search" placeholder="Zoek een product" v-model="searchQuery" class="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 shadow-sm"/>
+            <div class="relative">
+                <input 
+                    type="search" 
+                    placeholder="Zoek een product" 
+                    v-model="mobileSearchQuery"
+                    @keyup.enter="performMobileSearch"
+                    @input="handleMobileSearchInput"
+                    @focus="showMobileSuggestions = true"
+                    @blur="hideMobileSuggestions"
+                    class="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 shadow-sm pr-10"
+                />
+                <MagnifyingGlassIcon 
+                    class="absolute right-3 top-2.5 h-4 w-4 text-gray-400 cursor-pointer" 
+                    @click="performMobileSearch"
+                />
+                
+                <!-- Mobile Search Suggestions -->
+                <div 
+                    v-if="showMobileSuggestions && mobileSuggestions.length > 0" 
+                    class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto"
+                >
+                    <div
+                        v-for="suggestion in mobileSuggestions"
+                        :key="suggestion.id"
+                        @mousedown="selectMobileSuggestion(suggestion)"
+                        class="flex items-center p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                    >
+                        <img 
+                            :src="`/storage/${suggestion.image_path}`" 
+                            :alt="suggestion.name"
+                            class="w-8 h-8 object-cover rounded mr-2"
+                            @error="handleImageError"
+                        />
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-gray-900 truncate">{{ suggestion.name }}</p>
+                            <p class="text-xs text-gray-500">€{{ suggestion.price.toFixed(2) }}</p>
+                        </div>
+                    </div>
+                    
+                    <div 
+                        @mousedown="performMobileSearch"
+                        class="p-3 text-center text-sm text-blue-600 hover:bg-blue-50 cursor-pointer font-medium"
+                    >
+                        Alle resultaten bekijken
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Mobiel navigatiemenu, weergegeven bij 'menu' actie -->
@@ -166,10 +207,6 @@
 </template>
 
 <script setup>
-/**
- * Vue component setup voor NavBar.vue
- * Importeert en initialiseert de vereiste componenten, iconen, winkelwagen functionaliteit en methoden voor navigatie en interactieve elementen.
- */
 import { computed, ref, watch } from 'vue'
 import { Disclosure, DisclosureButton, DisclosurePanel, Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/vue'
 import { Bars3Icon, XMarkIcon, ShoppingCartIcon, UserIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline'
@@ -178,6 +215,7 @@ import { useCartStore } from '@/Stores/cart'
 import NavLink from './NavLink.vue'
 import { usePage, Link, router } from '@inertiajs/vue3'
 import ApplicationLogo from './ApplicationLogo.vue'
+import axios from 'axios'
 
 // Navigatieopties, de actieve button en menu status
 const navigation = [
@@ -187,6 +225,15 @@ const navigation = [
 
 const activeButton = ref(null)
 const menuOpen = ref(false)
+
+// Search functionality
+const searchQuery = ref('')
+const mobileSearchQuery = ref('')
+const suggestions = ref([])
+const mobileSuggestions = ref([])
+const showSuggestions = ref(false)
+const showMobileSuggestions = ref(false)
+const searchTimeout = ref(null)
 
 // Variabelen voor de winkelwagencomponent
 const isCartOpen = ref(false)
@@ -207,6 +254,105 @@ watch(cartItemCount, () => {
 // Computed properties voor zoek- en profielopties
 const showSearch = computed(() => activeButton.value === 'search')
 const profileOpen = computed(() => activeButton.value === 'profile')
+
+// Search functions
+const performSearch = () => {
+    if (searchQuery.value.trim()) {
+        router.get('/search', { q: searchQuery.value.trim() })
+        showSuggestions.value = false
+    }
+}
+
+const performMobileSearch = () => {
+    if (mobileSearchQuery.value.trim()) {
+        router.get('/search', { q: mobileSearchQuery.value.trim() })
+        showMobileSuggestions.value = false
+        activeButton.value = null // Close mobile search
+    }
+}
+
+const handleSearchInput = () => {
+    clearTimeout(searchTimeout.value)
+    
+    if (searchQuery.value.length >= 2) {
+        searchTimeout.value = setTimeout(() => {
+            fetchSuggestions(searchQuery.value)
+        }, 300)
+    } else {
+        suggestions.value = []
+        showSuggestions.value = false
+    }
+}
+
+const handleMobileSearchInput = () => {
+    clearTimeout(searchTimeout.value)
+    
+    if (mobileSearchQuery.value.length >= 2) {
+        searchTimeout.value = setTimeout(() => {
+            fetchMobileSuggestions(mobileSearchQuery.value)
+        }, 300)
+    } else {
+        mobileSuggestions.value = []
+        showMobileSuggestions.value = false
+    }
+}
+
+const fetchSuggestions = async (query) => {
+    try {
+        const response = await axios.get('/search/suggestions', {
+            params: { q: query }
+        })
+        suggestions.value = response.data
+        showSuggestions.value = suggestions.value.length > 0
+    } catch (error) {
+        console.error('Error fetching suggestions:', error)
+        suggestions.value = []
+        showSuggestions.value = false
+    }
+}
+
+const fetchMobileSuggestions = async (query) => {
+    try {
+        const response = await axios.get('/search/suggestions', {
+            params: { q: query }
+        })
+        mobileSuggestions.value = response.data
+        showMobileSuggestions.value = mobileSuggestions.value.length > 0
+    } catch (error) {
+        console.error('Error fetching mobile suggestions:', error)
+        mobileSuggestions.value = []
+        showMobileSuggestions.value = false
+    }
+}
+
+const selectSuggestion = (suggestion) => {
+    router.get(`/product/${suggestion.id}`)
+    showSuggestions.value = false
+    searchQuery.value = ''
+}
+
+const selectMobileSuggestion = (suggestion) => {
+    router.get(`/product/${suggestion.id}`)
+    showMobileSuggestions.value = false
+    mobileSearchQuery.value = ''
+    activeButton.value = null
+}
+
+const hideSuggestions = () => {
+    setTimeout(() => {
+        showSuggestions.value = false
+    }, 200)
+}
+
+const hideMobileSuggestions = () => {
+    setTimeout(() => {
+        showMobileSuggestions.value = false
+    }, 200)
+}
+
+const handleImageError = (event) => {
+    event.target.src = '/images/placeholder-product.jpg'
+}
 
 // Functie om actieve knop bij te houden en het menu open of dicht te klappen
 const toggleButton = (button) => {

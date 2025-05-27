@@ -154,7 +154,7 @@
 import { ref, computed } from 'vue';
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue';
 import { XMarkIcon, TrashIcon, PlusIcon, MinusIcon, ShoppingCartIcon, ArrowUpIcon, ArrowDownIcon } from '@heroicons/vue/24/outline';
-import { useCartStore } from '@/stores/cart';
+import { useCartStore } from '@/Stores/cart';
 
 // Props
 defineProps({

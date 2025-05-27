@@ -20,9 +20,7 @@ class SearchController extends Controller
 
         if (strlen($query) >= 2) {
             $products = Product::with(['subcategory.category'])
-                ->where('name', 'LIKE', "%{$query}%")
-                ->orWhere('short_description', 'LIKE', "%{$query}%")
-                ->orWhere('full_description', 'LIKE', "%{$query}%")
+                ->where('name', 'LIKE', "%{$query}%") // Only search in name field
                 ->orderBy('name')
                 ->get()
                 ->map(function ($product) {
@@ -49,7 +47,7 @@ class SearchController extends Controller
         return Inertia::render('SearchPage', [
             'query' => $query,
             'products' => $products,
-            'totalProducts' => $products->count()
+            'resultsCount' => $products->count() // Changed from totalProducts to match your Vue component
         ]);
     }
 
@@ -68,6 +66,29 @@ class SearchController extends Controller
             ->where('name', 'LIKE', "%{$query}%")
             ->orderBy('name')
             ->limit(8)
+            ->get()
+            ->map(function ($product) {
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'price' => (float) $product->price,
+                    'image_path' => $product->image_path,
+                    'category_name' => $product->subcategory->category->name,
+                    'subcategory_name' => $product->subcategory->name,
+                ];
+            });
+
+        return response()->json($products);
+    }
+
+    /**
+     * Get popular/trending products for search suggestions
+     */
+    public function popular(Request $request)
+    {
+        $products = Product::with(['subcategory.category'])
+            ->orderBy('name') // You might want to change this to order by popularity/sales
+            ->limit(6)
             ->get()
             ->map(function ($product) {
                 return [

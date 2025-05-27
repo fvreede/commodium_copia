@@ -1,135 +1,78 @@
-<!-- NavBar.vue - Enhanced Version -->
+<!-- NavBar.vue-->
 <template>
+    <!-- Navigatiebalk met vaste positie aan de bovenkant -->
     <Disclosure as="nav" class="bg-slate-100 fixed w-full top-0 z-[1000] shadow-md" v-slot="{ open }">
         <div class="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
             <div class="relative flex h-16 items-center justify-between">
                 <div class="flex flex-1 items-center justify-center sm:items-stretch sm:justify-start">
-                    <!-- Mobile search button -->
+                    <!-- Zoekknop voor mobiele versie -->
                     <div class="absolute inset-y-0 left-0 flex items-center sm:hidden">
-                        <button @click="toggleButton('search')" class="relative rounded-full p-2 text-gray-700 hover:bg-slate-200 hover:text-gray-900">
+                        <button @click="toggleButton('search')" class="relative rounded-full p-2 text-gray700 hover:bg-slate-200 hover:text-gray-900">
                             <MagnifyingGlassIcon class="h-6 w-6" aria-hidden="true"/>
                         </button>
                     </div>
 
-                    <!-- Logo -->                   
+                    <!-- Logo, weergave afhankelijk van schermgrootte -->                   
                     <Link href="/">
                         <ApplicationLogo />
                     </Link>
 
-                    <!-- Enhanced Desktop Search Bar -->
-                    <div class="hidden sm:ml-6 sm:block relative flex-1 max-w-2xl">
-                        <div class="relative">
-                            <div class="relative">
-                                <MagnifyingGlassIcon class="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                                <input 
-                                    type="search" 
-                                    placeholder="Zoek een product..."  
-                                    v-model="search.searchQuery.value"
-                                    @keyup.enter="search.performSearch()"
-                                    @input="handleSearchInput"
-                                    @focus="handleSearchFocus"
-                                    @blur="search.hideSuggestions"
-                                    @keydown.arrow-down.prevent="navigateSuggestions(1)"
-                                    @keydown.arrow-up.prevent="navigateSuggestions(-1)"
-                                    @keydown.escape="clearSearch"
-                                    class="w-full pl-10 pr-12 py-3 text-sm bg-white rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm transition-all duration-200"
-                                />
-                                <div class="absolute right-2 top-2 flex items-center space-x-1">
-                                    <button 
-                                        v-if="search.searchQuery.value"
-                                        @click="clearSearch"
-                                        class="p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600"
-                                    >
-                                        <XMarkIcon class="h-4 w-4" />
-                                    </button>
-                                    <button 
-                                        @click="search.performSearch()"
-                                        class="p-1 rounded-full hover:bg-blue-50 text-blue-500 hover:text-blue-600"
-                                    >
-                                        <MagnifyingGlassIcon class="h-4 w-4" />
-                                    </button>
+                    <!-- Zoekbalk, alleen zichtbaar op grotere schermen -->
+                    <div class="hidden sm:ml-6 sm:block flex-1 max-w-2xl">
+                        <div class="relative max-w-md">
+                            <input 
+                                type="search" 
+                                placeholder="Zoek een product"  
+                                v-model="searchQuery"
+                                @keyup.enter="performSearch"
+                                @input="handleSearchInput"
+                                @focus="showSuggestions = true"
+                                @blur="hideSuggestions"
+                                class="w-full max-w-md rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 shadow-sm pr-10"
+                            />
+                            <MagnifyingGlassIcon 
+                                class="absolute right-3 top-2.5 h-4 w-4 text-gray-400 cursor-pointer" 
+                                @click="performSearch"
+                            />
+                            
+                            <!-- Search Suggestions Dropdown -->
+                            <div 
+                                v-if="showSuggestions && suggestions.length > 0" 
+                                class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 max-h-80 overflow-y-auto"
+                            >
+                                <div
+                                    v-for="suggestion in suggestions"
+                                    :key="suggestion.id"
+                                    @mousedown="selectSuggestion(suggestion)"
+                                    class="flex items-center p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                >
+                                    <img 
+                                        :src="`/storage/${suggestion.image_path}`" 
+                                        :alt="suggestion.name"
+                                        class="w-10 h-10 object-cover rounded-md mr-3"
+                                        @error="handleImageError"
+                                    />
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-medium text-gray-900 truncate">{{ suggestion.name }}</p>
+                                        <p class="text-xs text-gray-500">{{ suggestion.category_name }} • {{ suggestion.subcategory_name }}</p>
+                                    </div>
+                                    <div class="text-sm font-semibold text-green-600">
+                                        €{{ suggestion.price.toFixed(2) }}
+                                    </div>
+                                </div>
+                                
+                                <!-- View all results option -->
+                                <div 
+                                    @mousedown="performSearch"
+                                    class="p-3 text-center text-sm text-blue-600 hover:bg-blue-50 cursor-pointer font-medium"
+                                >
+                                    Alle resultaten bekijken voor "{{ searchQuery }}"
                                 </div>
                             </div>
-                            
-                            <!-- Enhanced Search Suggestions Dropdown -->
-                            <Transition
-                                enter-active-class="transition ease-out duration-200"
-                                enter-from-class="opacity-0 scale-95"
-                                enter-to-class="opacity-100 scale-100"
-                                leave-active-class="transition ease-in duration-150"
-                                leave-from-class="opacity-100 scale-100"
-                                leave-to-class="opacity-0 scale-95"
-                            >
-                                <div 
-                                    v-if="search.showSuggestions.value && (search.suggestions.value.length > 0 || search.isLoading.value)" 
-                                    class="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl z-50 max-h-96 overflow-hidden"
-                                >
-                                    <!-- Loading state -->
-                                    <div v-if="search.isLoading.value" class="p-4 text-center">
-                                        <div class="inline-flex items-center">
-                                            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24">
-                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                            <span class="text-sm text-gray-500">Zoeken...</span>
-                                        </div>
-                                    </div>
-
-                                    <!-- Suggestions -->
-                                    <div v-else class="max-h-80 overflow-y-auto">
-                                        <div
-                                            v-for="(suggestion, index) in search.suggestions.value"
-                                            :key="suggestion.id"
-                                            @mousedown="search.selectSuggestion(suggestion)"
-                                            @mouseenter="selectedSuggestionIndex = index"
-                                            :class="[
-                                                'flex items-center p-4 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors duration-150',
-                                                selectedSuggestionIndex === index ? 'bg-blue-50' : ''
-                                            ]"
-                                        >
-                                            <div class="relative w-12 h-12 bg-gray-100 rounded-lg overflow-hidden mr-4 flex-shrink-0">
-                                                <img 
-                                                    :src="`/storage/${suggestion.image_path}`" 
-                                                    :alt="suggestion.name"
-                                                    class="w-full h-full object-cover"
-                                                    @error="handleImageError"
-                                                />
-                                            </div>
-                                            <div class="flex-1 min-w-0">
-                                                <p class="text-sm font-medium text-gray-900 truncate">{{ suggestion.name }}</p>
-                                                <p class="text-xs text-gray-500 mt-1">{{ suggestion.category_name }} • {{ suggestion.subcategory_name }}</p>
-                                            </div>
-                                            <div class="text-sm font-semibold text-green-600 ml-4">
-                                                €{{ suggestion.price.toFixed(2) }}
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- View all results option -->
-                                        <div 
-                                            @mousedown="search.performSearch()"
-                                            @mouseenter="selectedSuggestionIndex = search.suggestions.value.length"
-                                            :class="[
-                                                'p-4 text-center text-sm font-medium cursor-pointer transition-colors duration-150',
-                                                selectedSuggestionIndex === search.suggestions.value.length 
-                                                    ? 'bg-blue-600 text-white' 
-                                                    : 'text-blue-600 hover:bg-blue-50'
-                                            ]"
-                                        >
-                                            <MagnifyingGlassIcon class="inline-block w-4 h-4 mr-2" />
-                                            Alle resultaten bekijken voor "{{ search.searchQuery.value }}"
-                                        </div>
-                                    </div>
-
-                                    <!-- No results state -->
-                                    <div v-if="!search.isLoading.value && search.suggestions.value.length === 0 && search.searchQuery.value.length >= 2" class="p-4 text-center text-gray-500">
-                                        <div class="text-sm">Geen producten gevonden voor "{{ search.searchQuery.value }}"</div>
-                                    </div>
-                                </div>
-                            </Transition>
                         </div>
                     </div>
 
-                    <!-- Navigation Links -->
+                    <!-- Navigatieknoppen voor desktop -->
                     <div class="hidden sm:ml-6 sm:block">
                         <div class="flex space-x-4">
                             <NavLink v-for="item in navigation" :key="item.name" :href="item.href">{{ item.name }}</NavLink>
@@ -137,7 +80,7 @@
                     </div>
                 </div>
 
-                <!-- Mobile menu button -->
+                <!-- Knop voor menu op mobiele versie -->
                 <div class="absolute inset-y-0 right-0 flex items-center sm:hidden">
                     <DisclosureButton @click="toggleButton('menu')" class="relative inline-flex items-center justify-center rounded-md p-2 text-gray-700 hover:bg-slate-200 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-black">
                         <span class="absolute -inset-0.5"/>
@@ -147,7 +90,7 @@
                     </DisclosureButton>
                 </div>
 
-                <!-- Cart and Profile Container -->
+                <!-- Winkelwagen en profiel container -->
                 <div class="absolute inset-y-0 right-10 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
                     <div class="relative">
                         <button @click="toggleCart" type="button" class="relative rounded-full bg-slate-50 p-1 text-gray-700 hover:bg-slate-200 hover:text-gray-900">
@@ -158,7 +101,7 @@
                         </button>
                     </div>
                     
-                    <!-- Profile Menu -->
+                    <!-- Profielmenu -->
                     <Menu as="div" class="relative ml-3">
                         <div>
                             <MenuButton 
@@ -199,42 +142,39 @@
             </div>
         </div>
 
-        <!-- Enhanced Mobile Search -->
-        <div v-if="showSearch && !menuOpen" class="sm:hidden px-4 pb-4 pt-2 bg-white border-t border-gray-200">
+        <!-- Zoekveld specifiek voor mobiele weergave, weergegeven bij 'search' actie -->
+        <div v-if="showSearch && !menuOpen" class="sm:hidden px-4 pb-3 pt-2">
             <div class="relative">
-                <MagnifyingGlassIcon class="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <input 
                     type="search" 
-                    placeholder="Zoek een product..." 
-                    v-model="mobileSearch.searchQuery.value"
-                    @keyup.enter="mobileSearch.performSearch()"
+                    placeholder="Zoek een product" 
+                    v-model="mobileSearchQuery"
+                    @keyup.enter="performMobileSearch"
                     @input="handleMobileSearchInput"
-                    @focus="mobileSearch.showSuggestions.value = true"
-                    @blur="mobileSearch.hideSuggestions"
-                    class="w-full pl-10 pr-10 py-2 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    @focus="showMobileSuggestions = true"
+                    @blur="hideMobileSuggestions"
+                    class="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 shadow-sm pr-10"
                 />
-                <button 
-                    @click="mobileSearch.performSearch()"
-                    class="absolute right-2 top-2 p-1 rounded-full hover:bg-blue-50 text-blue-500"
-                >
-                    <MagnifyingGlassIcon class="h-4 w-4" />
-                </button>
+                <MagnifyingGlassIcon 
+                    class="absolute right-3 top-2.5 h-4 w-4 text-gray-400 cursor-pointer" 
+                    @click="performMobileSearch"
+                />
                 
-                <!-- Mobile Suggestions -->
+                <!-- Mobile Search Suggestions -->
                 <div 
-                    v-if="mobileSearch.showSuggestions.value && mobileSearch.suggestions.value.length > 0" 
-                    class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto"
+                    v-if="showMobileSuggestions && mobileSuggestions.length > 0" 
+                    class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto"
                 >
                     <div
-                        v-for="suggestion in mobileSearch.suggestions.value"
+                        v-for="suggestion in mobileSuggestions"
                         :key="suggestion.id"
-                        @mousedown="mobileSearch.selectSuggestion(suggestion)"
+                        @mousedown="selectMobileSuggestion(suggestion)"
                         class="flex items-center p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
                     >
                         <img 
                             :src="`/storage/${suggestion.image_path}`" 
                             :alt="suggestion.name"
-                            class="w-8 h-8 object-cover rounded mr-3"
+                            class="w-8 h-8 object-cover rounded mr-2"
                             @error="handleImageError"
                         />
                         <div class="flex-1 min-w-0">
@@ -244,7 +184,7 @@
                     </div>
                     
                     <div 
-                        @mousedown="mobileSearch.performSearch()"
+                        @mousedown="performMobileSearch"
                         class="p-3 text-center text-sm text-blue-600 hover:bg-blue-50 cursor-pointer font-medium"
                     >
                         Alle resultaten bekijken
@@ -253,7 +193,7 @@
             </div>
         </div>
 
-        <!-- Mobile Navigation Menu -->
+        <!-- Mobiel navigatiemenu, weergegeven bij 'menu' actie -->
         <DisclosurePanel v-if="menuOpen" class="sm:hidden">
             <div class="space-y-1 px-2 pb-3 pt-2">
                 <DisclosureButton v-for="item in navigation" :key="item.name" as="a" :href="item.href" :class="[item.current ? 'bg-slate-50 text-gray-700' : 'text-gray-700 hover:bg-gray-200 hover:text-gray-900', 'block rounded-md px-3 py-2 text-base font-medium']" :aria-current="item.current ? 'page' : undefined">
@@ -263,48 +203,48 @@
         </DisclosurePanel>
     </Disclosure>
 
-    <!-- Shopping Cart Component -->
+    <!-- Winkelwagencomponent dat geopend kan worden en sluit door event -->
     <ShoppingCart :isOpen="isCartOpen" @close="closeCart"/>
 </template>
 
 <script setup>
-import { computed, ref, watch, nextTick } from 'vue'
-import { Disclosure, DisclosureButton, DisclosurePanel, Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/vue'
+import { computed, ref, watch } from 'vue'
+import { Disclosure, DisclosureButton, DisclosurePanel, Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/vue'
 import { Bars3Icon, XMarkIcon, ShoppingCartIcon, UserIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline'
 import ShoppingCart from '@/Components/ShoppingCart.vue'
 import { useCartStore } from '@/Stores/cart'
 import NavLink from './NavLink.vue'
-import { usePage, Link } from '@inertiajs/vue3'
+import { usePage, Link, router } from '@inertiajs/vue3'
 import ApplicationLogo from './ApplicationLogo.vue'
-import { useSearch } from '@/Composables/useSearch'
+import axios from 'axios'
 
-// Navigation items
+// Navigatieopties, de actieve button en menu status
 const navigation = [
     { name: 'Producten', href: '/categories' },
     { name: 'Aanbiedingen', href: '#' },
 ]
 
-// Component state
 const activeButton = ref(null)
 const menuOpen = ref(false)
-const selectedSuggestionIndex = ref(-1)
 
 // Search functionality
-const search = useSearch()
-const mobileSearch = useSearch()
+const searchQuery = ref('')
+const mobileSearchQuery = ref('')
+const suggestions = ref([])
+const mobileSuggestions = ref([])
+const showSuggestions = ref(false)
+const showMobileSuggestions = ref(false)
+const searchTimeout = ref(null)
 
-// Cart functionality
+// Variabelen voor de winkelwagencomponent
 const isCartOpen = ref(false)
 const isCartUpdated = ref(false)
+
+// Verbindt de winkelwagenstore met het component om het aantal items bij te houden
 const cartStore = useCartStore()
 const cartItemCount = computed(() => cartStore.totalItems)
 
-// Computed properties
-const showSearch = computed(() => activeButton.value === 'search')
-const user = computed(() => usePage().props.auth.user)
-const isAuthenticated = computed(() => !!user.value)
-
-// Watch for cart updates to trigger animation
+// Animeert het winkelwagenicoon wanneer het aantal items verandert
 watch(cartItemCount, () => {
     isCartUpdated.value = true
     setTimeout(() => {
@@ -312,89 +252,152 @@ watch(cartItemCount, () => {
     }, 300)
 })
 
-// Search input handlers
-const handleSearchInput = (event) => {
-    search.handleSearchInput(event.target.value)
-    selectedSuggestionIndex.value = -1
-}
+// Computed properties voor zoek- en profielopties
+const showSearch = computed(() => activeButton.value === 'search')
+const profileOpen = computed(() => activeButton.value === 'profile')
 
-const handleMobileSearchInput = (event) => {
-    mobileSearch.handleSearchInput(event.target.value)
-}
-
-const handleSearchFocus = () => {
-    if (search.searchQuery.value.length >= 2) {
-        search.showSuggestions.value = true
+// Search functions
+const performSearch = () => {
+    if (searchQuery.value.trim()) {
+        router.get('/search', { q: searchQuery.value.trim() })
+        showSuggestions.value = false
     }
 }
 
-// Keyboard navigation for suggestions
-const navigateSuggestions = (direction) => {
-    const maxIndex = search.suggestions.value.length
+const performMobileSearch = () => {
+    if (mobileSearchQuery.value.trim()) {
+        router.get('/search', { q: mobileSearchQuery.value.trim() })
+        showMobileSuggestions.value = false
+        activeButton.value = null // Close mobile search
+    }
+}
+
+const handleSearchInput = () => {
+    clearTimeout(searchTimeout.value)
     
-    if (direction === 1) { // Down
-        selectedSuggestionIndex.value = selectedSuggestionIndex.value < maxIndex 
-            ? selectedSuggestionIndex.value + 1 
-            : 0
-    } else { // Up
-        selectedSuggestionIndex.value = selectedSuggestionIndex.value > 0 
-            ? selectedSuggestionIndex.value - 1 
-            : maxIndex
-    }
-
-    // Handle selection with Enter key
-    if (selectedSuggestionIndex.value === maxIndex) {
-        // "View all results" option
-        return
-    } else if (selectedSuggestionIndex.value >= 0 && selectedSuggestionIndex.value < maxIndex) {
-        // Specific product suggestion - could be handled with Enter key
-        return
+    if (searchQuery.value.length >= 2) {
+        searchTimeout.value = setTimeout(() => {
+            fetchSuggestions(searchQuery.value)
+        }, 300)
+    } else {
+        suggestions.value = []
+        showSuggestions.value = false
     }
 }
 
-// Clear search
-const clearSearch = () => {
-    search.clearSearch()
-    selectedSuggestionIndex.value = -1
+const handleMobileSearchInput = () => {
+    clearTimeout(searchTimeout.value)
+    
+    if (mobileSearchQuery.value.length >= 2) {
+        searchTimeout.value = setTimeout(() => {
+            fetchMobileSuggestions(mobileSearchQuery.value)
+        }, 300)
+    } else {
+        mobileSuggestions.value = []
+        showMobileSuggestions.value = false
+    }
 }
 
-// Toggle functions
+const fetchSuggestions = async (query) => {
+    try {
+        const response = await axios.get('/search/suggestions', {
+            params: { q: query }
+        })
+        suggestions.value = response.data
+        showSuggestions.value = suggestions.value.length > 0
+    } catch (error) {
+        console.error('Error fetching suggestions:', error)
+        suggestions.value = []
+        showSuggestions.value = false
+    }
+}
+
+const fetchMobileSuggestions = async (query) => {
+    try {
+        const response = await axios.get('/search/suggestions', {
+            params: { q: query }
+        })
+        mobileSuggestions.value = response.data
+        showMobileSuggestions.value = mobileSuggestions.value.length > 0
+    } catch (error) {
+        console.error('Error fetching mobile suggestions:', error)
+        mobileSuggestions.value = []
+        showMobileSuggestions.value = false
+    }
+}
+
+const selectSuggestion = (suggestion) => {
+    router.get(`/product/${suggestion.id}`)
+    showSuggestions.value = false
+    searchQuery.value = ''
+}
+
+const selectMobileSuggestion = (suggestion) => {
+    router.get(`/product/${suggestion.id}`)
+    showMobileSuggestions.value = false
+    mobileSearchQuery.value = ''
+    activeButton.value = null
+}
+
+const hideSuggestions = () => {
+    setTimeout(() => {
+        showSuggestions.value = false
+    }, 200)
+}
+
+const hideMobileSuggestions = () => {
+    setTimeout(() => {
+        showMobileSuggestions.value = false
+    }, 200)
+}
+
+const handleImageError = (event) => {
+    event.target.src = '/images/placeholder-product.jpg'
+}
+
+// Functie om actieve knop bij te houden en het menu open of dicht te klappen
 const toggleButton = (button) => {
     if (activeButton.value === button) {
-        activeButton.value = null
+        activeButton.value = null;
         if (button === 'menu') {
             menuOpen.value = false
         }
     } else {
-        activeButton.value = button
+        activeButton.value = button;
         if (button === 'menu') {
-            menuOpen.value = true
+            menuOpen.value = true;
         } else {
-            menuOpen.value = false
+            menuOpen.value = false;
         }
     }
-}
+};
 
-// Cart functions
+// Methoden om de winkelwagen te beheren
 const toggleCart = () => {
+    console.log('toggleCart called, current state:', isCartOpen.value)
     isCartOpen.value = !isCartOpen.value
 }
 
 const closeCart = () => {
+    console.log('closeCart called')
     isCartOpen.value = false
 }
 
-// Image error handler
-const handleImageError = (event) => {
-    event.target.src = '/images/placeholder-product.jpg'
-}
+// Get the current user from Inertia's shared data
+const user = computed(() => usePage().props.auth.user);
+const isAuthenticated = computed(() => !!user.value);
+
+const canLogin = computed(() => usePage().props.auth.canLogin);
+const canRegister = computed(() => usePage().props.auth.canRegister);
 </script>
 
 <style scoped>  
+/* Stijl voor schaalvergroting animatie bij winkelwagen update */
 .scale-110 {
     animation: pulse 0.3s ease-in-out;
 }
 
+/* Keyframes voor pulse-animatie */
 @keyframes pulse {
     0% { transform: scale(1); }
     50% { transform: scale(1.2); }

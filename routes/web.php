@@ -135,27 +135,29 @@ Route::middleware(['auth', 'role:editor'])->prefix('editor')->name('editor.')->g
 });
 
 Route::get('/dashboard', function () {
-    if (auth()->user()->isSystemAdmin()) {
-        return redirect()->route('admin.dashboard');
-    } else if (auth()->user()->isEditor()) {
-        return redirect()->route('editor.dashboard');
-    }
-
-    // For customers, use the default dashboard with order data
     $user = auth()->user();
-    return Inertia::render('Dashboard', [
-        'activeOrders' => $user->orders()
-            ->with(['items.product', 'deliverySlot'])
-            ->whereIn('status', ['pending', 'processing'])
-            ->latest()
-            ->get(),
-        'orderHistory' => $user->orders()
-            ->with(['items.product', 'deliverySlot'])
-            ->where('status', 'completed')
-            ->latest()
-            ->paginate(10)
-    ]);
-    
+
+    if ($user->isSystemAdmin()) {
+        return redirect()->route('admin.dashboard');
+    } else if ($user->isEditor()) {
+        return redirect()->route('editor.dashboard');
+    } 
+    // For customers, use the default dashboard with order data
+    else if ($user->isCustomer()) {
+        return Inertia::render('Dashboard', [
+            'activeOrders' => $user->orders()
+                ->with(['items.product', 'deliverySlot'])
+                ->whereIn('status', ['pending', 'processing'])
+                ->latest()
+                ->get(),
+            'orderHistory' => $user->orders()
+                ->with(['items.product', 'deliverySlot'])
+                ->where('status', 'completed')
+                ->latest()
+                ->paginate(10)
+        ]);
+    }
+    abort(403, 'Je hebt geen toegang tot dit dashboard.');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {

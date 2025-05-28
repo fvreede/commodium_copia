@@ -39,6 +39,10 @@ const toggleConfirmPasswordVisibility = () => {
     <GuestLayout>
         <Head title="Registreren" />
 
+        <div class="max-w-md mx-auto text-center p-8 bg-white">
+            <h2 class="text-xl font-bold text-gray-900">Account aanmaken</h2>
+        </div>
+
         <form @submit.prevent="submit">
             <div>
                 <InputLabel for="name" value="Naam" />
@@ -125,21 +129,28 @@ const toggleConfirmPasswordVisibility = () => {
                 />
             </div>
 
-            <div class="mt-4 flex items-center justify-end">
-                <Link
-                    :href="route('login')"
-                    class="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                >
-                    Al geregistreerd?
-                </Link>
-
+            <!-- Register button -->
+            <div class="mt-6">
                 <PrimaryButton
-                    class="ms-4"
+                    class="w-full justify-center"
                     :class="{ 'opacity-25': form.processing }"
                     :disabled="form.processing"
                 >
                     Registreren
                 </PrimaryButton>
+            </div>
+
+            <!-- Login link - separate section with proper spacing -->
+            <div class="mt-6 text-center">
+                <p class="text-sm text-gray-600">
+                    Heb je al een account?
+                    <Link 
+                        :href="route('login')" 
+                        class="ml-1 text-blue-600 hover:text-blue-500 hover:underline font-medium"
+                    >
+                        Hier inloggen
+                    </Link>
+                </p>
             </div>
         </form>
     </GuestLayout>

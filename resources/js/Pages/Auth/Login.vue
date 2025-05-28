@@ -43,7 +43,7 @@ const togglePasswordVisibility = () => {
         <Head title="Inloggen" />
 
         <div class="max-w-md mx-auto text-center p-8 bg-white">
-            <h2 class="text-xl font-bold text-gray-900">Even inloggen   </h2>
+            <h2 class="text-xl font-bold text-gray-900">Even inloggen</h2>
         </div>
 
         <div v-if="status" class="mb-4 text-sm font-medium text-green-600">
@@ -94,13 +94,12 @@ const togglePasswordVisibility = () => {
             <div class="mt-4 block">
                 <label class="flex items-center">
                     <Checkbox name="remember" v-model:checked="form.remember" />
-                    <span class="ms-2 text-sm text-gray-600"
-                        >Onthoud mij</span
-                    >
+                    <span class="ms-2 text-sm text-gray-600">Onthoud mij</span>
                 </label>
             </div>
 
-            <div class="mt-4 flex items-center justify-end">
+            <!-- Forgot password link -->
+            <div class="mt-4 flex justify-end">
                 <Link
                     v-if="canResetPassword"
                     :href="route('password.request')"
@@ -108,14 +107,30 @@ const togglePasswordVisibility = () => {
                 >
                     Wachtwoord vergeten?
                 </Link>
+            </div>
 
+            <!-- Login button -->
+            <div class="mt-6">
                 <PrimaryButton
-                    class="ms-4"
+                    class="w-full justify-center"
                     :class="{ 'opacity-25': form.processing }"
                     :disabled="form.processing"
                 >
                     Inloggen
                 </PrimaryButton>
+            </div>
+
+            <!-- Registration link - separate section with proper spacing -->
+            <div class="mt-6 text-center">
+                <p class="text-sm text-gray-600">
+                    Nog geen account?
+                    <Link 
+                        :href="route('register')" 
+                        class="ml-1 text-blue-600 hover:text-blue-500 hover:underline font-medium"
+                    >
+                        Registreer hier
+                    </Link>
+                </p>
             </div>
         </form>
     </GuestLayout>

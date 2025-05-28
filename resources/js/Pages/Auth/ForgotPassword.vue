@@ -4,7 +4,7 @@ import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 
 defineProps({
     status: {
@@ -23,24 +23,27 @@ const submit = () => {
 
 <template>
     <GuestLayout>
-        <Head title="Forgot Password" />
+        <Head title="Wachtwoord vergeten" />
 
-        <div class="mb-4 text-sm text-gray-600">
-            Forgot your password? No problem. Just let us know your email
-            address and we will email you a password reset link that will allow
-            you to choose a new one.
+        <div class="max-w-md mx-auto text-center p-8 bg-white">
+            <h2 class="text-xl font-bold text-gray-900">Wachtwoord vergeten</h2>
+        </div>
+
+        <div class="mb-6 text-sm text-gray-600 text-center">
+            Wachtwoord vergeten? Geen probleem. Voer je emailadres in en 
+            we sturen je een link om een nieuw wachtwoord in te stellen.
         </div>
 
         <div
             v-if="status"
-            class="mb-4 text-sm font-medium text-green-600"
+            class="mb-4 text-sm font-medium text-green-600 text-center"
         >
             {{ status }}
         </div>
 
         <form @submit.prevent="submit">
             <div>
-                <InputLabel for="email" value="Email" />
+                <InputLabel for="email" value="Emailadres" />
 
                 <TextInput
                     id="email"
@@ -55,13 +58,28 @@ const submit = () => {
                 <InputError class="mt-2" :message="form.errors.email" />
             </div>
 
-            <div class="mt-4 flex items-center justify-end">
+            <!-- Send reset link button -->
+            <div class="mt-6">
                 <PrimaryButton
+                    class="w-full justify-center"
                     :class="{ 'opacity-25': form.processing }"
                     :disabled="form.processing"
                 >
-                    Email Password Reset Link
+                    Verstuur resetlink
                 </PrimaryButton>
+            </div>
+
+            <!-- Back to login link -->
+            <div class="mt-6 text-center">
+                <p class="text-sm text-gray-600">
+                    Weet je het weer?
+                    <Link 
+                        :href="route('login')" 
+                        class="ml-1 text-blue-600 hover:text-blue-500 hover:underline font-medium"
+                    >
+                        Terug naar inloggen
+                    </Link>
+                </p>
             </div>
         </form>
     </GuestLayout>

@@ -116,6 +116,16 @@ class User extends Authenticatable
     }
 
     /**
+     * Checks if the user has the customer role.
+     * 
+     * @return bool True if the user has the customer role, otherwise false.
+     */
+    public function isCustomer(): bool
+    {
+        return $this->hasRole('customer');
+    }
+
+    /**
      * Automatically assigns it a customer role after registering new users
      * 
      * @return void

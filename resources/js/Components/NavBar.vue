@@ -221,7 +221,7 @@ import axios from 'axios'
 // Navigatieopties, de actieve button en menu status
 const navigation = [
     { name: 'Producten', href: '/categories' },
-    { name: 'Aanbiedingen', href: '#' },
+    { name: 'Bestellen', href: '/checkout' },
 ]
 
 const activeButton = ref(null)

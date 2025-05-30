@@ -160,10 +160,10 @@ Route::get('/dashboard', function () {
     abort(403, 'Je hebt geen toegang tot dit dashboard.');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-Route::get('/checkout', function () {
-    $user = auth()->user();
+Route::get('/checkout', function (){
 
     /*
+    $user = auth()->user();
     if (!$user->isCustomer()) {
         abort(403, 'Je hebt geen toegang tot deze pagina.');
     }

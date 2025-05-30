@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e29f51859153fd9870c56a65ef70c9ec",
+    "content-hash": "af8ccf86bba0504af6d27959254c4ecb",
     "packages": [
         {
             "name": "brick/math",
@@ -2249,16 +2249,16 @@
         },
         {
             "name": "nesbot/carbon",
-            "version": "3.8.3",
+            "version": "3.9.1",
             "source": {
                 "type": "git",
-                "url": "https://github.com/briannesbitt/Carbon.git",
-                "reference": "f01cfa96468f4c38325f507ab81a4f1d2cd93cfe"
+                "url": "https://github.com/CarbonPHP/carbon.git",
+                "reference": "ced71f79398ece168e24f7f7710462f462310d4d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/briannesbitt/Carbon/zipball/f01cfa96468f4c38325f507ab81a4f1d2cd93cfe",
-                "reference": "f01cfa96468f4c38325f507ab81a4f1d2cd93cfe",
+                "url": "https://api.github.com/repos/CarbonPHP/carbon/zipball/ced71f79398ece168e24f7f7710462f462310d4d",
+                "reference": "ced71f79398ece168e24f7f7710462f462310d4d",
                 "shasum": ""
             },
             "require": {
@@ -2334,8 +2334,8 @@
             ],
             "support": {
                 "docs": "https://carbon.nesbot.com/docs",
-                "issues": "https://github.com/briannesbitt/Carbon/issues",
-                "source": "https://github.com/briannesbitt/Carbon"
+                "issues": "https://github.com/CarbonPHP/carbon/issues",
+                "source": "https://github.com/CarbonPHP/carbon"
             },
             "funding": [
                 {
@@ -2351,7 +2351,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2024-12-21T18:03:19+00:00"
+            "time": "2025-05-01T19:51:51+00:00"
         },
         {
             "name": "nette/schema",

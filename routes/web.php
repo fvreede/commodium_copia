@@ -19,6 +19,7 @@ use App\Http\Controllers\Editor\NewsController;
 use App\Http\Controllers\Editor\BannerController;
 use App\Http\Controllers\EditorController;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\CheckoutController;
 
 use App\Http\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
@@ -160,6 +161,7 @@ Route::get('/dashboard', function () {
     abort(403, 'Je hebt geen toegang tot dit dashboard.');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
+/*
 Route::get('/checkout', function (){
 
     /*
@@ -167,10 +169,20 @@ Route::get('/checkout', function (){
     if (!$user->isCustomer()) {
         abort(403, 'Je hebt geen toegang tot deze pagina.');
     }
-    */
+    
 
     return Inertia::render('Checkout');
 });
+*/
+
+Route::get('/checkout', [CheckoutController::class, 'index'])
+    ->middleware('auth')
+    ->name('checkout.index');
+
+Route::post('/checkout/select-slot', [CheckoutController::class, 'selectDeliverySlot'])
+    ->middleware('auth')
+    ->name('checkout.select-slot');
+ 
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

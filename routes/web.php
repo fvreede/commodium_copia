@@ -176,7 +176,6 @@ Route::get('/checkout', function (){
 */
 
 Route::get('/checkout', [CheckoutController::class, 'index'])
-    ->middleware('auth')
     ->name('checkout.index');
 
 Route::post('/checkout/select-slot', [CheckoutController::class, 'selectDeliverySlot'])

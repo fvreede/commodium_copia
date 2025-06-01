@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, onBeforeUnmount } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
-import EditorLayout from '@/Components/Editor/EditorLayout.vue';
+import EditorLayout from '@/Layouts/Editor/EditorLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import 'tinymce/tinymce';

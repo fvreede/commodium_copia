@@ -182,20 +182,20 @@ Route::post('/checkout/select-slot', [CheckoutController::class, 'selectDelivery
     ->middleware('auth')
     ->name('checkout.select-slot');
  
+// Cart routes - accessible to both guests and authenticated users
+Route::prefix('cart')->name('cart.')->group(function () {
+    Route::get('/', [CartController::class, 'index'])->name('index');
+    Route::post('/add', [CartController::class, 'add'])->name('add');
+    Route::patch('/{product}', [CartController::class, 'update'])->name('update');
+    Route::delete('/{product}', [CartController::class, 'remove'])->name('remove');
+    Route::delete('/', [CartController::class, 'clear'])->name('clear');
+});
+
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-
-    // Cart routes
-    Route::prefix('cart')->group(function () {
-        Route::get('/', [CartController::class, 'index'])->name('cart.index');
-        Route::post('/add', [CartController::class, 'add'])->name('cart.add');
-        Route::delete('/{product}', [CartController::class, 'remove'])->name('cart.remove');
-        Route::patch('/{product}', [CartController::class, 'update'])->name('cart.update');
-        Route::delete('/clear', [CartController::class, 'clear'])->name('cart.clear');
-    });
 });
 
 // Search routes

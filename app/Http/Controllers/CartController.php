@@ -2,92 +2,117 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Product;
+use App\Services\CartService;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
+use Illuminate\Http\JsonResponse;
 
 class CartController extends Controller
 {
-    /**
-     *  Haalt de winkelwagen items op uit de session.
-     */
-    public function index()
+    protected CartService $cartService;
+
+    public function __construct(CartService $cartService)
     {
-        $cartItems = session()->get('cart', []);
-        return response()->json(['cartItems' => $cartItems]);
+        $this->cartService = $cartService;
     }
 
     /**
-     *  Voeg een product toe aan de winkelwagen.
+     * Get cart contents
      */
-    public function add(Request $request)
+    public function index(): JsonResponse
+    {
+        $items = $this->cartService->getItems();
+        $totals = $this->cartService->getTotals();
+
+        return response()->json([
+            'cartItems' => $items,
+            'totals' => $totals,
+        ]);
+    }
+
+    /**
+     * Add item to cart
+     */
+    public function add(Request $request): JsonResponse
     {
         $request->validate([
-            'product_id' => 'required',
-            'quantity' => 'required|integer|min:1'
+            'product_id' => 'required|integer|exists:products,id',
+            'quantity' => 'integer|min:1|max:99',
         ]);
 
-        $cart = session()->get('cart', []);
-        $productId = $request->product_id;
+        $success = $this->cartService->addItem(
+            $request->product_id,
+            $request->quantity ?? 1
+        );
 
-        // Als het product al in de winkelwagen zit, update het aantal
-        if (isset($cart[$productId])) {
-            $cart($productId)['quantity'] += $request->quantity;
-        } else {
-            // Anders, voeg het product toe met het aantal en prijs
-            $cart[$productId] = [
-                'id' => $productId,
-                'quantity' => $request->quantity,
-                'price' => $request->price,
-                'name' => $request->name,
-                'image_path' => $request->image_path
-            ];
+        if (!$success) {
+            return response()->json([
+                'message' => 'Could not add item to cart. Check stock availability.',
+            ], 400);
         }
 
-        session()->put('cart', $cart);
-        return response()->json(['message' => 'Product toegevoegd aan winkelwagen']);
+        $totals = $this->cartService->getTotals();
+
+        return response()->json([
+            'message' => 'Item added to cart successfully',
+            'totals' => $totals,
+        ]);
     }
 
     /**
-     *  Verwijder een product uit de winkelwagen.
+     * Update item quantity
      */
-    public function remove($productId)
-    {
-        $cart = session()->get('cart', []);
-
-        if (isset($cart[$productId])) {
-            unset($cart[$productId]);
-            session()->put('cart', $cart);
-        }
-
-        return response()->json(['message' => 'Product verwijderd uit winkelwagen']);
-    }
-
-    /**
-     *  Update de hoeveelheid van een product in de winkelwagen.
-     */
-    public function update(Request $request, $productId)
+    public function update(Request $request, int $productId): JsonResponse
     {
         $request->validate([
-            'quantity' => 'required|integer|min:1'
+            'quantity' => 'required|integer|min:0|max:99',
         ]);
 
-        $cart = session()->get('cart', []);
+        $success = $this->cartService->updateQuantity($productId, $request->quantity);
 
-        if (isset($cart[$productId])) {
-            $cart[$productId]['quantity'] += $request->quantity;
-            session()->put('cart', $cart);
+        if (!$success) {
+            return response()->json([
+                'message' => 'Could not update cart item.',
+            ], 400);
         }
 
-        return response()->json(['message' => 'Winkelwagen bijgewerkt']);
+        $totals = $this->cartService->getTotals();
+
+        return response()->json([
+            'message' => 'Cart updated successfully',
+            'totals' => $totals,
+        ]);
     }
 
     /**
-     *  Maakt de winkelwagen leeg.
+     * Remove item from cart
      */
-    public function clear()
+    public function remove(int $productId): JsonResponse
     {
-        session()->forget('cart');
-        return response()->json(['message' => 'Winkelwagen geleegd']);
+        $success = $this->cartService->removeItem($productId);
+
+        if (!$success) {
+            return response()->json([
+                'message' => 'Could not remove item from cart.',
+            ], 400);
+        }
+
+        $totals = $this->cartService->getTotals();
+
+        return response()->json([
+            'message' => 'Item removed from cart',
+            'totals' => $totals,
+        ]);
+    }
+
+    /**
+     * Clear entire cart
+     */
+    public function clear(): JsonResponse
+    {
+        $this->cartService->clear();
+
+        return response()->json([
+            'message' => 'Cart cleared successfully',
+        ]);
     }
 }

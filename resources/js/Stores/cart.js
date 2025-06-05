@@ -1,26 +1,27 @@
 // @/Stores/cart.js
 import { defineStore } from 'pinia'
-import { router } from '@inertiajs/vue3'
 import axios from 'axios'
 
 export const useCartStore = defineStore('cart', {
     state: () => ({
         items: [],
+        totals: {
+            subtotal: 0,
+            total: 0,
+            total_items: 0,
+            items_count: 0
+        },
         sortBy: 'name',
         sortDirection: 'asc',
         isLoading: false
     }),
 
     getters: {
-        totalItems: (state) => state.items.reduce((total, item) => total + item.quantity, 0),
+        totalItems: (state) => state.totals.total_items,
         
-        subtotal: (state) => state.items.reduce((total, item) => total + (item.price * item.quantity), 0),
+        subtotal: (state) => state.totals.subtotal,
 
-        total: (state) => {
-            const subtotal = state.items.reduce((total, item) => total + (item.price * item.quantity), 0)
-            const deliveryCost = 0
-            return subtotal + deliveryCost
-        },
+        total: (state) => state.totals.total,
 
         sortedItems: (state) => {
             return [...state.items].sort((a, b) => {
@@ -45,8 +46,21 @@ export const useCartStore = defineStore('cart', {
                 this.isLoading = true
                 const response = await axios.get(route('cart.index'))
                 this.items = response.data.cartItems || []
+                this.totals = response.data.totals || {
+                    subtotal: 0,
+                    total: 0,
+                    total_items: 0,
+                    items_count: 0
+                }
             } catch (error) {
-                console.error('Fout bij laden winkelwagen:', error)
+                console.error('Error loading cart:', error)
+                this.items = []
+                this.totals = {
+                    subtotal: 0,
+                    total: 0,
+                    total_items: 0,
+                    items_count: 0
+                }
             } finally {
                 this.isLoading = false
             }
@@ -56,43 +70,76 @@ export const useCartStore = defineStore('cart', {
             try {
                 const response = await axios.post(route('cart.add'), {
                     product_id: product.id,
-                    quantity: 1,
-                    price: product.price,
-                    name: product.name,
-                    image_path: product.image_path
+                    quantity: 1
                 })
-                await this.loadCart() // Herlaad de winkelwagen na toevoegen
+                
+                // Update totals from response
+                this.totals = response.data.totals
+                
+                // Reload cart to get updated items
+                await this.loadCart()
+                
+                return { success: true, message: response.data.message }
             } catch (error) {
-                console.error('Fout bij toevoegen aan winkelwagen:', error)
+                console.error('Error adding to cart:', error)
+                const message = error.response?.data?.message || 'Failed to add item to cart'
+                return { success: false, message }
             }
         },
 
         async removeFromCart(product) {
             try {
-                await axios.delete(route('cart.remove', product.id))
-                await this.loadCart() // Herlaad de winkelwagen na verwijderen
+                const response = await axios.delete(route('cart.remove', product.product_id))
+                this.totals = response.data.totals
+                await this.loadCart()
+                return { success: true, message: response.data.message }
             } catch (error) {
-                console.error('Fout bij verwijderen uit winkelwagen:', error)
+                console.error('Error removing from cart:', error)
+                const message = error.response?.data?.message || 'Failed to remove item from cart'
+                return { success: false, message }
             }
         },
 
         async updateQuantity(product, quantity) {
             try {
-                await axios.patch(route('cart.update', product.id), {
+                const response = await axios.patch(route('cart.update', product.product_id), {
                     quantity: quantity
                 })
-                await this.loadCart() // Herlaad de winkelwagen na update
+                this.totals = response.data.totals
+                await this.loadCart()
+                return { success: true, message: response.data.message }
             } catch (error) {
-                console.error('Fout bij bijwerken hoeveelheid:', error)
+                console.error('Error updating quantity:', error)
+                const message = error.response?.data?.message || 'Failed to update quantity'
+                return { success: false, message }
             }
+        },
+
+        async incrementQuantity(product) {
+            return await this.updateQuantity(product, product.quantity + 1)
+        },
+
+        async decrementQuantity(product) {
+            if (product.quantity <= 1) {
+                return await this.removeFromCart(product)
+            }
+            return await this.updateQuantity(product, product.quantity - 1)
         },
 
         async clearCart() {
             try {
-                await axios.delete(route('cart.clear'))
+                const response = await axios.delete(route('cart.clear'))
                 this.items = []
+                this.totals = {
+                    subtotal: 0,
+                    total: 0,
+                    total_items: 0,
+                    items_count: 0
+                }
+                return { success: true, message: response.data.message }
             } catch (error) {
-                console.error('Fout bij legen winkelwagen:', error)
+                console.error('Error clearing cart:', error)
+                return { success: false, message: 'Failed to clear cart' }
             }
         },
 

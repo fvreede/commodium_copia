@@ -1,29 +1,27 @@
 <?php
 
-// Enhanced OrderItem Model
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class OrderItem extends Model
+class CartItem extends Model
 {
     protected $fillable = [
-        'order_id', 
-        'product_id', 
-        'quantity', 
+        'user_id',
+        'product_id',
+        'quantity',
         'price',
-        'product_name' // Store name in case product is deleted
     ];
 
     protected $casts = [
+        'quantity' => 'integer',
         'price' => 'decimal:2',
-        'quantity' => 'integer'
     ];
 
-    public function order(): BelongsTo
+    public function user(): BelongsTo
     {
-        return $this->belongsTo(Order::class);
+        return $this->belongsTo(User::class);
     }
 
     public function product(): BelongsTo
@@ -31,8 +29,7 @@ class OrderItem extends Model
         return $this->belongsTo(Product::class);
     }
 
-    // Calculate line total
-    public function getLineTotalAttribute(): float
+    public function getTotalAttributes(): float
     {
         return $this->quantity * $this->price;
     }

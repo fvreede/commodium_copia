@@ -47,7 +47,7 @@ class CheckoutController extends Controller
             'country' => $user->country ?? 'Nederland'
         ];
 
-        return Inertia::render('CheckoutPage', [
+        return Inertia::render('Checkout', [
             'deliverySlots' => $deliverySlots,
             'deliveryAddress' => $deliveryAddress,
             'cartItems' => [], // Empty for now, will be implemented in assignment 4

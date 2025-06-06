@@ -38,6 +38,7 @@ class ProductController extends Controller
             'short_description' => 'required|string',
             'full_description' => 'required|string',
             'price' => 'required|numeric|min:0',
+            'stock_quantity' => 'required|integer|min:1',
             'subcategory_id' => 'required|exists:subcategories,id',
             'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);

@@ -67,25 +67,27 @@ export const useCartStore = defineStore('cart', {
         },
 
         async addToCart(product) {
-            try {
-                const response = await axios.post(route('cart.add'), {
-                    product_id: product.id,
-                    quantity: 1
-                })
-                
-                // Update totals from response
-                this.totals = response.data.totals
-                
-                // Reload cart to get updated items
-                await this.loadCart()
-                
-                return { success: true, message: response.data.message }
-            } catch (error) {
-                console.error('Error adding to cart:', error)
-                const message = error.response?.data?.message || 'Failed to add item to cart'
-                return { success: false, message }
-            }
-        },
+    try {
+        console.log('Product being added:', product); // Debug log
+        const response = await axios.post(route('cart.add'), {
+            product_id: parseInt(product.id),
+            quantity: 1
+        })
+        
+        // Update totals from response
+        this.totals = response.data.totals
+        
+        // Reload cart to get updated items
+        await this.loadCart()
+        
+        return { success: true, message: response.data.message }
+    } catch (error) {
+        console.error('Error adding to cart:', error)
+        console.error('Error response:', error.response?.data)
+        const message = error.response?.data?.message || 'Failed to add item to cart'
+        return { success: false, message }
+    }
+},
 
         async removeFromCart(product) {
             try {

@@ -19,6 +19,8 @@ class CartItem extends Model
         'price' => 'decimal:2',
     ];
 
+    protected $appends = ['total'];
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -29,7 +31,8 @@ class CartItem extends Model
         return $this->belongsTo(Product::class);
     }
 
-    public function getTotalAttributes(): float
+    // Fixed method name - should be getTotalAttribute (singular)
+    public function getTotalAttribute(): float
     {
         return $this->quantity * $this->price;
     }

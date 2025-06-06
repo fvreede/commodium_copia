@@ -15,6 +15,7 @@ const form = useForm({
     short_description: '',
     full_description: '',
     price: '',
+    stock_quantity: 0,
     category_id: '',
     subcategory_id: '',
     image: null
@@ -95,6 +96,9 @@ const filteredSubcategories = computed(() =>
                         type="text"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
                     />
+                    <p v-if="form.errors.name" class="text-sm text-red-600 mt-1">
+                        {{ form.errors.name }}
+                    </p>
                 </div>
 
                 <!-- Short Description -->
@@ -107,6 +111,9 @@ const filteredSubcategories = computed(() =>
                         rows="3"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 resize-none"
                     />
+                    <p v-if="form.errors.short_description" class="text-sm text-red-600 mt-1">
+                        {{ form.errors.short_description }}
+                    </p>
                 </div>
 
                 <!-- Full Description -->
@@ -119,26 +126,49 @@ const filteredSubcategories = computed(() =>
                         rows="6"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 resize-none"
                     />
+                    <p v-if="form.errors.full_description" class="text-sm text-red-600 mt-1">
+                        {{ form.errors.full_description }}
+                    </p>
                 </div>
 
-                <!-- Price -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">
-                        Prijs
-                    </label>
-                    <input 
-                        v-model="form.price"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
-                    />
+                <!-- Price and Stock side by side -->
+                <div class="flex space-x-4">
+                    <!-- Price -->
+                    <div class="w-1/2">
+                        <label class="block text-sm font-medium text-gray-700">
+                            Prijs
+                        </label>
+                        <input 
+                            v-model="form.price"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
+                        />
+                    </div>
+
+                    <!-- Stock Quantity -->
+                    <div class="w-1/2">
+                        <label class="block text-sm font-medium text-gray-700">
+                            Voorraad
+                        </label>
+                        <input 
+                            v-model="form.stock_quantity"
+                            type="number"
+                            min="1"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
+                        />
+                        <p v-if="form.errors.stock_quantity" class="text-sm text-red-600 mt-1">
+                            {{ form.errors.stock_quantity }}
+                        </p>
+                    </div>
                 </div>
+
 
                 <!-- Category Dropdown -->
                 <div>
                     <label>Categorie</label>
-                    <select v-model="form.category_id" class="...">
+                    <select v-model="form.category_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
                         <option disabled value="">Selecteer een categorie</option>
                         <option 
                             v-for="cat in categories" 
@@ -148,12 +178,15 @@ const filteredSubcategories = computed(() =>
                             {{ cat.name }}
                         </option>
                     </select>
+                    <p v-if="form.errors.category_id" class="text-sm text-red-600 mt-1">
+                        {{ form.errors.category_id }}
+                    </p>
                 </div>
 
                 <!-- Subcategory Dropdown -->
                 <div>
                     <label>Subcategorie</label>
-                    <select v-model="form.subcategory_id" class="...">
+                    <select v-model="form.subcategory_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
                         <option disabled value="">Selecteer een subcategorie</option>
                         <option 
                             v-for="sub in filteredSubcategories" 
@@ -163,6 +196,9 @@ const filteredSubcategories = computed(() =>
                             {{ sub.name }}
                         </option>
                     </select>
+                    <p v-if="form.errors.subcategory_id" class="text-sm text-red-600 mt-1">
+                        {{ form.errors.subcategory_id }}
+                    </p>
                 </div>
 
 
@@ -177,6 +213,9 @@ const filteredSubcategories = computed(() =>
                         class="mt-1 block w-full"
                         accept="image/*"
                     />
+                    <p v-if="form.errors.image" class="text-sm text-red-600 mt-1">
+                        {{ form.errors.image }}
+                    </p>
                 </div>
 
                 <!-- Form Buttons -->

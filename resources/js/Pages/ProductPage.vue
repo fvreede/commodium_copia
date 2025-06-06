@@ -1,7 +1,7 @@
 /**
  * Bestandsnaam: ProductPage.vue
  * Auteur: Fabio Vreede
- * Versie: v1.7.0
+ * Versie: v1.7.1
  * Datum: 2024-10-29
  * Tijd: 13:41:07
  * Doel: Deze view toont de details van een product op een aparte pagina.
@@ -36,7 +36,7 @@
             <div class="lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-8">
                 <!-- Product Afbeelding -->
                 <div class="flex justify-center items-center aspect-w-1 aspect-h-1 w-full max-w-md lg:max-w-xs overflow-hidden rounded-lg lg:ml-40 ml-0">
-                    <img :src="resolveImagePath(props.product.imageSrc)" :alt="props.product.name" class="w-full h-auto object-cover object-center sm:rounded-lg" />
+                    <img :src="resolveImagePath(props.product.imageSrc || props.product.image_path)" :alt="props.product.name" class="w-full h-auto object-cover object-center sm:rounded-lg" />
                 </div>
 
                 <!-- Product Info -->
@@ -48,13 +48,19 @@
                     </div>
                     <div class="mt-6">
                         <h3 class="sr-only">Description</h3>
-                        <p class="text-base text-gray-700">{{ props.product.description }}</p>
+                        <p class="text-base text-gray-700">{{ props.product.description || props.product.short_description }}</p>
                     </div>
                     
                     <!-- Knop om toe te voegen aan winkelwagen -->
-                     <div class="mt-10 flex">
-                        <button @click="cartStore.addToCart(props.product)" type="submit" class="flex max-w-xs flex-1 items-center justify-center rounded-md border border-transparent bg-orange-600 py-3 px-8 text-base font-medium text-white hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-brown-50 sm:w-full">
-                            Voeg toe aan winkelwagen
+                    <div class="mt-10 flex">
+                        <button 
+                            @click="addToCart" 
+                            :disabled="isAddingToCart"
+                            type="button" 
+                            class="flex max-w-xs flex-1 items-center justify-center rounded-md border border-transparent bg-orange-600 py-3 px-8 text-base font-medium text-white hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-brown-50 sm:w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <span v-if="isAddingToCart">Toevoegen...</span>
+                            <span v-else>Voeg toe aan winkelwagen</span>
                         </button>
                     </div>
                 </div>
@@ -65,7 +71,7 @@
                 <h2 class="text-2xl font-semibold tracking-tight text-gray-900">Productomschrijving</h2>
                 <hr class="my-4 border-gray-500" />
                 <div class="mt-4">
-                    <p class="text-base text-gray-700">{{ props.product.fullDescription }}</p>
+                    <p class="text-base text-gray-700">{{ props.product.fullDescription || props.product.full_description }}</p>
                 </div>
             </div>
         </div>
@@ -80,12 +86,16 @@
 <script setup>
 // Het importeren van Vue functies en andere componenten
 import { Link } from '@inertiajs/vue3';
+import { ref } from 'vue';
 import NavBar from '@/Components/NavBar.vue';
 import Footer from '@/Components/Footer.vue';
 
 // Winkelwagen store importeren
 import { useCartStore } from '@/Stores/cart';
 const cartStore = useCartStore();
+
+// Reactive state for loading
+const isAddingToCart = ref(false);
 
 // Props definiëren
 const props = defineProps({
@@ -114,6 +124,35 @@ const props = defineProps({
         required: true
     }
 });
+
+/**
+ * Add product to cart with proper error handling
+ */
+const addToCart = async () => {
+    if (isAddingToCart.value) return;
+    
+    isAddingToCart.value = true;
+    
+    try {
+        // Use the correct product ID - prefer the product object's ID
+        const productId = props.product.id || props.id;
+        console.log('Adding product to cart:', { productId, product: props.product });
+        
+        const result = await cartStore.addToCart({ id: productId });
+        
+        if (result.success) {
+            // Optional: Show success message
+            console.log('Product added to cart successfully');
+        } else {
+            console.error('Failed to add product to cart:', result.message);
+            // Optional: Show error message to user
+        }
+    } catch (error) {
+        console.error('Error adding product to cart:', error);
+    } finally {
+        isAddingToCart.value = false;
+    }
+};
 
 /**
  * Functie om prijs te formatteren naar Nederlands formaat.

@@ -76,6 +76,9 @@ const deleteProduct = () => {
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                                     Prijs
                                 </th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                    Voorraad
+                                </th>
                                 <th class="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
                                     Acties
                                 </th>
@@ -110,6 +113,18 @@ const deleteProduct = () => {
                                 <td class="px-6 py-4">
                                     <span class="text-lg font-bold text-gray-900">
                                         {{ formatPrice(product.price) }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span
+                                        class="font-medium"
+                                        :class="{
+                                            'text-green-600': product.stock_quantity > 10,
+                                            'text-orange-500': product.stock_quantity > 0 && product.stock_quantity <= 10,
+                                            'text-red-600': product.stock_quantity === 0
+                                        }"
+                                    >
+                                        {{ product.stock_quantity }}
                                     </span>
                                 </td>
                                 <td class="px-6 py-4">

@@ -15,6 +15,7 @@ const form = useForm({
     short_description: props.product.short_description,
     full_description: props.product.full_description,
     price: props.product.price,
+    stock_quantity: props.product.stock_quantity,
     category_id: props.product.subcategory?.category?.id ?? '',
     subcategory_id: props.product.subcategory_id,
     image: null,
@@ -44,7 +45,6 @@ const handleBack = () => {
 };
 
 const submit = () => {
-  console.log('Submitting with subcategory_id:', form.subcategory_id)
   form.submit('post', route('editor.products.update', props.product.id), {
     forceFormData: true,
   });
@@ -91,6 +91,9 @@ const groupedSubcategories = computed(() => {
                         type="text"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
                     />
+                    <p v-if="form.errors.name" class="text-sm text-red-600 mt-1">
+                        {{ form.errors.name }}
+                    </p>
                 </div>
 
                 <!-- Short Description -->
@@ -103,6 +106,9 @@ const groupedSubcategories = computed(() => {
                         rows="3"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 resize-none"
                     ></textarea>
+                    <p v-if="form.errors.short_description" class="text-sm text-red-600 mt-1">
+                        {{ form.errors.short_description }}
+                    </p>
                 </div>
 
                 <!-- Full Description -->
@@ -115,20 +121,45 @@ const groupedSubcategories = computed(() => {
                         rows="6"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 resize-none"
                     ></textarea>
+                    <p v-if="form.errors.full_description" class="text-sm text-red-600 mt-1">
+                        {{ form.errors.full_description }}
+                    </p>
                 </div>
 
-                <!-- Price -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">
-                        Prijs (€)
-                    </label>
-                    <input
-                        v-model="form.price"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
-                    />
+                <!-- Price and Stock side by side -->
+                <div class="flex space-x-4">
+                    <!-- Price -->
+                    <div class="w-1/2">
+                        <label class="block text-sm font-medium text-gray-700">
+                            Prijs (€)
+                        </label>
+                        <input
+                            v-model="form.price"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
+                        />
+                        <p v-if="form.errors.price" class="text-sm text-red-600 mt-1">
+                            {{ form.errors.price }}
+                        </p>
+                    </div>
+
+                    <!-- Stock Quantity -->
+                    <div class="w-1/2">
+                        <label class="block text-sm font-medium text-gray-700">
+                            Voorraad
+                        </label>
+                        <input
+                            v-model="form.stock_quantity"
+                            type="number"
+                            min="1"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
+                        />
+                        <p v-if="form.errors.stock_quantity" class="text-sm text-red-600 mt-1">
+                            {{ form.errors.stock_quantity }}
+                        </p>
+                    </div>
                 </div>
 
                 <!-- Subcategory Selection -->
@@ -141,8 +172,6 @@ const groupedSubcategories = computed(() => {
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
                     >
                         <option disabled value="">Selecteer een subcategorie</option>
-                        
-                        <!-- Group by category -->
                         <optgroup
                             v-for="(group, index) in groupedSubcategories"
                             :key="index"
@@ -152,11 +181,14 @@ const groupedSubcategories = computed(() => {
                                 v-for="subcategory in group.subcategories"
                                 :key="subcategory.id"
                                 :value="subcategory.id"
-                        >
+                            >
                                 {{ subcategory.name }}
                             </option>
                         </optgroup>
                     </select>
+                    <p v-if="form.errors.subcategory_id" class="text-sm text-red-600 mt-1">
+                        {{ form.errors.subcategory_id }}
+                    </p>
                 </div>
 
                 <!-- Image Upload -->
@@ -170,7 +202,9 @@ const groupedSubcategories = computed(() => {
                         class="mt-1 block w-full"
                         accept="image/*"
                     />
-                    <!-- Show current image -->
+                    <p v-if="form.errors.image" class="text-sm text-red-600 mt-1">
+                        {{ form.errors.image }}
+                    </p>
                     <img 
                         v-if="product.image_path"
                         :src="`/storage/${product.image_path}`"

@@ -6,6 +6,7 @@ use App\Models\CartItem;
 use App\Models\Product;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Log;
 
 class CartService
 {
@@ -28,22 +29,55 @@ class CartService
      */
     public function addItem(int $productId, int $quantity = 1): bool
     {
-        $product = Product::findOrFail($productId);
+        // Debug logging
+        Log::info('CartService::addItem called', [
+            'product_id' => $productId,
+            'quantity' => $quantity,
+            'auth_check' => Auth::check(),
+            'user_id' => Auth::id()
+        ]);
+
+        // Try to find the product
+        $product = Product::find($productId);
         
-        if (!$product || !$product->is_active) {
+        if (!$product) {
+            Log::error('Product not found', ['product_id' => $productId]);
             return false;
         }
 
-        // Check stock
-        if ($product->stock_quantity < $quantity) {
+        Log::info('Product found', [
+            'product_id' => $product->id,
+            'product_name' => $product->name,
+            'is_active' => $product->is_active ?? 'N/A',
+            'stock_quantity' => $product->stock_quantity ?? 'N/A'
+        ]);
+
+        // Check if product is active (if this column exists)
+        if (isset($product->is_active) && !$product->is_active) {
+            Log::error('Product is not active', ['product_id' => $productId]);
+            return false;
+        }
+
+        // Check stock - handle case where stock_quantity might not exist
+        $stockQuantity = $product->stock_quantity ?? 999; // Default high stock if column doesn't exist
+        if ($stockQuantity < $quantity) {
+            Log::error('Insufficient stock', [
+                'product_id' => $productId,
+                'requested_quantity' => $quantity,
+                'available_stock' => $stockQuantity
+            ]);
             return false;
         }
 
         if (Auth::check()) {
-            return $this->addDatabaseItem($product, $quantity);
+            $result = $this->addDatabaseItem($product, $quantity);
+            Log::info('Database add result', ['success' => $result]);
+            return $result;
         }
         
-        return $this->addSessionItem($product, $quantity);
+        $result = $this->addSessionItem($product, $quantity);
+        Log::info('Session add result', ['success' => $result]);
+        return $result;
     }
 
     /**
@@ -55,8 +89,13 @@ class CartService
             return $this->removeItem($productId);
         }
 
-        $product = Product::findOrFail($productId);
-        if (!$product || $product->stock_quantity < $quantity) {
+        $product = Product::find($productId);
+        if (!$product) {
+            return false;
+        }
+
+        $stockQuantity = $product->stock_quantity ?? 999;
+        if ($stockQuantity < $quantity) {
             return false;
         }
 
@@ -133,16 +172,16 @@ class CartService
             if ($existingItem) {
                 // If item exists in database, add session quantity to it
                 $newQuantity = $existingItem->quantity + $item['quantity'];
-                $product = Product::findOrFail($item['product_id']);
+                $product = Product::find($item['product_id']);
                 
                 // Check stock before updating
-                if ($product && $newQuantity <= $product->stock_quantity) {
+                if ($product && $newQuantity <= ($product->stock_quantity ?? 999)) {
                     $existingItem->update(['quantity' => $newQuantity]);
                 }
             } else {
                 // Create new cart item
                 $product = Product::find($item['product_id']);
-                if ($product && $item['quantity'] <= $product->stock_quantity) {
+                if ($product && $item['quantity'] <= ($product->stock_quantity ?? 999)) {
                     CartItem::create([
                         'user_id' => $userId,
                         'product_id' => $item['product_id'],
@@ -174,8 +213,8 @@ class CartService
                 'price' => $item->price,
                 'quantity' => $item->quantity,
                 'image_path' => $item->product->image_path,
-                'stock_quantity' => $item->product->stock_quantity,
-                'total' => $item->total,
+                'stock_quantity' => $item->product->stock_quantity ?? 999,
+                'total' => $item->quantity * $item->price,
             ];
         })->toArray();
     }
@@ -192,8 +231,8 @@ class CartService
             return [];
         }
 
+        // Remove the is_active filter temporarily for debugging
         $products = Product::whereIn('id', $productIds)
-            ->where('is_active', true)
             ->get()
             ->keyBy('id');
 
@@ -208,7 +247,7 @@ class CartService
                     'price' => $sessionItem['price'],
                     'quantity' => $sessionItem['quantity'],
                     'image_path' => $product->image_path,
-                    'stock_quantity' => $product->stock_quantity,
+                    'stock_quantity' => $product->stock_quantity ?? 999,
                     'total' => $sessionItem['quantity'] * $sessionItem['price'],
                 ];
             }
@@ -222,26 +261,44 @@ class CartService
      */
     private function addDatabaseItem(Product $product, int $quantity): bool
     {
-        $existingItem = CartItem::where('user_id', Auth::id())
-            ->where('product_id', $product->id)
-            ->first();
+        try {
+            $existingItem = CartItem::where('user_id', Auth::id())
+                ->where('product_id', $product->id)
+                ->first();
 
-        if ($existingItem) {
-            $newQuantity = $existingItem->quantity + $quantity;
-            if ($newQuantity > $product->stock_quantity) {
-                return false;
+            if ($existingItem) {
+                $newQuantity = $existingItem->quantity + $quantity;
+                $stockQuantity = $product->stock_quantity ?? 999;
+                if ($newQuantity > $stockQuantity) {
+                    Log::error('Database item update: insufficient stock', [
+                        'existing_quantity' => $existingItem->quantity,
+                        'add_quantity' => $quantity,
+                        'new_quantity' => $newQuantity,
+                        'available_stock' => $stockQuantity
+                    ]);
+                    return false;
+                }
+                $existingItem->update(['quantity' => $newQuantity]);
+                Log::info('Updated existing cart item', ['new_quantity' => $newQuantity]);
+            } else {
+                CartItem::create([
+                    'user_id' => Auth::id(),
+                    'product_id' => $product->id,
+                    'quantity' => $quantity,
+                    'price' => $product->price,
+                ]);
+                Log::info('Created new cart item');
             }
-            $existingItem->update(['quantity' => $newQuantity]);
-        } else {
-            CartItem::create([
-                'user_id' => Auth::id(),
-                'product_id' => $product->id,
-                'quantity' => $quantity,
-                'price' => $product->price,
-            ]);
-        }
 
-        return true;
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Error in addDatabaseItem', [
+                'error' => $e->getMessage(),
+                'product_id' => $product->id,
+                'quantity' => $quantity
+            ]);
+            return false;
+        }
     }
 
     /**
@@ -249,23 +306,41 @@ class CartService
      */
     private function addSessionItem(Product $product, int $quantity): bool
     {
-        $cart = Session::get(self::SESSION_KEY, []);
-        
-        if (isset($cart[$product->id])) {
-            $newQuantity = $cart[$product->id]['quantity'] + $quantity;
-            if ($newQuantity > $product->stock_quantity) {
-                return false;
+        try {
+            $cart = Session::get(self::SESSION_KEY, []);
+            
+            if (isset($cart[$product->id])) {
+                $newQuantity = $cart[$product->id]['quantity'] + $quantity;
+                $stockQuantity = $product->stock_quantity ?? 999;
+                if ($newQuantity > $stockQuantity) {
+                    Log::error('Session item update: insufficient stock', [
+                        'existing_quantity' => $cart[$product->id]['quantity'],
+                        'add_quantity' => $quantity,
+                        'new_quantity' => $newQuantity,
+                        'available_stock' => $stockQuantity
+                    ]);
+                    return false;
+                }
+                $cart[$product->id]['quantity'] = $newQuantity;
+                Log::info('Updated existing session item', ['new_quantity' => $newQuantity]);
+            } else {
+                $cart[$product->id] = [
+                    'quantity' => $quantity,
+                    'price' => $product->price,
+                ];
+                Log::info('Created new session item');
             }
-            $cart[$product->id]['quantity'] = $newQuantity;
-        } else {
-            $cart[$product->id] = [
-                'quantity' => $quantity,
-                'price' => $product->price,
-            ];
-        }
 
-        Session::put(self::SESSION_KEY, $cart);
-        return true;
+            Session::put(self::SESSION_KEY, $cart);
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Error in addSessionItem', [
+                'error' => $e->getMessage(),
+                'product_id' => $product->id,
+                'quantity' => $quantity
+            ]);
+            return false;
+        }
     }
 
     /**

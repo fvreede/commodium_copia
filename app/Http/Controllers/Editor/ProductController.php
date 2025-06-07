@@ -54,6 +54,7 @@ class ProductController extends Controller
             'short_description' => $validated['short_description'],
             'full_description' => $validated['full_description'],
             'price' => $validated['price'],
+            'stock_quantity' => $validated['stock_quantity'],
             'subcategory_id' => $validated['subcategory_id'],
             'image_path' => $path
         ]);
@@ -73,6 +74,7 @@ class ProductController extends Controller
             'fullDescription' => $product->full_description,
             'price' => (float) $product->price, // Ensure it's a float
             'imageSrc' => $product->image_path,
+            'stock_quantity' => $product->stock_quantity,
             'subcategory' => [
                 'id' => $product->subcategory->id,
                 'name' => $product->subcategory->name,
@@ -110,6 +112,7 @@ class ProductController extends Controller
             'short_description' => 'required|string',
             'full_description' => 'required|string',
             'price' => 'required|numeric|min:0',
+            'stock_quantity' => 'required|integer|min:1',
             'subcategory_id' => 'required|exists:subcategories,id',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);

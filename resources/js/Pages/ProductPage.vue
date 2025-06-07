@@ -55,11 +55,16 @@
                     <div class="mt-10 flex">
                         <button 
                             @click="addToCart" 
-                            :disabled="isAddingToCart"
+                            :disabled="isAddingToCart || props.product.stock_quantity === 0"
                             type="button" 
-                            class="flex max-w-xs flex-1 items-center justify-center rounded-md border border-transparent bg-orange-600 py-3 px-8 text-base font-medium text-white hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-brown-50 sm:w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                            class="flex max-w-xs flex-1 items-center justify-center rounded-md border border-transparent 
+                                bg-orange-600 py-3 px-8 text-base font-medium text-white 
+                                hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 
+                                focus:ring-offset-brown-50 sm:w-full 
+                                disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <span v-if="isAddingToCart">Toevoegen...</span>
+                            <span v-else-if="props.product.stock_quantity === 0">Niet op voorraad</span>
                             <span v-else>Voeg toe aan winkelwagen</span>
                         </button>
                     </div>

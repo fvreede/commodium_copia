@@ -1,6 +1,6 @@
 <script setup>
 import { Head, useForm, router } from '@inertiajs/vue3';
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, reactive, onMounted, onUnmounted, computed } from 'vue';
 import AdminLayout from '@/Layouts/Admin/AdminLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
@@ -9,19 +9,31 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 
 const imagePreview = ref(null);
-const imagePosition = ref({ x: 0, y: 0});
+const imagePosition = reactive({ x: 0, y: 0});
+const imageZoom = ref(1);
 const isDragging = ref(false);
-const startPosition = ref({ x: 0, y: 0});
+const startPosition = reactive({ x: 0, y: 0});
 const imageRef = ref(null);
+const containerRef = ref(null);
+
+// Zoom constraints
+const minZoom = 0.5;
+const maxZoom = 3;
+const zoomStep = 0.1;
+
+// Auto-align settings
+const alignThreshold = 10; // pixels
+const alignAnimationDuration = 200; // ms
 
 const startDrag = (e) => {
     isDragging.value = true;
-    startPosition.value = {
-        x: e.type === 'mousedown' ? e.clientX : e.touches[0].clientX,
-        y: e.type === 'mousedown' ? e.clientY : e.touches[0].clientY,
-        initialX: imagePosition.value.x,
-        initialY: imagePosition.value.y,
-    };
+    startPosition.x = e.type === 'mousedown' ? e.clientX : e.touches[0].clientX;
+    startPosition.y = e.type === 'mousedown' ? e.clientY : e.touches[0].clientY;
+    startPosition.initialX = imagePosition.x;
+    startPosition.initialY = imagePosition.y;
+    
+    // Prevent default to avoid image selection/drag behavior
+    e.preventDefault();
 };
 
 const doDrag = (e) => {
@@ -32,18 +44,229 @@ const doDrag = (e) => {
     const currentX = e.type === 'mousemove' ? e.clientX : e.touches[0].clientX;
     const currentY = e.type === 'mousemove' ? e.clientY : e.touches[0].clientY;
     
-    const deltaX = currentX - startPosition.value.x;
-    const deltaY = currentY - startPosition.value.y;
+    const deltaX = currentX - startPosition.x;
+    const deltaY = currentY - startPosition.y;
 
-    imagePosition.value = {
-        x: startPosition.value.initialX + deltaX,
-        y: startPosition.value.initialY + deltaY
-    };
+    imagePosition.x = startPosition.initialX + deltaX;
+    imagePosition.y = startPosition.initialY + deltaY;
 };
 
 const stopDrag = () => {
-    isDragging.value = false;
+    if (isDragging.value) {
+        isDragging.value = false;
+        autoAlign();
+    }
 };
+
+// Auto-align function with magnetic border snapping
+const autoAlign = () => {
+    if (!containerRef.value || !imageRef.value) return;
+
+    const container = containerRef.value;
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+
+    // Calculate the actual scaled image dimensions
+    const imageNaturalWidth = imageRef.value.naturalWidth;
+    const imageNaturalHeight = imageRef.value.naturalHeight;
+    
+    // Calculate how the image fits in the container (object-cover behavior)
+    const containerAspect = containerWidth / containerHeight;
+    const imageAspect = imageNaturalWidth / imageNaturalHeight;
+    
+    let scaledImageWidth, scaledImageHeight;
+    
+    if (imageAspect > containerAspect) {
+        // Image is wider - height fills container
+        scaledImageHeight = containerHeight;
+        scaledImageWidth = scaledImageHeight * imageAspect;
+    } else {
+        // Image is taller - width fills container
+        scaledImageWidth = containerWidth;
+        scaledImageHeight = scaledImageWidth / imageAspect;
+    }
+    
+    // Apply zoom to the scaled dimensions
+    scaledImageWidth *= imageZoom.value;
+    scaledImageHeight *= imageZoom.value;
+
+    let targetX = imagePosition.x;
+    let targetY = imagePosition.y;
+
+    // Horizontal alignment and boundary constraints
+    if (scaledImageWidth > containerWidth) {
+        // Image is larger than container - constrain within bounds
+        const maxMoveRight = (scaledImageWidth - containerWidth) / 2;
+        const maxMoveLeft = -maxMoveRight;
+        
+        if (imagePosition.x > maxMoveRight) {
+            targetX = maxMoveRight;
+        } else if (imagePosition.x < maxMoveLeft) {
+            targetX = maxMoveLeft;
+        }
+        
+        // Snap to center if close
+        if (Math.abs(imagePosition.x) < alignThreshold) {
+            targetX = 0;
+        }
+        // Snap to edges if close
+        if (Math.abs(imagePosition.x - maxMoveRight) < alignThreshold) {
+            targetX = maxMoveRight;
+        }
+        if (Math.abs(imagePosition.x - maxMoveLeft) < alignThreshold) {
+            targetX = maxMoveLeft;
+        }
+    } else {
+        // Image is smaller than container - snap to container edges or center
+        const halfContainer = containerWidth / 2;
+        const halfImage = scaledImageWidth / 2;
+        
+        // Calculate edge positions (where image edge aligns with container edge)
+        const leftEdgePosition = -halfContainer + halfImage;
+        const rightEdgePosition = halfContainer - halfImage;
+        
+        // Snap to left edge
+        if (Math.abs(imagePosition.x - leftEdgePosition) < alignThreshold) {
+            targetX = leftEdgePosition;
+        }
+        // Snap to right edge  
+        else if (Math.abs(imagePosition.x - rightEdgePosition) < alignThreshold) {
+            targetX = rightEdgePosition;
+        }
+        // Snap to center
+        else if (Math.abs(imagePosition.x) < alignThreshold) {
+            targetX = 0;
+        }
+        
+        // Constrain to not go beyond reasonable bounds
+        const maxOffset = halfContainer + halfImage;
+        if (imagePosition.x > maxOffset) targetX = maxOffset;
+        if (imagePosition.x < -maxOffset) targetX = -maxOffset;
+    }
+
+    // Vertical alignment and boundary constraints  
+    if (scaledImageHeight > containerHeight) {
+        // Image is larger than container - constrain within bounds
+        const maxMoveDown = (scaledImageHeight - containerHeight) / 2;
+        const maxMoveUp = -maxMoveDown;
+        
+        if (imagePosition.y > maxMoveDown) {
+            targetY = maxMoveDown;
+        } else if (imagePosition.y < maxMoveUp) {
+            targetY = maxMoveUp;
+        }
+        
+        // Snap to center if close
+        if (Math.abs(imagePosition.y) < alignThreshold) {
+            targetY = 0;
+        }
+        // Snap to edges if close
+        if (Math.abs(imagePosition.y - maxMoveDown) < alignThreshold) {
+            targetY = maxMoveDown;
+        }
+        if (Math.abs(imagePosition.y - maxMoveUp) < alignThreshold) {
+            targetY = maxMoveUp;
+        }
+    } else {
+        // Image is smaller than container - snap to container edges or center
+        const halfContainer = containerHeight / 2;
+        const halfImage = scaledImageHeight / 2;
+        
+        // Calculate edge positions (where image edge aligns with container edge)
+        const topEdgePosition = -halfContainer + halfImage;
+        const bottomEdgePosition = halfContainer - halfImage;
+        
+        // Snap to top edge
+        if (Math.abs(imagePosition.y - topEdgePosition) < alignThreshold) {
+            targetY = topEdgePosition;
+        }
+        // Snap to bottom edge
+        else if (Math.abs(imagePosition.y - bottomEdgePosition) < alignThreshold) {
+            targetY = bottomEdgePosition;
+        }
+        // Snap to center
+        else if (Math.abs(imagePosition.y) < alignThreshold) {
+            targetY = 0;
+        }
+        
+        // Constrain to not go beyond reasonable bounds
+        const maxOffset = halfContainer + halfImage;
+        if (imagePosition.y > maxOffset) targetY = maxOffset;
+        if (imagePosition.y < -maxOffset) targetY = -maxOffset;
+    }
+
+    // Animate to target position if different from current
+    if (Math.abs(targetX - imagePosition.x) > 0.5 || Math.abs(targetY - imagePosition.y) > 0.5) {
+        animateToPosition(targetX, targetY);
+    }
+};
+
+// Smooth animation to target position
+const animateToPosition = (targetX, targetY) => {
+    const startX = imagePosition.x;
+    const startY = imagePosition.y;
+    const startTime = performance.now();
+
+    const animate = (currentTime) => {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / alignAnimationDuration, 1);
+        
+        // Ease-out function
+        const easeOut = 1 - Math.pow(1 - progress, 3);
+        
+        imagePosition.x = startX + (targetX - startX) * easeOut;
+        imagePosition.y = startY + (targetY - startY) * easeOut;
+
+        if (progress < 1) {
+            requestAnimationFrame(animate);
+        } else {
+            imagePosition.x = targetX;
+            imagePosition.y = targetY;
+        }
+    };
+
+    requestAnimationFrame(animate);
+};
+
+// Zoom functions
+const zoomIn = () => {
+    if (imageZoom.value < maxZoom) {
+        imageZoom.value = Math.min(imageZoom.value + zoomStep, maxZoom);
+        setTimeout(() => autoAlign(), 50);
+    }
+};
+
+const zoomOut = () => {
+    if (imageZoom.value > minZoom) {
+        imageZoom.value = Math.max(imageZoom.value - zoomStep, minZoom);
+        setTimeout(() => autoAlign(), 50);
+    }
+};
+
+const resetZoom = () => {
+    imageZoom.value = 1;
+    imagePosition.x = 0;
+    imagePosition.y = 0;
+};
+
+// Handle wheel zoom with auto-align after zoom
+const handleWheel = (e) => {
+    e.preventDefault();
+    
+    const delta = e.deltaY > 0 ? -zoomStep : zoomStep;
+    const newZoom = Math.max(minZoom, Math.min(maxZoom, imageZoom.value + delta));
+    
+    if (newZoom !== imageZoom.value) {
+        imageZoom.value = newZoom;
+        // Auto-align after zoom to ensure image stays within bounds
+        setTimeout(() => autoAlign(), 50);
+    }
+};
+
+// Computed style for image transform
+const imageTransform = computed(() => {
+    return `translate(${imagePosition.x}px, ${imagePosition.y}px) scale(${imageZoom.value})`;
+});
 
 const form = useForm({
     name: '',
@@ -55,23 +278,23 @@ const hasSavedChanges = () => {
     return form.name !== '' || form.description !== '' || form.image !== null;
 };
 
+const handleBeforeUnload = (e) => {
+    if (hasSavedChanges()) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+};
+
 onMounted(() => {
     // Add event listeners for drag and drop functionality
-    document.addEventListener('mousemove', doDrag);
+    document.addEventListener('mousemove', doDrag, { passive: false });
     document.addEventListener('mouseup', stopDrag);
-    document.addEventListener('touchmove', doDrag);
+    document.addEventListener('touchmove', doDrag, { passive: false });
     document.addEventListener('touchend', stopDrag);
 
     // Prevent page from unloading when there are unsaved changes
     window.addEventListener('beforeunload', handleBeforeUnload);
 });
-
-const handleBeforeUnload = (e) => {
-    if (hasSavedChanges()) {
-        event.preventDefault();
-        event.returnValue = '';
-    }
-};
 
 onUnmounted(() => {
     // Remove event listeners when component is unmounted
@@ -79,6 +302,7 @@ onUnmounted(() => {
     document.removeEventListener('mouseup', stopDrag);
     document.removeEventListener('touchmove', doDrag);
     document.removeEventListener('touchend', stopDrag);
+    window.removeEventListener('beforeunload', handleBeforeUnload);
 });
 
 const handleImageChange = (e) => {
@@ -89,6 +313,10 @@ const handleImageChange = (e) => {
         const reader = new FileReader();
         reader.onload = (e) => {
             imagePreview.value = e.target.result;
+            // Reset image position and zoom when new image is loaded
+            imagePosition.x = 0;
+            imagePosition.y = 0;
+            imageZoom.value = 1;
         };
         reader.readAsDataURL(file);
     }
@@ -104,9 +332,12 @@ const handleBack = () => {
 };
 
 const submit = () => {
-    form.post(route('admin.categories.store'), {
-        imagePosition: imagePosition.value
-    });
+    form.transform((data) => ({
+        ...data,
+        'imagePosition.x': imagePosition.x,
+        'imagePosition.y': imagePosition.y,
+        'imageZoom': imageZoom.value,
+    })).post(route('admin.categories.store'));
 };
 </script>
 
@@ -169,21 +400,68 @@ const submit = () => {
 
                                     <!-- Image Preview -->
                                     <div v-if="imagePreview" class="mt-4">
+                                        <!-- Zoom Controls -->
+                                        <div class="flex items-center gap-2 mb-3 p-2 bg-gray-50 rounded-lg">
+                                            <button
+                                                type="button"
+                                                @click="zoomOut"
+                                                :disabled="imageZoom <= minZoom"
+                                                class="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                −
+                                            </button>
+                                            <span class="text-sm text-gray-600 min-w-[3rem] text-center">
+                                                {{ Math.round(imageZoom * 100) }}%
+                                            </span>
+                                            <button
+                                                type="button"
+                                                @click="zoomIn"
+                                                :disabled="imageZoom >= maxZoom"
+                                                class="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                +
+                                            </button>
+                                            <button
+                                                type="button"
+                                                @click="resetZoom"
+                                                class="px-3 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-50 ml-2"
+                                            >
+                                                Reset
+                                            </button>
+                                        </div>
+
                                         <div class="group relative">
-                                            <div class="aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-lg bg-gray-200 cursor-move relative">
-                                                <img 
-                                                    ref="imageRef"
-                                                    :src="imagePreview" 
-                                                    :style="{
-                                                        transform: `translate(${imagePosition.x}px, ${imagePosition.y}px)`,
-                                                        cursor: isDragging ? 'grabbing' : 'grab',
-                                                    }"
-                                                    class="h-full w-full object-cover object-center absolute"
-                                                    @mousedown="startDrag"
+                                            <div 
+                                                ref="containerRef"
+                                                class="aspect-square w-full overflow-hidden rounded-lg bg-gray-200 relative"
+                                                @wheel="handleWheel"
+                                            >
+                                                <div 
+                                                    class="absolute inset-0 cursor-move overflow-hidden"
+                                                    @mousedown="startDrag" 
                                                     @touchstart="startDrag"
-                                                    draggable="false"
-                                                />
-                                                <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300"></div>
+                                                >
+                                                    <img 
+                                                        ref="imageRef"
+                                                        :src="imagePreview" 
+                                                        :style="{
+                                                            transform: imageTransform,
+                                                            cursor: isDragging ? 'grabbing' : 'grab',
+                                                            transformOrigin: 'center center',
+                                                        }"
+                                                        class="min-h-full min-w-full object-cover select-none transition-transform"
+                                                        :class="{ 'duration-200 ease-out': !isDragging }"
+                                                        draggable="false"
+                                                    />
+                                                </div>
+                                                <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300 pointer-events-none"></div>
+                                                
+                                                <!-- Alignment guides (optional visual feedback) -->
+                                                <div class="absolute inset-0 pointer-events-none">
+                                                    <!-- Center lines -->
+                                                    <div class="absolute left-1/2 top-0 bottom-0 w-px bg-blue-300 opacity-0 group-hover:opacity-30 transition-opacity transform -translate-x-px"></div>
+                                                    <div class="absolute top-1/2 left-0 right-0 h-px bg-blue-300 opacity-0 group-hover:opacity-30 transition-opacity transform -translate-y-px"></div>
+                                                </div>
                                             </div>
                                             <h3 class="mt-2 text-sm text-gray-700 truncate">
                                                 {{ form.name || 'Category Name' }}
@@ -192,12 +470,19 @@ const submit = () => {
                                                 {{ form.description || 'Category description will appear here' }}
                                             </p>
                                         </div>
-                                        <p class="mt-2 text-sm text-gray-500 italic">
-                                            Drag to adjust image position
-                                        </p>
+                                        <div class="mt-2 space-y-1">
+                                            <p class="text-sm text-gray-500 italic">
+                                                Drag to reposition • Scroll to zoom • Magnetic border alignment
+                                            </p>
+                                            <p class="text-xs text-gray-400">
+                                                Position: {{ Math.round(imagePosition.x) }}, {{ Math.round(imagePosition.y) }} • 
+                                                Zoom: {{ Math.round(imageZoom * 100) }}%
+                                            </p>
+                                        </div>
                                         <InputError :message="form.errors.image" class="mt-2" />
                                         <InputError :message="form.errors['imagePosition.x']" class="mt-2" />
                                         <InputError :message="form.errors['imagePosition.y']" class="mt-2" />
+                                        <InputError :message="form.errors['imageZoom']" class="mt-2" />
                                     </div>
                                 </div>
 
@@ -227,8 +512,22 @@ const submit = () => {
     cursor: grab;
 }
 
+.select-none {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-user-drag: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
 img {
     user-select: none;
     -webkit-user-drag: none;
+}
+
+/* Square aspect ratio container */
+.aspect-square {
+    aspect-ratio: 1 / 1;
 }
 </style>

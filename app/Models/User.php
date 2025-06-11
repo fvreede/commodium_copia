@@ -160,4 +160,16 @@ class User extends Authenticatable
     {
         return $this->hasMany(Order::class);
     }
+
+    /**
+     * Get the delivery address associated with the user.
+     * 
+     * This defines a one-to-one relationship between a user and their delivery address.
+     * Used primarily to retrieve the default address during checkout.
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne
+     */
+    public function address() 
+    {
+        return $this->hasOne(UserAddress::class);
+    }
 }

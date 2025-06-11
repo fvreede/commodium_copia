@@ -6,12 +6,13 @@ use App\Models\DeliverySlot;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
+use App\Services\CartService;
 
 class CheckoutController extends Controller
 {
-    public function index()
+    public function index(CartService $cartService)
     {
-        // Get delivery slots for the next 7 days, grouped by date
+        // Haal bezorgmomenten uit de database (komende 7 dagen)
         $deliverySlots = DeliverySlot::where('date', '>=', Carbon::today())
             ->where('date', '<=', Carbon::today()->addDays(6))
             ->orderBy('date')
@@ -23,7 +24,7 @@ class CheckoutController extends Controller
             ->map(function ($daySlots, $date) {
                 return [
                     'date' => Carbon::parse($date)->format('Y-m-d'),
-                    'day_name' => Carbon::parse($date)->locale('nl')->format('l'),
+                    'day_name' => Carbon::parse($date)->locale('nl')->isoFormat('dddd'),
                     'formatted_date' => Carbon::parse($date)->format('d-m'),
                     'slots' => $daySlots->map(function ($slot) {
                         return [
@@ -38,20 +39,15 @@ class CheckoutController extends Controller
             })
             ->values();
 
-        // Get user's current address (you might want to expand this)
         $user = auth()->user();
-        $deliveryAddress = [
-            'street' => $user->street ?? 'Voorbeeldstraat 123',
-            'city' => $user->city ?? 'Haarlem',
-            'postal_code' => $user->postal_code ?? '2000 AB',
-            'country' => $user->country ?? 'Nederland'
-        ];
+        $deliveryAddress = $user->address()->first();
 
-        return Inertia::render('Checkout', [
+        return Inertia::render('CheckoutPage', [
             'deliverySlots' => $deliverySlots,
             'deliveryAddress' => $deliveryAddress,
-            'cartItems' => [], // Empty for now, will be implemented in assignment 4
-            'cartTotal' => 0.00
+            'cartItems' => $cartService->getItems(),
+            'cartTotal' => $cartService->getTotals(),
+            'selectedSlotId' => session('selected_delivery_slot_id', null)
         ]);
     }
 
@@ -61,8 +57,6 @@ class CheckoutController extends Controller
             'delivery_slot_id' => 'required|exists:delivery_slots,id'
         ]);
 
-        // Store selected delivery slot in session for now
-        // In assignment 4, you'll probably store this in the cart or create an order
         session(['selected_delivery_slot_id' => $request->delivery_slot_id]);
 
         return redirect()->route('checkout.confirm')

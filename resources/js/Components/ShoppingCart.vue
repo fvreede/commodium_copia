@@ -1,3 +1,4 @@
+<!-- resources/js/Components/ShoppingCart.vue -->
 <template>
   <TransitionRoot as="template" :show="isOpen">
     <Dialog as="div" class="relative z-[200]" @close="$emit('close')">
@@ -208,6 +209,7 @@
                         type="button" 
                         :disabled="cartStore.sortedItems.length === 0 || hasOutOfStockItems"
                         class="w-full rounded-md border border-transparent bg-indigo-600 px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                        @click="router.visit('/checkout')"
                       >
                         <span v-if="hasOutOfStockItems">Controleer voorraad</span>
                         <span v-else>Bestelling afronden</span>
@@ -259,6 +261,7 @@ import {
   ArrowRightIcon
 } from '@heroicons/vue/24/outline';
 import { useCartStore } from '@/Stores/cart';
+import { router } from '@inertiajs/vue3';
 
 // Props
 defineProps({

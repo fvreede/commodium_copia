@@ -135,6 +135,29 @@
                                         </Link>
                                     </MenuItem>
                                 </template>
+                                
+                                <template v-else>
+                                    <!-- User info section -->
+                                    <div class="px-4 py-2 border-b border-gray-200">
+                                        <p class="text-sm font-medium text-gray-900">{{ user.name }}</p>
+                                        <p class="text-xs text-gray-500">{{ user.email }}</p>
+                                    </div>
+                                    <MenuItem v-slot="{ active }">
+                                        <Link :href="route('dashboard')" :class="[active ? 'bg-gray-500' : '', 'block px-4 py-2 text-sm text-black']">
+                                            Dashboard
+                                        </Link>
+                                    </MenuItem>
+                                    <MenuItem v-slot="{ active }">
+                                        <Link :href="route('profile.edit')" :class="[active ? 'bg-gray-500' : '', 'block px-4 py-2 text-sm text-black']">
+                                            Profiel Instellingen
+                                        </Link>
+                                    </MenuItem>
+                                    <MenuItem v-slot="{ active }">
+                                        <Link :href="route('logout')" method="post" :class="[active ? 'bg-gray-500' : '', 'block px-4 py-2 text-sm text-black']">
+                                            Uitloggen
+                                        </Link>
+                                    </MenuItem>
+                                </template>
                             </MenuItems>
                         </Transition>
                     </Menu>
@@ -205,6 +228,12 @@
 
     <!-- Winkelwagencomponent dat geopend kan worden en sluit door event -->
     <ShoppingCart :isOpen="isCartOpen" @close="closeCart"/>
+
+    <!-- Logout Success Modal -->
+    <LogoutSuccessModal 
+        :show="showLogoutModal" 
+        @close="closeLogoutModal" 
+    />
 </template>
 
 <script setup>
@@ -217,6 +246,7 @@ import NavLink from './NavLink.vue'
 import { usePage, Link, router } from '@inertiajs/vue3'
 import ApplicationLogo from './ApplicationLogo.vue'
 import axios from 'axios'
+import LogoutSuccessModal from '@/Components/LogoutSuccessModal.vue'
 
 // Navigatieopties, de actieve button en menu status
 const navigation = [
@@ -389,6 +419,19 @@ const isAuthenticated = computed(() => !!user.value);
 
 const canLogin = computed(() => usePage().props.auth.canLogin);
 const canRegister = computed(() => usePage().props.auth.canRegister);
+
+const showLogoutModal = ref(false)
+
+// Watch to detect logout success
+watch(() => usePage().props.flash, (flash) => {
+    if (flash && flash.logout.success) {
+        showLogoutModal.value = true
+    }
+}, { deep: true })
+
+const closeLogoutModal = () => {
+    showLogoutModal.value = false
+}
 </script>
 
 <style scoped>  

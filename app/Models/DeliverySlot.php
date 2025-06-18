@@ -25,4 +25,13 @@ class DeliverySlot extends Model
         // You can add logic here to check capacity, etc.
         return $this->date >= today();
     }
+
+    // Check if there's available slots on the given date
+    public function scopeAvailable($query)
+    {
+        return $query->where('date', '>=', now())
+        ->where('available_slots', '>', 0)
+        ->orderBy('date')
+        ->orderBy('start_time');
+    }
 }

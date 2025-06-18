@@ -1,0 +1,297 @@
+<!-- resources/js/Components/Checkout/OrderSummary.vue -->
+<template>
+    <div class="bg-white border rounded-lg shadow-sm">
+        <div class="p-6">
+            <h3 class="text-lg font-medium mb-6">Bestelling overzicht</h3>
+            
+            <!-- Empty cart state -->
+            <div v-if="cartItems.length === 0" class="text-center py-8">
+                <div class="text-gray-400 mb-4">
+                    <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.5 1.5M7 13l1.5 1.5M17 21a2 2 0 100-4 2 2 0 000 4zM9 21a2 2 0 100-4 2 2 0 000 4z"/>
+                    </svg>
+                </div>
+                <p class="text-gray-600">Je winkelwagen is leeg</p>
+                <router-link 
+                    to="/" 
+                    class="mt-4 inline-block px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
+                    Verder winkelen
+                </router-link>
+            </div>
+
+            <!-- Cart items -->
+            <div v-else>
+                <div class="space-y-4 mb-6">
+                    <div 
+                        v-for="item in cartItems" 
+                        :key="item.id || item.product_id"
+                        class="flex items-start space-x-4 py-4 border-b last:border-b-0"
+                    >
+                        <!-- Product image -->
+                        <div class="flex-shrink-0">
+                            <img 
+                                :src="item.image_path || '/images/placeholder.jpg'" 
+                                :alt="item.name"
+                                class="w-16 h-16 object-cover rounded-md border"
+                                @error="handleImageError"
+                            >
+                        </div>
+
+                        <!-- Product details -->
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-sm font-medium text-gray-900 mb-1">
+                                {{ item.name }}
+                            </h4>
+                            <p v-if="item.short_description" class="text-xs text-gray-500 mb-2">
+                                {{ item.short_description }}
+                            </p>
+                            
+                            <!-- Price and quantity info -->
+                            <div class="flex items-center justify-between">
+                                <div class="text-sm text-gray-600">
+                                    {{ item.quantity }}x à € {{ formatPrice(item.price) }}
+                                </div>
+                                <div class="text-sm font-medium text-gray-900">
+                                    € {{ formatPrice(item.line_total) }}
+                                </div>
+                            </div>
+
+                            <!-- Stock warning -->
+                            <div v-if="item.stock_quantity && item.quantity > item.stock_quantity" 
+                                 class="mt-2 text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
+                                ⚠️ Slechts {{ item.stock_quantity }} op voorraad
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Price breakdown -->
+                <div class="space-y-3 pt-4 border-t">
+                    <!-- Subtotal -->
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-600">
+                            Subtotaal ({{ totalItems }} {{ totalItems === 1 ? 'artikel' : 'artikelen' }}):
+                        </span>
+                        <span class="font-medium">€ {{ formatPrice(cartTotal) }}</span>
+                    </div>
+
+                    <!-- Delivery fee -->
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-600">Bezorgkosten:</span>
+                        <span class="font-medium">
+                            {{ deliveryFee > 0 ? `€ ${formatPrice(deliveryFee)}` : 'Nog te bepalen' }}
+                        </span>
+                    </div>
+
+                    <!-- Discount (if applicable) -->
+                    <div v-if="discount && discount > 0" class="flex justify-between text-sm text-green-600">
+                        <span>Korting:</span>
+                        <span>-€ {{ formatPrice(discount) }}</span>
+                    </div>
+
+                    <!-- Total -->
+                    <div class="flex justify-between text-lg font-semibold pt-3 border-t">
+                        <span>Totaal:</span>
+                        <span>€ {{ formatPrice(orderTotal) }}</span>
+                    </div>
+
+                    <!-- Savings info -->
+                    <div v-if="discount && discount > 0" class="text-center">
+                        <span class="inline-block px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">
+                            Je bespaart € {{ formatPrice(discount) }}!
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Delivery slot info -->
+                <div v-if="selectedSlotDetails" class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
+                    <div class="flex items-center">
+                        <svg class="h-5 w-5 text-blue-400 mr-3" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
+                        </svg>
+                        <div>
+                            <h4 class="text-sm font-medium text-blue-800">Bezorgmoment</h4>
+                            <p class="text-sm text-blue-700">
+                                {{ selectedSlotDetails.day_name }} {{ selectedSlotDetails.formatted_date }} 
+                                om {{ selectedSlotDetails.time_display }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Delivery address info -->
+                <div v-if="deliveryAddress" class="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-md">
+                    <div class="flex items-start">
+                        <svg class="h-5 w-5 text-gray-400 mr-3 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
+                        </svg>
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-700">Bezorgadres</h4>
+                            <p class="text-sm text-gray-600">
+                                {{ deliveryAddress.street }}<br>
+                                {{ deliveryAddress.postal_code }} {{ deliveryAddress.city }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action buttons for checkout page -->
+                <div v-if="showActions" class="mt-6 space-y-3">
+                    <!-- Continue to next step button -->
+                    <button 
+                        v-if="canProceed"
+                        @click="$emit('proceed')"
+                        class="w-full px-6 py-3 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 transition-colors"
+                    >
+                        Doorgaan naar bevestiging
+                    </button>
+                    
+                    <!-- Warning when can't proceed -->
+                    <div v-else class="text-center">
+                        <p class="text-sm text-gray-600 mb-3">
+                            {{ !selectedSlotDetails ? 'Selecteer eerst een bezorgmoment' : 'Controleer je bestelling' }}
+                        </p>
+                    </div>
+
+                    <!-- Back to cart button -->
+                    <button 
+                        @click="$emit('back-to-cart')"
+                        class="w-full px-6 py-3 bg-white border border-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-50 transition-colors"
+                    >
+                        Terug naar winkelwagen
+                    </button>
+                </div>
+
+                <!-- Order notes input (for confirmation page) -->
+                <div v-if="showOrderNotes" class="mt-6">
+                    <label for="order-notes" class="block text-sm font-medium text-gray-700 mb-2">
+                        Opmerkingen voor uw bestelling (optioneel)
+                    </label>
+                    <textarea
+                        id="order-notes"
+                        :value="orderNotes"
+                        @input="$emit('update:order-notes', $event.target.value)"
+                        rows="3"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Bijv. bel aan bij de achterdeur, laat pakket bij de buren, etc."
+                        maxlength="500"
+                    ></textarea>
+                    <p class="mt-1 text-xs text-gray-500">
+                        {{ orderNotes?.length || 0 }}/500 karakters
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script setup>
+import { computed } from 'vue';
+
+// Props
+const props = defineProps({
+    cartItems: {
+        type: Array,
+        default: () => []
+    },
+    cartTotal: {
+        type: Number,
+        default: 0
+    },
+    deliveryFee: {
+        type: Number,
+        default: 0
+    },
+    discount: {
+        type: Number,
+        default: 0
+    },
+    selectedSlotDetails: {
+        type: Object,
+        default: null
+    },
+    deliveryAddress: {
+        type: Object,
+        default: null
+    },
+    showActions: {
+        type: Boolean,
+        default: false
+    },
+    showOrderNotes: {
+        type: Boolean,
+        default: false
+    },
+    orderNotes: {
+        type: String,
+        default: ''
+    }
+});
+
+// Emits
+const emit = defineEmits([
+    'proceed', 
+    'back-to-cart', 
+    'update:order-notes'
+]);
+
+// Computed properties
+const totalItems = computed(() => {
+    return props.cartItems.reduce((total, item) => total + item.quantity, 0);
+});
+
+const orderTotal = computed(() => {
+    return props.cartTotal + props.deliveryFee - (props.discount || 0);
+});
+
+const canProceed = computed(() => {
+    return props.cartItems.length > 0 && props.selectedSlotDetails;
+});
+
+// Methods
+const formatPrice = (price) => {
+    return Number(price).toFixed(2);
+};
+
+const handleImageError = (event) => {
+    event.target.src = '/images/placeholder.jpg';
+};
+</script>
+
+<style scoped>
+/* Ensure proper spacing and responsive design */
+@media (max-width: 640px) {
+    .space-y-4 > * + * {
+        margin-top: 1rem;
+    }
+    
+    .flex.items-start.space-x-4 {
+        flex-direction: column;
+        space-x: 0;
+    }
+    
+    .flex.items-start.space-x-4 > * + * {
+        margin-left: 0;
+        margin-top: 0.75rem;
+    }
+    
+    .w-16.h-16 {
+        width: 3rem;
+        height: 3rem;
+    }
+}
+
+/* Custom focus styles for better accessibility */
+button:focus,
+textarea:focus {
+    outline: 2px solid #3B82F6;
+    outline-offset: 2px;
+}
+
+/* Smooth transitions for interactive elements */
+button,
+.transition-colors {
+    transition: all 0.2s ease-in-out;
+}
+</style>

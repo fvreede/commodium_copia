@@ -59,6 +59,28 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerateToken();
 
-        return redirect('/login');
+        return redirect('/')->with('logout_success', true);
+    }
+
+    /**
+     * Show session expired page
+     */
+    public function sessionExpired(): Response
+    {
+        return Inertia::render('Auth/SessionExpired');
+    }
+
+    /**
+     * Handle session expiry redirect
+     */
+    public function handleSessionExpiry(Request $request): RedirectResponse
+    {
+        // Clear any existing session data
+        Auth::guard('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        // Redirect to session expired page
+        return redirect()->route('session.expired');
     }
 }

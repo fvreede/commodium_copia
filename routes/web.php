@@ -20,6 +20,7 @@ use App\Http\Controllers\Editor\BannerController;
 use App\Http\Controllers\EditorController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\SessionExpiredController;
 
 use App\Http\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
@@ -161,19 +162,6 @@ Route::get('/dashboard', function () {
     abort(403, 'Je hebt geen toegang tot dit dashboard.');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-/*
-Route::get('/checkout', function (){
-
-    /*
-    $user = auth()->user();
-    if (!$user->isCustomer()) {
-        abort(403, 'Je hebt geen toegang tot deze pagina.');
-    }
-    
-
-    return Inertia::render('Checkout');
-});
-*/
 
 Route::get('/checkout', [CheckoutController::class, 'index'])
     ->name('checkout.index');
@@ -181,6 +169,13 @@ Route::get('/checkout', [CheckoutController::class, 'index'])
 Route::post('/checkout/select-slot', [CheckoutController::class, 'selectDeliverySlot'])
     ->middleware('auth')
     ->name('checkout.select-slot');
+
+Route::get('/checkout/confirm', [CheckoutController::class, 'confirm'])
+    ->middleware('auth')
+    ->name('checkout.confirm');
+
+Route::get('/session-expired', [SessionExpiredController::class, 'show'])->name('session.expired');
+Route::post('/session-expired', [SessionExpiredController::class, 'handle'])->name('session.expiry.handle');
  
 // Cart routes - accessible to both guests and authenticated users
 Route::prefix('cart')->name('cart.')->group(function () {

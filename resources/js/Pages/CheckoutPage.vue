@@ -1,13 +1,15 @@
+<!-- resources/js/Pages/CheckoutPage.vue -->
 <script setup>
 import NavBar from '@/Components/NavBar.vue';
 import Footer from '@/Components/Footer.vue';
 import { router } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
+import axios from 'axios'
 
 // Props passed from Laravel
 const props = defineProps({
     deliverySlots: Array,
-    deliveryAddress: Object,
+    deliveryAddress: Object, // This can be null/undefined
     cartItems: Array,
     cartTotal: Number,
     selectedSlotId: Number
@@ -47,7 +49,15 @@ const orderTotal = computed(() => {
 
 // Check if user can proceed to next step
 const canProceed = computed(() => {
-    return props.cartItems.length > 0 && selectedSlot.value;
+    return props.cartItems.length > 0 && selectedSlot.value && hasValidAddress.value;
+});
+
+// Check if user has a valid delivery address
+const hasValidAddress = computed(() => {
+    return props.deliveryAddress && 
+           props.deliveryAddress.street && 
+           props.deliveryAddress.postal_code && 
+           props.deliveryAddress.city;
 });
 
 // Select delivery slot
@@ -57,17 +67,16 @@ const selectDeliverySlot = async (slotId) => {
     isSelectingSlot.value = true;
     
     try {
-        await router.post('/checkout/select-slot', {
+        const response = await axios.post('/checkout/select-slot', {
             delivery_slot_id: slotId
-        }, {
-            preserveState: true,
-            onSuccess: () => {
-                selectedSlot.value = slotId;
-            },
-            onError: (errors) => {
-                console.error('Error selecting slot:', errors);
-            }
         });
+        
+        selectedSlot.value = slotId;
+        // Optionally show success message
+        
+    } catch (error) {
+        console.error('Error selecting slot:', error);
+        // Handle error appropriately
     } finally {
         isSelectingSlot.value = false;
     }
@@ -80,10 +89,22 @@ const proceedToConfirmation = () => {
     router.get('/checkout/confirm');
 };
 
-// Format address for display
+// Format address for display - SAFE VERSION
 const formatAddress = () => {
+    if (!hasValidAddress.value) {
+        return 'Geen adres ingesteld';
+    }
+    
     const addr = props.deliveryAddress;
-    return `${addr.street}, ${addr.postal_code} ${addr.city}`;
+    let formatted = addr.street;
+    
+    if (addr.house_number) {
+        formatted += ` ${addr.house_number}`;
+    }
+    
+    formatted += `, ${addr.postal_code} ${addr.city}`;
+    
+    return formatted;
 };
 
 // Get selected slot details for display
@@ -159,8 +180,28 @@ const selectedSlotDetails = computed(() => {
                     </div>
                 </div>
 
+                <!-- Alert if no delivery address -->
+                <div v-if="cartItems.length > 0 && !hasValidAddress" class="mt-8 bg-red-50 border border-red-200 rounded-md p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-red-800">Geen bezorgadres ingesteld</h3>
+                            <p class="mt-1 text-sm text-red-700">Stel eerst een bezorgadres in om verder te kunnen gaan met bestellen.</p>
+                            <div class="mt-2">
+                                <button class="px-4 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors">
+                                    Adres instellen
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Date Selection -->
-                <div v-if="cartItems.length > 0" class="mt-8">
+                <div v-if="cartItems.length > 0 && hasValidAddress" class="mt-8">
                     <h3 class="text-lg font-medium mb-4">Kies een bezorgdag</h3>
                     <div class="grid grid-cols-7 gap-0 border rounded overflow-hidden">
                         <button 
@@ -179,7 +220,7 @@ const selectedSlotDetails = computed(() => {
                 </div>
 
                 <!-- Delivery Slots -->
-                <div v-if="cartItems.length > 0" class="mt-8">
+                <div v-if="cartItems.length > 0 && hasValidAddress" class="mt-8">
                     <div class="bg-white border rounded p-6">
                         <h3 v-if="selectedDay" class="text-lg font-medium mb-6">
                             Bezorgmomenten voor {{ deliverySlots.find(d => d.date === selectedDay)?.day_name }} {{ deliverySlots.find(d => d.date === selectedDay)?.formatted_date }}
@@ -243,12 +284,15 @@ const selectedSlotDetails = computed(() => {
                         <h3 class="text-lg font-medium mb-4">Bezorgadres</h3>
                         <div class="flex items-start justify-between">
                             <div class="flex-1">
-                                <div class="p-4 bg-gray-50 border rounded">
+                                <div v-if="hasValidAddress" class="p-4 bg-gray-50 border rounded">
                                     <div class="text-sm text-gray-700">{{ formatAddress() }}</div>
+                                </div>
+                                <div v-else class="p-4 bg-red-50 border border-red-200 rounded">
+                                    <div class="text-sm text-red-700">{{ formatAddress() }}</div>
                                 </div>
                             </div>
                             <button class="ml-4 px-6 py-2 bg-white border text-sm hover:bg-gray-50 rounded transition-colors">
-                                Wijzigen
+                                {{ hasValidAddress ? 'Wijzigen' : 'Instellen' }}
                             </button>
                         </div>
                     </div>
@@ -324,9 +368,10 @@ const selectedSlotDetails = computed(() => {
                 </div>
 
                 <!-- Help Text -->
-                <div v-if="cartItems.length > 0 && !selectedSlot" class="mt-6 text-center">
+                <div v-if="cartItems.length > 0 && !canProceed" class="mt-6 text-center">
                     <p class="text-sm text-gray-600">
-                        Selecteer een bezorgmoment om verder te gaan
+                        <span v-if="!hasValidAddress">Stel eerst een bezorgadres in en </span>
+                        <span v-if="!selectedSlot">selecteer een bezorgmoment om verder te gaan</span>
                     </p>
                 </div>
             </div>

@@ -25,6 +25,8 @@ use App\Http\Controllers\SessionExpiredController;
 use App\Http\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 Route::get('/', function () {
     $products = Product::with(['subcategory.category'])
@@ -163,7 +165,7 @@ Route::get('/dashboard', function () {
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 
-Route::get('/checkout', [CheckoutController::class, 'index'])
+/* Route::get('/checkout', [CheckoutController::class, 'index'])
     ->name('checkout.index');
 
 Route::post('/checkout/select-slot', [CheckoutController::class, 'selectDeliverySlot'])
@@ -173,9 +175,36 @@ Route::post('/checkout/select-slot', [CheckoutController::class, 'selectDelivery
 Route::get('/checkout/confirm', [CheckoutController::class, 'confirm'])
     ->middleware('auth')
     ->name('checkout.confirm');
+ */
 
+// Checkout routes - accessible only to authenticated users
+Route::middleware(['auth'])->prefix('checkout')->name('checkout.')->group(function () {
+    Route::get('/', [CheckoutController::class, 'index'])->name('index');
+    Route::post('/select-slot', [CheckoutController::class, 'selectDeliverySlot'])->name('select-slot');
+    Route::get('/confirm', [CheckoutController::class, 'confirm'])->name('confirm');
+    Route::post('/', [CheckoutController::class, 'store'])->name('store'); // Add this if you have a store method
+});
+
+// Session expired routes
 Route::get('/session-expired', [SessionExpiredController::class, 'show'])->name('session.expired');
 Route::post('/session-expired', [SessionExpiredController::class, 'handle'])->name('session.expiry.handle');
+
+// Add API endpoint for session check
+Route::get('/api/session-check', function(Request $request) {
+    return response()->json([
+        'authenticated' => Auth::check(),
+        'expires_at' => session()->has('login.web') ? session('login.web') : null,
+        'time_remaining' => Auth::check() ? (config('session.lifetime') * 60) - (time() - session()->get('_token_time', time())) : 0
+    ]);
+})->name('api.session.check');
+
+Route::post('/refresh-session', function(Request $request) {
+    if (Auth::check()) {
+        $request->session()->regenerate();
+        return response()->json(['success' => true]);
+    }
+    return response()->json(['success' => false], 401);
+})->middleware(['auth'])->name('session.refresh');
  
 // Cart routes - accessible to both guests and authenticated users
 Route::prefix('cart')->name('cart.')->group(function () {

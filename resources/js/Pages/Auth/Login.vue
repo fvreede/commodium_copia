@@ -7,7 +7,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/vue/24/outline';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 
 defineProps({
     canResetPassword: {
@@ -25,7 +25,14 @@ const form = useForm({
 });
 
 const submit = () => {
+    // Add return_to parameter if it exists
+    const data = {...form.data() };
+    if (returnTo.value) {
+        data.return_to = returnTo.value;
+    }
+
     form.post(route('login'), {
+        data: data,
         onFinish: () => form.reset('password'),
     });
 };
@@ -36,6 +43,11 @@ const passwordVisible = ref(false);
 const togglePasswordVisibility = () => {
     passwordVisible.value = !passwordVisible.value;
 }
+
+const returnTo = computed(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('returnTo');
+});
 </script>
 
 <template>

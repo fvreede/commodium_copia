@@ -16,11 +16,13 @@ class AuthenticatedSessionController extends Controller
     /**
      * Display the login view.
      */
-    public function create(): Response
+    public function create(Request $request): Response
     {
         return Inertia::render('Auth/Login', [
             'canResetPassword' => Route::has('password.request'),
             'status' => session('status'),
+            'intendedUrl' => session('url.intended'),
+            'returnTo' => $request->query('return_to'),
         ]);
     }
 
@@ -44,6 +46,20 @@ class AuthenticatedSessionController extends Controller
             return redirect(route('admin.dashboard'));
         }
 
+        // Check for return_to parameter first
+        if ($request->has('return_to')) {
+            $returnTo = $request->input('return_to');
+            if ($returnTo === 'checkout') {
+                return redirect()->route('checkout.index');
+            }
+        }
+
+        // Check for intended URL
+        if (session()->has('url.intended')) {
+            $intended = session()->pull('url.intended');
+            return redirect($intended);
+        }
+        
         // Redirect to dashboard if not admin
         return redirect(route('dashboard'));
     }

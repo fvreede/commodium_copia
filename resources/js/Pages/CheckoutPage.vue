@@ -3,16 +3,31 @@
 import NavBar from '@/Components/NavBar.vue';
 import Footer from '@/Components/Footer.vue';
 import { router } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import axios from 'axios'
 
 // Props passed from Laravel
 const props = defineProps({
-    deliverySlots: Array,
-    deliveryAddress: Object, // This can be null/undefined
-    cartItems: Array,
-    cartTotal: Number,
-    selectedSlotId: Number
+    deliverySlots: {
+        type: Array,
+        default: () => []
+    },
+    deliveryAddress: {
+        type: Object,
+        default: null
+    },
+    cartItems: {
+        type: Array,
+        default: () => []
+    },
+    cartTotal: {
+        type: Number,
+        default: 0
+    },
+    selectedSlotId: {
+        type: Number,
+        default: null
+    }
 });
 
 // Reactive state
@@ -31,20 +46,24 @@ const getSlotsForDay = (date) => {
     return day ? day.slots : [];
 };
 
-// Calculate delivery fee based on selected slot
+// Calculate delivery fee based on selected slot - FIXED
 const deliveryFee = computed(() => {
     if (!selectedSlot.value) return 0;
     
     for (const day of props.deliverySlots) {
         const slot = day.slots.find(s => s.id === selectedSlot.value);
-        if (slot) return slot.price;
+        if (slot && slot.price !== undefined && slot.price !== null) {
+            return parseFloat(slot.price);
+        }
     }
     return 0;
 });
 
-// Calculate total order amount
+// Calculate total order amount - FIXED
 const orderTotal = computed(() => {
-    return props.cartTotal + deliveryFee.value;
+    const cartTotal = parseFloat(props.cartTotal) || 0;
+    const delFee = parseFloat(deliveryFee.value) || 0;
+    return cartTotal + delFee;
 });
 
 // Check if user can proceed to next step
@@ -107,7 +126,7 @@ const formatAddress = () => {
     return formatted;
 };
 
-// Get selected slot details for display
+// Get selected slot details for display - FIXED
 const selectedSlotDetails = computed(() => {
     if (!selectedSlot.value) return null;
     
@@ -116,12 +135,106 @@ const selectedSlotDetails = computed(() => {
         if (slot) {
             return {
                 ...slot,
+                price: parseFloat(slot.price) || 0, // Ensure price is always a number
                 day_name: day.day_name,
                 formatted_date: day.formatted_date
             };
         }
     }
     return null;
+});
+
+// Helper function to safely format price
+const formatPrice = (price) => {
+    const numPrice = parseFloat(price);
+    return isNaN(numPrice) ? '0.00' : numPrice.toFixed(2);
+};
+
+// Helper function to safely format line total
+const formatLineTotal = (item) => {
+    if (!item || !item.line_total) return '0.00';
+    const total = parseFloat(item.line_total);
+    return isNaN(total) ? '0.00' : total.toFixed(2);
+};
+
+const showSessionModal = ref(false);
+const sessionWarningShown = ref(false);
+let sessionCheckInterval = null;
+let sessionWarningTimeout = null;
+
+// Session management methods
+const checkSession = async () => {
+    try {
+        const response = await axios.get('/api/session-check');
+        const { authenticated, time_remaining } = response.data;
+
+        if (!authenticated) {
+            showSessionExpiredModal();
+            return;
+        }
+
+        // Show warning at 5 minutes remaining
+        if (time_remaining <= 300 && !sessionWarningShown.value) {
+            showSessionWarning();
+        }
+    } catch (error) {
+        console.error('Error checking session:', error);
+    }
+};
+
+const showSessionExpiredModal = () => {
+    showSessionModal.value = true;
+    // Clean any exisiting intervals
+    if (sessionCheckInterval) {
+        clearInterval(sessionCheckInterval);
+    }
+};
+
+
+TODO: "Create a toast warning for session expiration"
+const showSessionWarning = () => {
+    sessionWarningShown.value = true;
+    // You can implement a toast notificaation here.
+    console.log('Session expires in 5 minutes');
+    // Example: toast.warning('Je sessie verloopt over 5 minuten');
+};
+
+const handleSessionExpiredAction = (action) => {
+    if (action === 'login') {
+        // Redirect to login with return_to parameter
+        window.location.href = route('login') + '?return_to=checkout';
+    } else if (action === 'continue') {
+        showSessionModal.value = false;
+        // Continue as guest - maybe redirect to categories
+        router.get('/categories');
+    }
+};
+
+const refreshSession = async () => {
+    try {
+        await axios.post('/refresh-session');
+        sessionWarningShown.value = false;
+        console.log('Session refreshed');
+    } catch (error) {
+        console.error('Failed to refresh session:', error);
+    }
+};
+
+// Lifecycle hooks
+onMounted(() => {
+    // Check session every 2 minutes
+    sessionCheckInterval = setInterval(checkSession, 120000);
+    // Initial check
+    checkSession();
+});
+
+onUnmounted(() => {
+    if (sessionCheckInterval) {
+        clearInterval(sessionCheckInterval);
+    }
+    if (sessionWarningTimeout) {
+        clearTimeout(sessionWarningTimeout);
+    }
 });
 </script>
 
@@ -236,7 +349,8 @@ const selectedSlotDetails = computed(() => {
                                     <span class="text-sm font-medium">{{ slot.time_display }}</span>
                                 </div>
                                 <div class="flex items-center space-x-4">
-                                    <span class="text-sm font-medium">€ {{ slot.price.toFixed(2) }}</span>
+                                    <!-- FIXED: Use helper function for safe price formatting -->
+                                    <span class="text-sm font-medium">€ {{ formatPrice(slot.price) }}</span>
                                     <button 
                                         @click="selectDeliverySlot(slot.id)"
                                         :disabled="isSelectingSlot"
@@ -271,7 +385,7 @@ const selectedSlotDetails = computed(() => {
                                 <h4 class="text-sm font-medium text-green-800">Bezorgmoment geselecteerd</h4>
                                 <p class="text-sm text-green-700">
                                     {{ selectedSlotDetails.day_name }} {{ selectedSlotDetails.formatted_date }} om {{ selectedSlotDetails.time_display }}
-                                    (€ {{ selectedSlotDetails.price.toFixed(2) }})
+                                    (€ {{ formatPrice(selectedSlotDetails.price) }})
                                 </p>
                             </div>
                         </div>
@@ -322,7 +436,8 @@ const selectedSlotDetails = computed(() => {
                                         <p class="text-xs text-gray-500">{{ item.quantity }}x</p>
                                     </div>
                                 </div>
-                                <span class="text-sm font-medium">€ {{ item.line_total.toFixed(2) }}</span>
+                                <!-- FIXED: Use helper function for safe line total formatting -->
+                                <span class="text-sm font-medium">€ {{ formatLineTotal(item) }}</span>
                             </div>
                         </div>
 
@@ -330,15 +445,18 @@ const selectedSlotDetails = computed(() => {
                         <div class="space-y-2 border-t pt-4">
                             <div class="flex justify-between text-sm">
                                 <span>Subtotaal ({{ cartItems.length }} artikel{{ cartItems.length > 1 ? 'en' : '' }}):</span>
-                                <span>€ {{ cartTotal.toFixed(2) }}</span>
+                                <!-- FIXED: Use helper function for safe price formatting -->
+                                <span>€ {{ formatPrice(cartTotal) }}</span>
                             </div>
                             <div class="flex justify-between text-sm">
                                 <span>Bezorgkosten:</span>
-                                <span>€ {{ deliveryFee.toFixed(2) }}</span>
+                                <!-- FIXED: Use computed value which is already safe -->
+                                <span>€ {{ formatPrice(deliveryFee) }}</span>
                             </div>
                             <div class="flex justify-between text-lg font-semibold border-t pt-2">
                                 <span>Totaal:</span>
-                                <span>€ {{ orderTotal.toFixed(2) }}</span>
+                                <!-- FIXED: Use computed value which is already safe -->
+                                <span>€ {{ formatPrice(orderTotal) }}</span>
                             </div>
                         </div>
                     </div>
@@ -380,6 +498,51 @@ const selectedSlotDetails = computed(() => {
 
     <!-- Footer -->
     <Footer />
+
+    <!-- Session Expired Modal -->
+    <div v-if="showSessionModal" class="fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <!-- Background overlay -->
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+            
+            <!-- Modal panel -->
+            <div class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+                <div class="sm:flex sm:items-start">
+                    <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 sm:mx-0 sm:h-10 sm:w-10">
+                        <svg class="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                        </svg>
+                    </div>
+                    <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900">
+                            Je sessie is verlopen
+                        </h3>
+                        <div class="mt-2">
+                            <p class="text-sm text-gray-500">
+                                Je bent automatisch uitgelogd voor je veiligheid. Je winkelwagen is bewaard. Wil je opnieuw inloggen of verdergaan als gast?
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse space-y-2 sm:space-y-0 sm:space-x-reverse sm:space-x-3">
+                    <button 
+                        @click="handleSessionExpiredAction('login')"
+                        type="button" 
+                        class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm"
+                    >
+                        Opnieuw inloggen
+                    </button>
+                    <button 
+                        @click="handleSessionExpiredAction('continue')"
+                        type="button" 
+                        class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:mt-0 sm:w-auto sm:text-sm"
+                    >
+                        Verder als gast
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </template>
 
 <style scoped>

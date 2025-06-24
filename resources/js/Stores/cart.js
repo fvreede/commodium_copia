@@ -1,4 +1,4 @@
-// @/Stores/cart.js - Fixed version
+// @/Stores/cart.js - Complete fixed version
 import { defineStore } from 'pinia'
 import axios from 'axios'
 
@@ -15,7 +15,10 @@ export const useCartStore = defineStore('cart', {
         sortDirection: 'asc',
         isLoading: false,
         lastError: null,
-        lastUpdated: null
+        lastUpdated: null,
+        pendingUpdates: new Set(), // Track pending API calls
+        updateQueue: new Map(), // Queue voor pending updates
+        lastUpdateTime: new Map(), // Track laatste update tijd per product
     }),
 
     getters: {
@@ -141,6 +144,267 @@ export const useCartStore = defineStore('cart', {
             return `/storage/${imagePath}`;
         },
 
+        // OPTIMISTIC UPDATE with anti-spam protection
+        async updateQuantityOptimistic(product, newQuantity) {
+            try {
+                this.lastError = null;
+                
+                if (!product || !product.product_id) {
+                    throw new Error('Invalid product data for update');
+                }
+
+                const quantity = parseInt(newQuantity);
+                if (isNaN(quantity) || quantity < 0) {
+                    throw new Error('Invalid quantity');
+                }
+
+                // Check stock limits
+                if (product.stock_quantity !== undefined && quantity > product.stock_quantity) {
+                    return { 
+                        success: false, 
+                        message: `Maximaal ${product.stock_quantity} stuks beschikbaar` 
+                    };
+                }
+
+                // Remove item if quantity is 0
+                if (quantity === 0) {
+                    return await this.removeFromCartOptimistic(product);
+                }
+
+                const productId = product.product_id;
+                const now = Date.now();
+                
+                // DEBOUNCE: Prevent spam clicking
+                const lastUpdate = this.lastUpdateTime.get(productId) || 0;
+                if (now - lastUpdate < 200) { // 200ms debounce
+                    console.log('Debouncing rapid clicks for product:', productId);
+                    
+                    // Queue the update instead of ignoring it
+                    this.updateQueue.set(productId, {
+                        product,
+                        quantity,
+                        timestamp: now
+                    });
+                    
+                    // Process queue after delay
+                    setTimeout(() => this.processQueuedUpdate(productId), 250);
+                    
+                    return { success: true, message: 'Update in behandeling...' };
+                }
+                
+                this.lastUpdateTime.set(productId, now);
+                
+                // Check if there's already a pending update for this product
+                if (this.pendingUpdates.has(productId)) {
+                    console.log('Update already pending for product:', productId);
+                    
+                    // Update the queued request
+                    this.updateQueue.set(productId, {
+                        product,
+                        quantity,
+                        timestamp: now
+                    });
+                    
+                    return { success: true, message: 'Update wordt verwerkt...' };
+                }
+
+                return await this.executeQuantityUpdate(product, quantity);
+                
+            } catch (error) {
+                console.error('Error in updateQuantityOptimistic:', error);
+                this.lastError = error.response?.data?.message || 'Failed to update quantity';
+                return { success: false, message: 'Kon aantal niet bijwerken' };
+            }
+        },
+
+        // Process queued updates
+        async processQueuedUpdate(productId) {
+            const queuedUpdate = this.updateQueue.get(productId);
+            if (!queuedUpdate) return;
+            
+            // Remove from queue
+            this.updateQueue.delete(productId);
+            
+            // Only process if not currently updating
+            if (!this.pendingUpdates.has(productId)) {
+                await this.executeQuantityUpdate(queuedUpdate.product, queuedUpdate.quantity);
+            }
+        },
+
+        // Actual update execution
+        async executeQuantityUpdate(product, quantity) {
+            const productId = product.product_id;
+            
+            try {
+                // Mark as pending
+                this.pendingUpdates.add(productId);
+
+                // 1. Update UI immediately (optimistic)
+                const itemIndex = this.items.findIndex(item => item.product_id === productId);
+                if (itemIndex !== -1) {
+                    const oldQuantity = this.items[itemIndex].quantity;
+                    const priceDiff = (quantity - oldQuantity) * this.items[itemIndex].price;
+                    
+                    // Update item
+                    this.items[itemIndex].quantity = quantity;
+                    this.items[itemIndex].line_total = quantity * this.items[itemIndex].price;
+                    
+                    // Update totals
+                    this.totals.total_items = this.totals.total_items - oldQuantity + quantity;
+                    this.totals.subtotal = Math.max(0, (this.totals.subtotal || 0) + priceDiff);
+                    this.totals.total = Math.max(0, (this.totals.total || 0) + priceDiff);
+                }
+
+                // 2. Sync with server
+                const response = await axios.patch(`/cart/${productId}`, {
+                    quantity: quantity
+                });
+                
+                // Update with server totals (more accurate)
+                if (response.data.totals) {
+                    this.totals = response.data.totals;
+                }
+                
+                // Optional: Refresh cart data occasionally for integrity
+                if (Math.random() < 0.05) { // 5% chance
+                    setTimeout(() => this.loadCart(true), 1000);
+                }
+                
+                return { 
+                    success: true, 
+                    message: response.data.message || 'Aantal bijgewerkt' 
+                };
+                
+            } catch (error) {
+                console.error('API error during update:', error);
+                
+                // Revert optimistic changes
+                await this.loadCart(true);
+                
+                throw error;
+                
+            } finally {
+                this.pendingUpdates.delete(productId);
+                this.lastUpdateTime.set(productId, Date.now());
+            }
+        },
+
+        async removeFromCartOptimistic(product) {
+            try {
+                this.lastError = null;
+                
+                if (!product || !product.product_id) {
+                    throw new Error('Invalid product data for removal');
+                }
+
+                const productId = product.product_id;
+                this.pendingUpdates.add(productId);
+
+                // 1. FIRST: Remove from UI optimistically
+                const itemIndex = this.items.findIndex(item => item.product_id === productId);
+                if (itemIndex !== -1) {
+                    const removedItem = this.items[itemIndex];
+                    
+                    // Remove item from array
+                    this.items.splice(itemIndex, 1);
+                    
+                    // Update totals
+                    this.totals.total_items -= removedItem.quantity;
+                    this.totals.subtotal -= (removedItem.price * removedItem.quantity);
+                    this.totals.total -= (removedItem.price * removedItem.quantity);
+                    this.totals.items_count = this.items.length;
+                }
+
+                // 2. THEN: Sync with server
+                try {
+                    const response = await axios.delete(`/cart/${productId}`);
+                    
+                    if (response.data.totals) {
+                        this.totals = response.data.totals;
+                    }
+                    
+                    return { 
+                        success: true, 
+                        message: response.data.message || 'Product verwijderd uit winkelwagen' 
+                    };
+                    
+                } catch (apiError) {
+                    console.error('API error, reverting removal:', apiError);
+                    
+                    // Revert by reloading cart
+                    await this.loadCart(true);
+                    throw apiError;
+                }
+                
+            } catch (error) {
+                console.error('Error removing from cart:', error);
+                this.lastError = error.response?.data?.message || 'Failed to remove item from cart';
+                
+                const message = error.response?.data?.message || 'Kon product niet verwijderen uit winkelwagen';
+                return { success: false, message };
+                
+            } finally {
+                this.pendingUpdates.delete(product.product_id);
+            }
+        },
+
+        // Improved increment with anti-spam
+        async incrementQuantity(product) {
+            if (!product) {
+                return { success: false, message: 'Invalid product' };
+            }
+
+            const currentQuantity = parseInt(product.quantity) || 0;
+            const stockQuantity = parseInt(product.stock_quantity) || 999;
+            
+            if (currentQuantity >= stockQuantity) {
+                return { 
+                    success: false, 
+                    message: `Maximaal ${stockQuantity} stuks beschikbaar` 
+                };
+            }
+
+            // Prevent rapid fire clicks
+            const productId = product.product_id;
+            const now = Date.now();
+            const lastClick = this.lastUpdateTime.get(`click_${productId}`) || 0;
+            
+            if (now - lastClick < 100) { // 100ms anti-spam
+                console.log('Too fast clicking detected, ignoring');
+                return { success: true, message: 'Te snel geklikt, even wachten...' };
+            }
+            
+            this.lastUpdateTime.set(`click_${productId}`, now);
+            
+            return await this.updateQuantityOptimistic(product, currentQuantity + 1);
+        },
+
+        async decrementQuantity(product) {
+            if (!product) {
+                return { success: false, message: 'Invalid product' };
+            }
+
+            const currentQuantity = parseInt(product.quantity) || 0;
+            
+            // Prevent rapid fire clicks
+            const productId = product.product_id;
+            const now = Date.now();
+            const lastClick = this.lastUpdateTime.get(`click_${productId}`) || 0;
+            
+            if (now - lastClick < 100) { // 100ms anti-spam
+                console.log('Too fast clicking detected, ignoring');
+                return { success: true, message: 'Te snel geklikt, even wachten...' };
+            }
+            
+            this.lastUpdateTime.set(`click_${productId}`, now);
+            
+            if (currentQuantity <= 1) {
+                return await this.removeFromCartOptimistic(product);
+            }
+            
+            return await this.updateQuantityOptimistic(product, currentQuantity - 1);
+        },
+
         async addToCart(product) {
             try {
                 this.lastError = null;
@@ -165,7 +429,7 @@ export const useCartStore = defineStore('cart', {
                     this.totals = response.data.totals;
                 }
                 
-                // Force reload to ensure consistency
+                // Only refresh cart for add operations to ensure consistency
                 await this.loadCart(true);
                 
                 return { 
@@ -180,118 +444,6 @@ export const useCartStore = defineStore('cart', {
                 const message = error.response?.data?.message || error.message || 'Kon product niet toevoegen aan winkelwagen';
                 return { success: false, message };
             }
-        },
-
-        async removeFromCart(product) {
-            try {
-                this.lastError = null;
-                
-                if (!product || !product.product_id) {
-                    throw new Error('Invalid product data for removal');
-                }
-
-                const response = await axios.delete(`/cart/${product.product_id}`);
-                
-                if (response.data.totals) {
-                    this.totals = response.data.totals;
-                }
-                
-                // Force reload to ensure consistency
-                await this.loadCart(true);
-                
-                return { 
-                    success: true, 
-                    message: response.data.message || 'Product verwijderd uit winkelwagen' 
-                };
-                
-            } catch (error) {
-                console.error('Error removing from cart:', error);
-                this.lastError = error.response?.data?.message || 'Failed to remove item from cart';
-                
-                const message = error.response?.data?.message || 'Kon product niet verwijderen uit winkelwagen';
-                return { success: false, message };
-            }
-        },
-
-        async updateQuantity(product, quantity) {
-            try {
-                this.lastError = null;
-                
-                if (!product || !product.product_id) {
-                    throw new Error('Invalid product data for update');
-                }
-
-                const newQuantity = parseInt(quantity);
-                if (isNaN(newQuantity) || newQuantity < 0) {
-                    throw new Error('Invalid quantity');
-                }
-
-                if (product.stock_quantity !== undefined && newQuantity > product.stock_quantity) {
-                    return { 
-                        success: false, 
-                        message: `Maximaal ${product.stock_quantity} stuks beschikbaar` 
-                    };
-                }
-
-                if (newQuantity === 0) {
-                    return await this.removeFromCart(product);
-                }
-
-                const response = await axios.patch(`/cart/${product.product_id}`, {
-                    quantity: newQuantity
-                });
-                
-                if (response.data.totals) {
-                    this.totals = response.data.totals;
-                }
-                
-                // Force reload to ensure consistency
-                await this.loadCart(true);
-                
-                return { 
-                    success: true, 
-                    message: response.data.message || 'Aantal bijgewerkt' 
-                };
-                
-            } catch (error) {
-                console.error('Error updating quantity:', error);
-                this.lastError = error.response?.data?.message || 'Failed to update quantity';
-                
-                const message = error.response?.data?.message || 'Kon aantal niet bijwerken';
-                return { success: false, message };
-            }
-        },
-
-        async incrementQuantity(product) {
-            if (!product) {
-                return { success: false, message: 'Invalid product' };
-            }
-
-            const currentQuantity = parseInt(product.quantity) || 0;
-            const stockQuantity = parseInt(product.stock_quantity) || 999;
-            
-            if (currentQuantity >= stockQuantity) {
-                return { 
-                    success: false, 
-                    message: `Maximaal ${stockQuantity} stuks beschikbaar` 
-                };
-            }
-
-            return await this.updateQuantity(product, currentQuantity + 1);
-        },
-
-        async decrementQuantity(product) {
-            if (!product) {
-                return { success: false, message: 'Invalid product' };
-            }
-
-            const currentQuantity = parseInt(product.quantity) || 0;
-            
-            if (currentQuantity <= 1) {
-                return await this.removeFromCart(product);
-            }
-            
-            return await this.updateQuantity(product, currentQuantity - 1);
         },
 
         async clearCart() {

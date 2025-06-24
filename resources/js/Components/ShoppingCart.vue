@@ -1,4 +1,4 @@
-<!-- resources/js/Components/ShoppingCart.vue -->
+<!-- Mobile-Friendly ShoppingCart.vue -->
 <template>
   <TransitionRoot as="template" :show="isOpen">
     <Dialog as="div" class="relative z-[200]" @close="$emit('close')">
@@ -16,7 +16,8 @@
 
       <div class="fixed inset-0 overflow-hidden">
         <div class="absolute inset-0 overflow-hidden">
-          <div class="pointer-events-none fixed top-16 bottom-0 right-0 flex max-w-full pl-10">
+          <!-- Mobile: Full screen, Desktop: Right side panel -->
+          <div class="pointer-events-none fixed inset-0 sm:top-16 sm:bottom-0 sm:right-0 flex justify-end sm:max-w-full sm:pl-10">
             <TransitionChild 
               as="template" 
               enter="transform transition ease-in-out duration-500 sm:duration-700" 
@@ -26,15 +27,15 @@
               leave-from="translate-x-0" 
               leave-to="translate-x-full"
             >
-              <DialogPanel class="pointer-events-auto w-screen max-w-md">
+              <DialogPanel class="pointer-events-auto w-screen sm:max-w-md">
                 <div class="flex h-full flex-col bg-white shadow-xl">
-                  <!-- Header -->
-                  <div class="flex-shrink-0 border-b border-gray-200 px-4 py-6 sm:px-6">
+                  <!-- Header - Mobile optimized -->
+                  <div class="flex-shrink-0 border-b border-gray-200 px-4 py-4 sm:px-6 sm:py-6">
                     <div class="flex items-center justify-between">
-                      <DialogTitle class="text-xl font-semibold text-gray-900">
+                      <DialogTitle class="text-lg sm:text-xl font-semibold text-gray-900">
                         Winkelwagen
-                        <span v-if="cartStore.totalItems > 0" class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                          {{ cartStore.totalItems }} {{ cartStore.totalItems === 1 ? 'item' : 'items' }}
+                        <span v-if="cartStore.totalItems > 0" class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                          {{ cartStore.totalItems }}
                         </span>
                       </DialogTitle>
 
@@ -49,13 +50,13 @@
                       </button>
                     </div>
 
-                    <!-- Sort controls - Only show if there are items -->
-                    <div v-if="cartStore.sortedItems.length > 0" class="mt-4 flex items-center justify-between">
+                    <!-- Sort controls -->
+                    <div v-if="cartStore.sortedItems.length > 0" class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
                       <span class="text-sm font-medium text-gray-700">Sorteer op:</span>
                       <div class="flex items-center space-x-2">
                         <select 
                           v-model="cartStore.sortBy"
-                          class="text-sm border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                          class="flex-1 sm:flex-none text-sm border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                           @change="cartStore.setSorting($event.target.value)"
                         >
                           <option value="name">Naam</option>
@@ -64,7 +65,7 @@
                         </select>
                         <button 
                           @click="cartStore.toggleSortDirection()"
-                          class="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                          class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
                           :title="sortDirectionLabel"
                         >
                           <ArrowUpIcon v-if="cartStore.sortDirection === 'asc'" class="h-4 w-4" />
@@ -98,116 +99,135 @@
                       </button>
                     </div>
 
-                    <!-- Cart items -->
-                    <div v-else class="px-4 py-6 sm:px-6">
-                      <ul role="list" class="divide-y divide-gray-200">
+                    <!-- Cart items - Mobile optimized layout -->
+                    <div v-else class="px-4 py-4 sm:px-6 sm:py-6">
+                      <ul role="list" ref="cartList" class="space-y-4 sm:divide-y sm:divide-gray-200 sm:space-y-0">
                         <li 
                           v-for="item in cartStore.sortedItems" 
                           :key="item.id" 
-                          class="flex py-6 group hover:bg-gray-50 transition-colors rounded-lg -mx-2 px-2"
+                          class="bg-white border border-gray-200 rounded-xl p-4 sm:border-0 sm:rounded-none sm:p-0 sm:py-6 hover:bg-gray-50 transition-all duration-200 shadow-sm hover:shadow-md sm:shadow-none"
                         >
-                          <!-- Product image -->
-                          <div class="h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 relative">
-                            <img 
-                              v-if="getImageUrl(item.image_path) && !hasImageError(item.product_id)"
-                              :src="getImageUrl(item.image_path)" 
-                              :alt="item.name" 
-                              class="h-full w-full object-cover object-center transition-transform group-hover:scale-105" 
-                              @error="() => handleImageError(item.product_id)"
-                            />
-                            <!-- Fallback when no image or image error -->
-                            <div 
-                              v-if="!getImageUrl(item.image_path) || hasImageError(item.product_id)" 
-                              class="h-full w-full flex items-center justify-center bg-gray-100"
-                            >
-                              <svg class="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
+                          <!-- Mobile-first layout: Image left, content right -->
+                          <div class="flex gap-4">
+                            <!-- Product image - Fixed width for consistency -->
+                            <div class="flex-shrink-0">
+                              <div class="h-20 w-20 sm:h-24 sm:w-24 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 relative group">
+                                <img 
+                                  v-if="getImageUrl(item.image_path) && !hasImageError(item.product_id)"
+                                  :src="getImageUrl(item.image_path)" 
+                                  :alt="item.name" 
+                                  class="h-full w-full object-cover object-center transition-transform duration-200 group-hover:scale-105" 
+                                  @error="() => handleImageError(item.product_id)"
+                                />
+                                <!-- Fallback when no image or image error -->
+                                <div 
+                                  v-if="!getImageUrl(item.image_path) || hasImageError(item.product_id)" 
+                                  class="h-full w-full flex items-center justify-center bg-gray-100"
+                                >
+                                  <svg class="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                  </svg>
+                                </div>
+                                
+                                <!-- Stock indicator overlay -->
+                                <div v-if="item.stock_quantity === 0" class="absolute inset-0 bg-red-500 bg-opacity-20 flex items-center justify-center rounded-lg">
+                                  <span class="text-xs font-semibold text-red-700 bg-white px-2 py-1 rounded-full shadow-sm">
+                                    Uitverkocht
+                                  </span>
+                                </div>
+                              </div>
                             </div>
-                          </div>
 
-                          <div class="ml-4 flex flex-1 flex-col justify-between">
-                            <!-- Product info -->
-                            <div class="flex justify-between">
-                              <div class="pr-2">
-                                <h3 class="text-sm font-medium text-gray-900 line-clamp-2">
+                            <!-- Product information - Takes remaining space -->
+                            <div class="flex-1 min-w-0 flex flex-col justify-between">
+                              <!-- Top section: Name and prices -->
+                              <div class="space-y-1">
+                                <!-- Product name -->
+                                <h3 class="text-sm font-medium text-gray-900 line-clamp-2 leading-tight">
                                   {{ item.name }}
                                 </h3>
-                                <p class="mt-1 text-sm font-semibold text-indigo-600">
-                                  €{{ formatPrice(item.price) }}
-                                </p>
-                                <p v-if="item.stock_quantity <= 5 && item.stock_quantity > 0" 
-                                   class="mt-1 text-xs text-orange-600 font-medium">
-                                  Nog {{ item.stock_quantity }} op voorraad
-                                </p>
-                                <p v-if="item.stock_quantity === 0" 
-                                   class="mt-1 text-xs text-red-600 font-medium">
-                                  Niet op voorraad
-                                </p>
+                                
+                                <!-- Price information - Mobile optimized -->
+                                <div class="flex items-center justify-between">
+                                  <div class="flex items-center gap-2 text-sm">
+                                    <span class="text-gray-600">€{{ formatPrice(item.price) }}</span>
+                                    <span class="text-gray-400">×</span>
+                                    <span class="font-medium text-gray-900">{{ item.quantity }}</span>
+                                  </div>
+                                  <div class="text-right">
+                                    <div class="text-base font-semibold text-gray-900">
+                                      €{{ formatPrice(item.price * item.quantity) }}
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                <!-- Stock warnings -->
+                                <div v-if="item.stock_quantity <= 5 && item.stock_quantity > 0" class="flex items-center gap-1">
+                                  <div class="h-2 w-2 bg-orange-400 rounded-full animate-pulse"></div>
+                                  <span class="text-xs text-orange-600 font-medium">
+                                    Nog {{ item.stock_quantity }} op voorraad
+                                  </span>
+                                </div>
                               </div>
-                              
-                              <!-- Item subtotal -->
-                              <div class="text-right flex-shrink-0">
-                                <p class="text-sm font-semibold text-gray-900">
-                                  €{{ formatPrice(item.price * item.quantity) }}
-                                </p>
-                              </div>
-                            </div>
 
-                            <!-- Quantity controls and remove button -->
-                            <div class="flex items-center justify-between mt-3">
-                              <div class="flex items-center">
-                                <span class="text-xs text-gray-500 mr-2">Aantal:</span>
-                                <div class="flex items-center border border-gray-300 rounded-md">
+                              <!-- Bottom section: Controls -->
+                              <div class="flex items-center justify-between mt-3 pt-2 border-t border-gray-100">
+                                <!-- Quantity controls - Compact design -->
+                                <div class="flex items-center bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
                                   <button 
                                     @click="decrementQuantity(item)"
                                     :disabled="updatingItems.has(item.product_id)"
-                                    class="flex items-center justify-center w-8 h-8 text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-l-md transition-colors"
+                                    class="flex items-center justify-center w-9 h-9 text-gray-600 hover:bg-gray-200 active:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors touch-manipulation"
                                     :title="item.quantity === 1 ? 'Verwijder item' : 'Verminder aantal'"
                                   >
-                                    <MinusIcon class="h-3 w-3" />
+                                    <MinusIcon class="h-4 w-4" />
                                   </button>
                                   
-                                  <span class="flex items-center justify-center w-10 h-8 text-sm font-medium bg-gray-50 border-x border-gray-300">
-                                    {{ updatingItems.has(item.product_id) ? '...' : item.quantity }}
-                                  </span>
+                                  <div class="flex items-center justify-center min-w-[2.5rem] h-9 px-2 text-sm font-medium text-gray-900 bg-white border-x border-gray-200">
+                                    <span v-if="updatingItems.has(item.product_id)" class="animate-pulse">•••</span>
+                                    <span v-else>{{ item.quantity }}</span>
+                                  </div>
                                   
                                   <button 
                                     @click="incrementQuantity(item)"
                                     :disabled="updatingItems.has(item.product_id) || item.quantity >= item.stock_quantity"
-                                    class="flex items-center justify-center w-8 h-8 text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-r-md transition-colors"
+                                    class="flex items-center justify-center w-9 h-9 text-gray-600 hover:bg-gray-200 active:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors touch-manipulation"
                                     :title="item.quantity >= item.stock_quantity ? 'Maximum voorraad bereikt' : 'Verhoog aantal'"
                                   >
-                                    <PlusIcon class="h-3 w-3" />
+                                    <PlusIcon class="h-4 w-4" />
                                   </button>
                                 </div>
-                              </div>
 
-                              <button 
-                                type="button" 
-                                @click="removeItem(item)"
-                                :disabled="updatingItems.has(item.product_id)"
-                                class="flex items-center justify-center w-8 h-8 text-red-600 hover:text-red-500 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
-                                title="Verwijder uit winkelwagen"
-                              >
-                                <TrashIcon class="h-4 w-4" />
-                              </button>
+                                <!-- Remove button - Prominent but not overwhelming -->
+                                <button 
+                                  type="button" 
+                                  @click="removeItem(item)"
+                                  :disabled="updatingItems.has(item.product_id)"
+                                  class="flex items-center justify-center w-9 h-9 text-red-500 hover:text-red-600 hover:bg-red-50 active:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors touch-manipulation ml-3"
+                                  title="Verwijder uit winkelwagen"
+                                >
+                                  <TrashIcon class="h-5 w-5" />
+                                </button>
+                              </div>
                             </div>
                           </div>
+
+                          <!-- Optional: Swipe actions for mobile (advanced UX) -->
+                          <!-- You can implement swipe-to-delete functionality here if desired -->
                         </li>
                       </ul>
                     </div>
                   </div>
 
                   <!-- Footer with totals and checkout -->
-                  <div v-if="cartStore.sortedItems.length > 0" class="flex-shrink-0 border-t border-gray-200 px-4 py-6 sm:px-6 bg-gray-50">
+                  <div v-if="cartStore.sortedItems.length > 0" class="flex-shrink-0 border-t border-gray-200 px-4 py-4 sm:px-6 sm:py-6 bg-gray-50">
                     <!-- Totals -->
                     <div class="space-y-2 mb-6">
-                      <div class="flex justify-between text-sm text-gray-600">
+                      <div class="flex justify-between text-base sm:text-sm text-gray-600">
                         <span>Subtotaal ({{ cartStore.totalItems }} items)</span>
                         <span>€{{ formatPrice(cartStore.subtotal) }}</span>
                       </div>
-                      <div class="flex justify-between text-lg font-semibold text-gray-900 pt-2 border-t border-gray-200">
+                      <div class="flex justify-between text-xl sm:text-lg font-semibold text-gray-900 pt-2 border-t border-gray-200">
                         <span>Totaal</span>
                         <span>€{{ formatPrice(cartStore.total) }}</span>
                       </div>
@@ -218,7 +238,7 @@
                       <button 
                         type="button" 
                         :disabled="cartStore.sortedItems.length === 0 || hasOutOfStockItems"
-                        class="w-full rounded-md border border-transparent bg-indigo-600 px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                        class="w-full rounded-lg border border-transparent bg-indigo-600 px-6 py-4 sm:py-3 text-lg sm:text-base font-medium text-white shadow-sm hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                         @click="goToCheckout"
                       >
                         <span v-if="hasOutOfStockItems">Controleer voorraad</span>
@@ -227,7 +247,7 @@
                       
                       <button 
                         type="button" 
-                        class="w-full text-center text-sm font-medium text-indigo-600 hover:text-indigo-500 transition-colors"
+                        class="w-full text-center text-base sm:text-sm font-medium text-indigo-600 hover:text-indigo-500 py-2 transition-colors"
                         @click="$emit('close')"
                       >
                         Verder winkelen
@@ -236,12 +256,12 @@
                     </div>
 
                     <!-- Clear cart option -->
-                    <div v-if="cartStore.sortedItems.length > 0" class="mt-4 pt-4 border-t border-gray-200">
+                    <div v-if="cartStore.sortedItems.length > 0" class="mt-4 pt-4 border-t border-gray-200 text-center">
                       <button 
                         type="button" 
                         @click="clearCart"
                         :disabled="clearingCart"
-                        class="text-xs text-gray-500 hover:text-red-600 disabled:opacity-50 transition-colors"
+                        class="text-sm text-gray-500 hover:text-red-600 disabled:opacity-50 transition-colors"
                       >
                         {{ clearingCart ? 'Winkelwagen legen...' : 'Winkelwagen legen' }}
                       </button>
@@ -258,7 +278,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue';
 import { 
   XMarkIcon, 
@@ -401,6 +421,21 @@ const clearCart = async () => {
     clearingCart.value = false;
   }
 };
+
+const cartList = ref(null);
+let lastScrollTop = 0;
+
+watch(() => cartStore.sortedItems.map(i => i.quantity), async () => {
+  if (cartList.value) {
+    lastScrollTop = cartList.value.scrollTop;
+  }
+
+  await nextTick();
+
+  if (cartList.value) {
+    cartList.value.scrollTop = lastScrollTop;
+  }
+});
 </script>
 
 <style scoped>

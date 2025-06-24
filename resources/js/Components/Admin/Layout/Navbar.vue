@@ -5,7 +5,7 @@ import { ArrowTopRightOnSquareIcon } from '@heroicons/vue/24/outline';
 
 const logout = () => {
     router.post(route('logout'))
-}
+    }
 </script>
 
 <template>

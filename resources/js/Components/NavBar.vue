@@ -1,23 +1,22 @@
-<!-- NavBar.vue-->
+<!-- Updated NavBar.vue with better mobile UX -->
 <template>
-    <!-- Navigatiebalk met vaste positie aan de bovenkant -->
     <Disclosure as="nav" class="bg-slate-100 fixed w-full top-0 z-[1000] shadow-md" v-slot="{ open }">
         <div class="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
             <div class="relative flex h-16 items-center justify-between">
                 <div class="flex flex-1 items-center justify-center sm:items-stretch sm:justify-start">
-                    <!-- Zoekknop voor mobiele versie -->
+                    <!-- Mobile search button -->
                     <div class="absolute inset-y-0 left-0 flex items-center sm:hidden">
-                        <button @click="toggleButton('search')" class="relative rounded-full p-2 text-gray700 hover:bg-slate-200 hover:text-gray-900">
+                        <button @click="toggleButton('search')" class="relative rounded-full p-2 text-gray-700 hover:bg-slate-200 hover:text-gray-900">
                             <MagnifyingGlassIcon class="h-6 w-6" aria-hidden="true"/>
                         </button>
                     </div>
 
-                    <!-- Logo, weergave afhankelijk van schermgrootte -->                   
+                    <!-- Logo -->                   
                     <Link href="/">
                         <ApplicationLogo />
                     </Link>
 
-                    <!-- Zoekbalk, alleen zichtbaar op grotere schermen -->
+                    <!-- Desktop search bar -->
                     <div class="hidden sm:ml-6 sm:block flex-1 max-w-2xl">
                         <div class="relative max-w-md">
                             <input 
@@ -72,7 +71,7 @@
                         </div>
                     </div>
 
-                    <!-- Navigatieknoppen voor desktop -->
+                    <!-- Desktop navigation -->
                     <div class="hidden sm:ml-6 sm:block">
                         <div class="flex space-x-4">
                             <NavLink v-for="item in navigation" :key="item.name" :href="item.href">{{ item.name }}</NavLink>
@@ -80,8 +79,17 @@
                     </div>
                 </div>
 
-                <!-- Knop voor menu op mobiele versie -->
-                <div class="absolute inset-y-0 right-0 flex items-center sm:hidden">
+                <!-- Mobile: Cart + Hamburger menu -->
+                <div class="flex items-center space-x-2 sm:hidden">
+                    <!-- Mobile cart button -->
+                    <button @click="toggleCart" type="button" class="relative rounded-full bg-slate-50 p-2 text-gray-700 hover:bg-slate-200 hover:text-gray-900">
+                        <ShoppingCartIcon class="h-6 w-6" />
+                        <span v-if="cartItemCount > 0" class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs">
+                            {{ cartItemCount }}
+                        </span>
+                    </button>
+                    
+                    <!-- Mobile hamburger menu -->
                     <DisclosureButton @click="toggleButton('menu')" class="relative inline-flex items-center justify-center rounded-md p-2 text-gray-700 hover:bg-slate-200 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-black">
                         <span class="absolute -inset-0.5"/>
                         <span class="sr-only">Open main menu</span>
@@ -90,8 +98,9 @@
                     </DisclosureButton>
                 </div>
 
-                <!-- Winkelwagen en profiel container -->
-                <div class="absolute inset-y-0 right-10 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
+                <!-- Desktop: Cart + Profile -->
+                <div class="hidden sm:flex sm:items-center sm:ml-6 sm:space-x-3">
+                    <!-- Desktop cart -->
                     <div class="relative">
                         <button @click="toggleCart" type="button" class="relative rounded-full bg-slate-50 p-1 text-gray-700 hover:bg-slate-200 hover:text-gray-900">
                             <ShoppingCartIcon class="h-6 w-6" />
@@ -101,13 +110,10 @@
                         </button>
                     </div>
                     
-                    <!-- Profielmenu -->
-                    <Menu as="div" class="relative ml-3">
+                    <!-- Desktop profile menu -->
+                    <Menu as="div" class="relative">
                         <div>
-                            <MenuButton 
-                                @click="toggleButton('profile')" 
-                                class="relative flex rounded-full bg-slate-50 p-1 text-gray-700 hover:bg-slate-200 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-200"
-                            >
+                            <MenuButton class="relative flex rounded-full bg-slate-50 p-1 text-gray-700 hover:bg-slate-200 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-200">
                                 <span class="absolute -inset-1.5"/>
                                 <span class="sr-only">Open user menu</span>
                                 <UserIcon class="h-6 w-6" aria-hidden="true"/>
@@ -123,6 +129,7 @@
                             leave-to-class="transform opacity-0 scale-95"
                         >
                             <MenuItems class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-slate-50 py-1 shadow-md ring-1 ring-black ring-opacity-5 focus:outline-none">
+                                <!-- Your existing desktop profile menu items -->
                                 <template v-if="!isAuthenticated">
                                     <MenuItem v-slot="{ active }">
                                         <Link :href="route('login')" :class="[active ? 'bg-gray-500' : '', 'block px-4 py-2 text-sm text-black']">
@@ -137,7 +144,6 @@
                                 </template>
                                 
                                 <template v-else>
-                                    <!-- User info section -->
                                     <div class="px-4 py-2 border-b border-gray-200">
                                         <p class="text-sm font-medium text-gray-900">{{ user.name }}</p>
                                         <p class="text-xs text-gray-500">{{ user.email }}</p>
@@ -150,7 +156,7 @@
                                     <MenuItem v-slot="{ active }">
                                         <Link :href="route('profile.edit')" :class="[active ? 'bg-gray-500' : '', 'block px-4 py-2 text-sm text-black']">
                                             Profiel Instellingen
-                                        </Link>
+                                        </Link>  
                                     </MenuItem>
                                     <MenuItem v-slot="{ active }">
                                         <Link :href="route('logout')" method="post" :class="[active ? 'bg-gray-500' : '', 'block px-4 py-2 text-sm text-black']">
@@ -165,7 +171,7 @@
             </div>
         </div>
 
-        <!-- Zoekveld specifiek voor mobiele weergave, weergegeven bij 'search' actie -->
+        <!-- Mobile search -->
         <div v-if="showSearch && !menuOpen" class="sm:hidden px-4 pb-3 pt-2">
             <div class="relative">
                 <input 
@@ -216,20 +222,88 @@
             </div>
         </div>
 
-        <!-- Mobiel navigatiemenu, weergegeven bij 'menu' actie -->
+        <!-- Mobile hamburger menu with profile options -->
         <DisclosurePanel v-if="menuOpen" class="sm:hidden">
             <div class="space-y-1 px-2 pb-3 pt-2">
-                <DisclosureButton v-for="item in navigation" :key="item.name" as="a" :href="item.href" :class="[item.current ? 'bg-slate-50 text-gray-700' : 'text-gray-700 hover:bg-gray-200 hover:text-gray-900', 'block rounded-md px-3 py-2 text-base font-medium']" :aria-current="item.current ? 'page' : undefined">
+                <!-- Navigation items -->
+                <DisclosureButton 
+                    v-for="item in navigation" 
+                    :key="item.name" 
+                    as="a" 
+                    :href="item.href" 
+                    class="text-gray-700 hover:bg-gray-200 hover:text-gray-900 block rounded-md px-3 py-2 text-base font-medium"
+                >
                     {{ item.name }}
                 </DisclosureButton>
+                
+                <!-- Divider -->
+                <hr class="my-2 border-gray-300">
+                
+                <!-- Profile section -->
+                <div class="pt-2">
+                    <template v-if="!isAuthenticated">
+                        <DisclosureButton 
+                            as="a" 
+                            :href="route('login')"
+                            class="text-gray-700 hover:bg-gray-200 hover:text-gray-900 flex items-center rounded-md px-3 py-2 text-base font-medium"
+                        >
+                            <UserIcon class="h-5 w-5 mr-3" />
+                            Inloggen
+                        </DisclosureButton>
+                        <DisclosureButton 
+                            as="a" 
+                            :href="route('register')"
+                            class="text-gray-700 hover:bg-gray-200 hover:text-gray-900 block rounded-md px-3 py-2 text-base font-medium ml-8"
+                        >
+                            Registreren
+                        </DisclosureButton>
+                    </template>
+                    
+                    <template v-else>
+                        <!-- User info -->
+                        <div class="px-3 py-2 border-b border-gray-200 mb-2">
+                            <div class="flex items-center">
+                                <UserIcon class="h-8 w-8 text-gray-400 mr-3" />
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">{{ user.name }}</p>
+                                    <p class="text-xs text-gray-500">{{ user.email }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Profile menu items -->
+                        <DisclosureButton 
+                            as="a" 
+                            :href="route('dashboard')"
+                            class="text-gray-700 hover:bg-gray-200 hover:text-gray-900 block rounded-md px-3 py-2 text-base font-medium"
+                        >
+                            Dashboard
+                        </DisclosureButton>
+                        <DisclosureButton 
+                            as="a" 
+                            :href="route('profile.edit')"
+                            class="text-gray-700 hover:bg-gray-200 hover:text-gray-900 block rounded-md px-3 py-2 text-base font-medium"
+                        >
+                            Profiel Instellingen
+                        </DisclosureButton>
+                        <DisclosureButton 
+                            as="a" 
+                            :href="route('logout')" 
+                            method="post"
+                            class="text-red-600 hover:bg-red-50 hover:text-red-700 block rounded-md px-3 py-2 text-base font-medium"
+                        >
+                            Uitloggen
+                        </DisclosureButton>
+                    </template>
+                </div>
             </div>
         </DisclosurePanel>
     </Disclosure>
 
-    <!-- Winkelwagencomponent dat geopend kan worden en sluit door event -->
+    <!-- Shopping cart component -->
     <ShoppingCart :isOpen="isCartOpen" @close="closeCart"/>
 
-    <!-- Logout Success Modal -->
+    <!-- Logout success modal -->
     <LogoutSuccessModal 
         :show="showLogoutModal" 
         @close="closeLogoutModal" 
@@ -248,7 +322,7 @@ import ApplicationLogo from './ApplicationLogo.vue'
 import axios from 'axios'
 import LogoutSuccessModal from '@/Components/LogoutSuccessModal.vue'
 
-// Navigatieopties, de actieve button en menu status
+// Navigation options
 const navigation = [
     { name: 'Producten', href: '/categories' },
     { name: 'Bestellen', href: '/checkout' },
@@ -266,15 +340,15 @@ const showSuggestions = ref(false)
 const showMobileSuggestions = ref(false)
 const searchTimeout = ref(null)
 
-// Variabelen voor de winkelwagencomponent
+// Shopping cart variables
 const isCartOpen = ref(false)
 const isCartUpdated = ref(false)
 
-// Verbindt de winkelwagenstore met het component om het aantal items bij te houden
+// Connect cart store
 const cartStore = useCartStore()
 const cartItemCount = computed(() => cartStore.totalItems)
 
-// Animeert het winkelwagenicoon wanneer het aantal items verandert
+// Animate cart icon when items change
 watch(cartItemCount, () => {
     isCartUpdated.value = true
     setTimeout(() => {
@@ -282,7 +356,7 @@ watch(cartItemCount, () => {
     }, 300)
 })
 
-// Computed properties voor zoek- en profielopties
+// Computed properties
 const showSearch = computed(() => activeButton.value === 'search')
 const profileOpen = computed(() => activeButton.value === 'profile')
 
@@ -385,7 +459,7 @@ const handleImageError = (event) => {
     event.target.src = '/images/placeholder-product.jpg'
 }
 
-// Functie om actieve knop bij te houden en het menu open of dicht te klappen
+// Toggle button function
 const toggleButton = (button) => {
     if (activeButton.value === button) {
         activeButton.value = null;
@@ -402,7 +476,7 @@ const toggleButton = (button) => {
     }
 };
 
-// Methoden om de winkelwagen te beheren
+// Cart management
 const toggleCart = () => {
     console.log('toggleCart called, current state:', isCartOpen.value)
     isCartOpen.value = !isCartOpen.value
@@ -413,18 +487,17 @@ const closeCart = () => {
     isCartOpen.value = false
 }
 
-// Get the current user from Inertia's shared data
+// User authentication
 const user = computed(() => usePage().props.auth.user);
 const isAuthenticated = computed(() => !!user.value);
-
 const canLogin = computed(() => usePage().props.auth.canLogin);
 const canRegister = computed(() => usePage().props.auth.canRegister);
 
 const showLogoutModal = ref(false)
 
-// Watch to detect logout success
+// Watch for logout success
 watch(() => usePage().props.flash, (flash) => {
-    if (flash && flash.logout.success) {
+    if (flash && flash.logout && flash.logout.success) {
         showLogoutModal.value = true
     }
 }, { deep: true })
@@ -435,12 +508,12 @@ const closeLogoutModal = () => {
 </script>
 
 <style scoped>  
-/* Stijl voor schaalvergroting animatie bij winkelwagen update */
+/* Animation for cart update */
 .scale-110 {
     animation: pulse 0.3s ease-in-out;
 }
 
-/* Keyframes voor pulse-animatie */
+/* Pulse animation keyframes */
 @keyframes pulse {
     0% { transform: scale(1); }
     50% { transform: scale(1.2); }

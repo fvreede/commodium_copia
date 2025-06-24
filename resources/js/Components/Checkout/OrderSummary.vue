@@ -32,14 +32,14 @@
                     <div 
                         v-for="item in cartStore.sortedItems" 
                         :key="item.id || item.product_id"
-                        class="flex items-start space-x-4 py-4 border-b last:border-b-0"
+                        class="flex flex-col sm:flex-row sm:items-start sm:space-x-4 py-4 border-b last:border-b-0 space-y-3 sm:space-y-0"
                     >
                         <!-- Product image -->
                         <div class="flex-shrink-0">
                             <img 
                                 :src="getImageUrl(item.image_path)" 
                                 :alt="item.name"
-                                class="w-16 h-16 object-cover rounded-md border"
+                                class="w-12 h-12 sm:w-16 sm:h-16 object-cover rounded-md border"
                                 @error="handleImageError"
                             >
                         </div>
@@ -299,7 +299,10 @@ const hasStockIssues = computed(() => {
 
 // Methods
 const formatPrice = (price) => {
-    return Number(price || 0).toFixed(2);
+    return Number(price || 0).toLocaleString('nl-NL', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
 };
 
 const getImageUrl = (imagePath) => {
@@ -365,28 +368,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* Ensure proper spacing and responsive design */
-@media (max-width: 640px) {
-    .space-y-4 > * + * {
-        margin-top: 1rem;
-    }
-    
-    .flex.items-start.space-x-4 {
-        flex-direction: column;
-        space-x: 0;
-    }
-    
-    .flex.items-start.space-x-4 > * + * {
-        margin-left: 0;
-        margin-top: 0.75rem;
-    }
-    
-    .w-16.h-16 {
-        width: 3rem;
-        height: 3rem;
-    }
-}
-
 /* Custom focus styles for better accessibility */
 button:focus,
 textarea:focus {

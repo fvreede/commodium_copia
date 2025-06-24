@@ -49,7 +49,7 @@ class Order extends Model
     // Calculate total from items
     public function calculateTotal(): float
     {
-        return $this->items->sum(function ($item) {
+        return $this->items()->get()->sum(function ($item) {
             return $item->quantity * $item->price;
         });
     }

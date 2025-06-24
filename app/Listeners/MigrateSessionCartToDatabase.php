@@ -19,6 +19,6 @@ class MigrateSessionCartToDatabase
      */
     public function handle(Login $event): void
     {
-        $this->cartService->migrateSessionToDatabase($event->user->id);
+        $this->cartService->migrateSessionToDatabase();
     }
 }

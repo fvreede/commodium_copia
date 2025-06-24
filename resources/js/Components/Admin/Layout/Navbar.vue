@@ -1,6 +1,7 @@
 <script setup>
 import { Disclosure } from '@headlessui/vue';
 import { router } from '@inertiajs/vue3';
+import { ArrowTopRightOnSquareIcon } from '@heroicons/vue/24/outline';
 
 const logout = () => {
     router.post(route('logout'))
@@ -25,7 +26,7 @@ const logout = () => {
                         class="flex items-center space-x-2 px-3 py-2 text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-150 uppercase"
                         title="View Public Site"
                     >
-                        <ArrowTopRightOnSquareIcon class="h-4 w-4" />
+                        <ArrowTopRightOnSquareIcon class="h-5 w-5 mb-1" />
                         <span>Bekijk site</span>
                     </a>
                     <!-- Logout Button -->

@@ -1,6 +1,6 @@
 <?php
 
-// Web.php - Fixed subcategories route
+// Web.php - Fixed cart routes and checkout integration
 
 use App\Models\Category;
 use App\Models\Subcategory;
@@ -21,7 +21,6 @@ use App\Http\Controllers\EditorController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\SessionExpiredController;
-
 use App\Http\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -164,25 +163,16 @@ Route::get('/dashboard', function () {
     abort(403, 'Je hebt geen toegang tot dit dashboard.');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-
-/* Route::get('/checkout', [CheckoutController::class, 'index'])
-    ->name('checkout.index');
-
-Route::post('/checkout/select-slot', [CheckoutController::class, 'selectDeliverySlot'])
-    ->middleware('auth')
-    ->name('checkout.select-slot');
-
-Route::get('/checkout/confirm', [CheckoutController::class, 'confirm'])
-    ->middleware('auth')
-    ->name('checkout.confirm');
- */
-
 // Checkout routes - accessible only to authenticated users
-Route::middleware(['auth'])->prefix('checkout')->name('checkout.')->group(function () {
-    Route::get('/', [CheckoutController::class, 'index'])->name('index');
-    Route::post('/select-slot', [CheckoutController::class, 'selectDeliverySlot'])->name('select-slot');
-    Route::get('/confirm', [CheckoutController::class, 'confirm'])->name('confirm');
-    Route::post('/', [CheckoutController::class, 'store'])->name('store'); // Add this if you have a store method
+Route::middleware(['auth'])->group(function () {
+    Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
+    Route::post('/checkout/select-slot', [CheckoutController::class, 'selectDeliverySlot'])->name('checkout.select-slot');
+    Route::get('/checkout/confirm', [CheckoutController::class, 'confirm'])->name('checkout.confirm');
+    Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
+    
+    // API routes for real-time data
+    Route::get('/api/checkout/cart-data', [CheckoutController::class, 'getCartData'])->name('checkout.cart-data');
+    Route::get('/api/session-check', [CheckoutController::class, 'checkSession'])->name('session.check');
 });
 
 // Session expired routes
@@ -207,14 +197,22 @@ Route::post('/refresh-session', function(Request $request) {
 })->middleware(['auth'])->name('session.refresh');
  
 // Cart routes - accessible to both guests and authenticated users
+// These routes return JSON responses for API calls
 Route::prefix('cart')->name('cart.')->group(function () {
-    Route::get('/', [CartController::class, 'index'])->name('index');
+    // For displaying cart page (returns Inertia view)
+    Route::get('/', function() {
+        return Inertia::render('CartPage');
+    })->name('index');
+    
+    // API endpoints (return JSON)
     Route::post('/add', [CartController::class, 'add'])->name('add');
     Route::patch('/{product}', [CartController::class, 'update'])->name('update');
     Route::delete('/{product}', [CartController::class, 'remove'])->name('remove');
     Route::delete('/', [CartController::class, 'clear'])->name('clear');
 });
 
+// Additional cart API route for getting cart data (returns JSON)
+Route::get('/cart', [CartController::class, 'index']);
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -225,6 +223,5 @@ Route::middleware('auth')->group(function () {
 // Search routes
 Route::get('/search', [SearchController::class, 'index'])->name('search.index');
 Route::get('/search/suggestions', [SearchController::class, 'suggestions'])->name('search.suggestions');
-
 
 require __DIR__.'/auth.php';

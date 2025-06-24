@@ -1,12 +1,15 @@
-<!-- resources/js/Pages/CheckoutPage.vue -->
 <script setup>
 import NavBar from '@/Components/NavBar.vue';
 import Footer from '@/Components/Footer.vue';
+import DeliverySlotSelector from '@/Components/Checkout/DeliverySlotSelector.vue';
+import OrderSummary from '@/Components/Checkout/OrderSummary.vue';
 import { router } from '@inertiajs/vue3';
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import axios from 'axios'
+import { ExclamationTriangleIcon } from '@heroicons/vue/24/outline';
+import { useCartStore } from '@/Stores/cart';
 
-// Props passed from Laravel
+// Props passed from Laravel - only essential data, not cart items
 const props = defineProps({
     deliverySlots: {
         type: Array,
@@ -16,60 +19,25 @@ const props = defineProps({
         type: Object,
         default: null
     },
-    cartItems: {
-        type: Array,
-        default: () => []
-    },
-    cartTotal: {
-        type: Number,
-        default: 0
-    },
     selectedSlotId: {
         type: Number,
+        default: null
+    },
+    user: {
+        type: Object,
         default: null
     }
 });
 
+// Initialize cart store
+const cartStore = useCartStore();
+
 // Reactive state
-const selectedDay = ref(null);
-const selectedSlot = ref(props.selectedSlotId || null);
-const isSelectingSlot = ref(false);
-
-// Set first day as default if available
-if (props.deliverySlots.length > 0) {
-    selectedDay.value = props.deliverySlots[0].date;
-}
-
-// Get slots for selected day
-const getSlotsForDay = (date) => {
-    const day = props.deliverySlots.find(d => d.date === date);
-    return day ? day.slots : [];
-};
-
-// Calculate delivery fee based on selected slot - FIXED
-const deliveryFee = computed(() => {
-    if (!selectedSlot.value) return 0;
-    
-    for (const day of props.deliverySlots) {
-        const slot = day.slots.find(s => s.id === selectedSlot.value);
-        if (slot && slot.price !== undefined && slot.price !== null) {
-            return parseFloat(slot.price);
-        }
-    }
-    return 0;
-});
-
-// Calculate total order amount - FIXED
-const orderTotal = computed(() => {
-    const cartTotal = parseFloat(props.cartTotal) || 0;
-    const delFee = parseFloat(deliveryFee.value) || 0;
-    return cartTotal + delFee;
-});
-
-// Check if user can proceed to next step
-const canProceed = computed(() => {
-    return props.cartItems.length > 0 && selectedSlot.value && hasValidAddress.value;
-});
+const selectedSlotId = ref(props.selectedSlotId || null);
+const selectedSlotDetails = ref(null);
+const deliveryFee = ref(0);
+const isProcessingOrder = ref(false);
+const showAddressModal = ref(false);
 
 // Check if user has a valid delivery address
 const hasValidAddress = computed(() => {
@@ -79,25 +47,81 @@ const hasValidAddress = computed(() => {
            props.deliveryAddress.city;
 });
 
-// Select delivery slot
-const selectDeliverySlot = async (slotId) => {
-    if (isSelectingSlot.value) return;
+// Calculate total order amount using cart store
+const orderTotal = computed(() => {
+    const cartTotal = parseFloat(cartStore.subtotal) || 0;
+    const delFee = parseFloat(deliveryFee.value) || 0;
+    return cartTotal + delFee;
+});
+
+// Check if user can proceed to next step
+const canProceed = computed(() => {
+    return cartStore.hasItems && selectedSlotId.value && hasValidAddress.value;
+});
+
+// Load cart data on mount and watch for changes
+onMounted(async () => {
+    await cartStore.loadCart();
     
-    isSelectingSlot.value = true;
+    // If cart is empty, redirect to cart page
+    if (!cartStore.hasItems) {
+        router.get('/cart');
+        return;
+    }
     
-    try {
-        const response = await axios.post('/checkout/select-slot', {
-            delivery_slot_id: slotId
-        });
-        
-        selectedSlot.value = slotId;
-        // Optionally show success message
-        
-    } catch (error) {
-        console.error('Error selecting slot:', error);
-        // Handle error appropriately
-    } finally {
-        isSelectingSlot.value = false;
+    // Set initial slot details if slot is pre-selected
+    if (selectedSlotId.value) {
+        updateSelectedSlotDetails();
+    }
+});
+
+// Watch for cart changes and redirect if empty
+watch(() => cartStore.hasItems, (hasItems) => {
+    if (!hasItems && !cartStore.isLoading) {
+        router.get('/cart');
+    }
+});
+
+// Event handlers for components
+const handleSlotSelected = (eventData) => {
+    selectedSlotId.value = eventData.slotId;
+    selectedSlotDetails.value = eventData.slotDetails;
+    deliveryFee.value = eventData.deliveryFee;
+    
+    console.log('Slot selected:', eventData);
+};
+
+const handleDeliveryFeeUpdated = (fee) => {
+    deliveryFee.value = fee;
+};
+
+const handleRefreshSlots = async () => {
+    // Reload the page to get fresh delivery slot data
+    // You could also make a specific API call here
+    router.reload({
+        only: ['deliverySlots'],
+        preserveState: true
+    });
+};
+
+const updateSelectedSlotDetails = () => {
+    if (!selectedSlotId.value) {
+        selectedSlotDetails.value = null;
+        deliveryFee.value = 0;
+        return;
+    }
+    
+    for (const day of props.deliverySlots) {
+        const slot = day.slots ? day.slots.find(s => s.id === selectedSlotId.value) : null;
+        if (slot) {
+            selectedSlotDetails.value = {
+                ...slot,
+                day_name: day.day_name,
+                formatted_date: day.formatted_date
+            };
+            deliveryFee.value = parseFloat(slot.price) || 0;
+            break;
+        }
     }
 };
 
@@ -108,7 +132,41 @@ const proceedToConfirmation = () => {
     router.get('/checkout/confirm');
 };
 
-// Format address for display - SAFE VERSION
+// Process order directly (skip confirmation step)
+const processOrderDirectly = async () => {
+    if (!canProceed.value || isProcessingOrder.value) return;
+    
+    isProcessingOrder.value = true;
+    
+    try {
+        const response = await axios.post('/checkout', {
+            delivery_slot_id: selectedSlotId.value
+        });
+        
+        if (response.data.success) {
+            // Clear cart store since order was successful
+            await cartStore.loadCart(); // This will show empty cart
+            
+            // Redirect to order confirmation
+            router.get(response.data.redirect);
+        } else {
+            alert(response.data.message || 'Er is een fout opgetreden bij het plaatsen van de bestelling.');
+        }
+        
+    } catch (error) {
+        console.error('Error processing order:', error);
+        const message = error.response?.data?.message || 'Er is een fout opgetreden bij het plaatsen van de bestelling.';
+        alert(message);
+    } finally {
+        isProcessingOrder.value = false;
+    }
+};
+
+// Address management
+const openAddressModal = () => {
+    showAddressModal.value = true;
+};
+
 const formatAddress = () => {
     if (!hasValidAddress.value) {
         return 'Geen adres ingesteld';
@@ -126,43 +184,11 @@ const formatAddress = () => {
     return formatted;
 };
 
-// Get selected slot details for display - FIXED
-const selectedSlotDetails = computed(() => {
-    if (!selectedSlot.value) return null;
-    
-    for (const day of props.deliverySlots) {
-        const slot = day.slots.find(s => s.id === selectedSlot.value);
-        if (slot) {
-            return {
-                ...slot,
-                price: parseFloat(slot.price) || 0, // Ensure price is always a number
-                day_name: day.day_name,
-                formatted_date: day.formatted_date
-            };
-        }
-    }
-    return null;
-});
-
-// Helper function to safely format price
-const formatPrice = (price) => {
-    const numPrice = parseFloat(price);
-    return isNaN(numPrice) ? '0.00' : numPrice.toFixed(2);
-};
-
-// Helper function to safely format line total
-const formatLineTotal = (item) => {
-    if (!item || !item.line_total) return '0.00';
-    const total = parseFloat(item.line_total);
-    return isNaN(total) ? '0.00' : total.toFixed(2);
-};
-
+// Session management
 const showSessionModal = ref(false);
 const sessionWarningShown = ref(false);
 let sessionCheckInterval = null;
-let sessionWarningTimeout = null;
 
-// Session management methods
 const checkSession = async () => {
     try {
         const response = await axios.get('/api/session-check');
@@ -184,56 +210,35 @@ const checkSession = async () => {
 
 const showSessionExpiredModal = () => {
     showSessionModal.value = true;
-    // Clean any exisiting intervals
     if (sessionCheckInterval) {
         clearInterval(sessionCheckInterval);
     }
 };
 
-
-TODO: "Create a toast warning for session expiration"
 const showSessionWarning = () => {
     sessionWarningShown.value = true;
-    // You can implement a toast notificaation here.
     console.log('Session expires in 5 minutes');
-    // Example: toast.warning('Je sessie verloopt over 5 minuten');
+    // You can implement a toast notification here
 };
 
 const handleSessionExpiredAction = (action) => {
     if (action === 'login') {
-        // Redirect to login with return_to parameter
-        window.location.href = route('login') + '?return_to=checkout';
+        window.location.href = '/login?return_to=checkout';
     } else if (action === 'continue') {
         showSessionModal.value = false;
-        // Continue as guest - maybe redirect to categories
         router.get('/categories');
-    }
-};
-
-const refreshSession = async () => {
-    try {
-        await axios.post('/refresh-session');
-        sessionWarningShown.value = false;
-        console.log('Session refreshed');
-    } catch (error) {
-        console.error('Failed to refresh session:', error);
     }
 };
 
 // Lifecycle hooks
 onMounted(() => {
-    // Check session every 2 minutes
     sessionCheckInterval = setInterval(checkSession, 120000);
-    // Initial check
     checkSession();
 });
 
 onUnmounted(() => {
     if (sessionCheckInterval) {
         clearInterval(sessionCheckInterval);
-    }
-    if (sessionWarningTimeout) {
-        clearTimeout(sessionWarningTimeout);
     }
 });
 </script>
@@ -245,19 +250,19 @@ onUnmounted(() => {
     <!-- Hoofdcontainer voor checkout sectie -->
     <div class="bg-gray-100 min-h-screen">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div class="mx-auto max-w-4xl py-16 sm:py-24">
-                <h2 class="text-2xl font-bold text-gray-900">Bezorgmoment kiezen</h2>
+            <div class="mx-auto max-w-6xl py-16 sm:py-24">
+                <h2 class="text-2xl font-bold text-gray-900 mb-8">Bezorgmoment kiezen</h2>
 
                 <!-- Breadcrumb Steps -->
-                <div class="mt-6">
-                    <div class="bg-white border rounded">
-                        <div class="px-4 py-2 text-sm font-medium">Kop bestellen</div>
+                <div class="mb-8">
+                    <div class="bg-white border rounded-lg shadow-sm">
+                        <div class="px-4 py-2 text-sm font-medium bg-gray-50 rounded-t-lg">Bestelling plaatsen</div>
                         <div class="border-t">
                             <div class="grid grid-cols-3">
                                 <div class="px-4 py-3 border-r bg-blue-50">
                                     <div class="flex items-center">
-                                        <span class="text-sm">Stap 1: Kies uw bezorgmoment</span>
-                                        <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <span class="text-sm font-medium text-blue-600">Stap 1: Kies uw bezorgmoment</span>
+                                        <svg class="w-4 h-4 ml-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                                         </svg>
                                     </div>
@@ -278,219 +283,118 @@ onUnmounted(() => {
                     </div>
                 </div>
 
-                <!-- Alert if cart is empty -->
-                <div v-if="cartItems.length === 0" class="mt-8 bg-yellow-50 border border-yellow-200 rounded-md p-4">
-                    <div class="flex">
-                        <div class="flex-shrink-0">
-                            <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                            </svg>
-                        </div>
-                        <div class="ml-3">
-                            <h3 class="text-sm font-medium text-yellow-800">Winkelwagen is leeg</h3>
-                            <p class="mt-1 text-sm text-yellow-700">Voeg eerst producten toe aan uw winkelwagen voordat u kunt bestellen.</p>
-                        </div>
-                    </div>
+                <!-- Loading state -->
+                <div v-if="cartStore.isLoading" class="text-center py-12">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+                    <p class="mt-4 text-gray-600">Bestelling laden...</p>
                 </div>
 
-                <!-- Alert if no delivery address -->
-                <div v-if="cartItems.length > 0 && !hasValidAddress" class="mt-8 bg-red-50 border border-red-200 rounded-md p-4">
-                    <div class="flex">
-                        <div class="flex-shrink-0">
-                            <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-                            </svg>
-                        </div>
-                        <div class="ml-3">
-                            <h3 class="text-sm font-medium text-red-800">Geen bezorgadres ingesteld</h3>
-                            <p class="mt-1 text-sm text-red-700">Stel eerst een bezorgadres in om verder te kunnen gaan met bestellen.</p>
-                            <div class="mt-2">
-                                <button class="px-4 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors">
-                                    Adres instellen
-                                </button>
+                <!-- Main content -->
+                <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Left column: Delivery slot selection + Address -->
+                    <div class="lg:col-span-2 space-y-6">
+                        <!-- Alert if no delivery address -->
+                        <div v-if="!hasValidAddress" class="bg-red-50 border border-red-200 rounded-lg p-4">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <ExclamationTriangleIcon class="h-5 w-5 text-red-400" />
+                                </div>
+                                <div class="ml-3">
+                                    <h3 class="text-sm font-medium text-red-800">Geen bezorgadres ingesteld</h3>
+                                    <p class="mt-1 text-sm text-red-700">Stel eerst een bezorgadres in om verder te kunnen gaan met bestellen.</p>
+                                    <div class="mt-3">
+                                        <button 
+                                            @click="openAddressModal"
+                                            class="px-4 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 transition-colors"
+                                        >
+                                            Adres instellen
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <!-- Date Selection -->
-                <div v-if="cartItems.length > 0 && hasValidAddress" class="mt-8">
-                    <h3 class="text-lg font-medium mb-4">Kies een bezorgdag</h3>
-                    <div class="grid grid-cols-7 gap-0 border rounded overflow-hidden">
-                        <button 
-                            v-for="day in deliverySlots" 
-                            :key="day.date"
-                            @click="selectedDay = day.date"
-                            :class="[
-                                'px-4 py-3 text-sm hover:bg-gray-50 border-r last:border-r-0 transition-colors',
-                                selectedDay === day.date ? 'bg-blue-50 text-blue-600' : 'bg-white'
-                            ]"
-                        >
-                            <div class="font-medium">{{ day.day_name }}</div>
-                            <div class="text-xs text-gray-600">{{ day.formatted_date }}</div>
-                        </button>
-                    </div>
-                </div>
+                        <!-- Delivery Slot Selector Component -->
+                        <DeliverySlotSelector
+                            :delivery-slots="deliverySlots"
+                            :selected-slot-id="selectedSlotId"
+                            @slot-selected="handleSlotSelected"
+                            @delivery-fee-updated="handleDeliveryFeeUpdated"
+                            @refresh-slots="handleRefreshSlots"
+                        />
 
-                <!-- Delivery Slots -->
-                <div v-if="cartItems.length > 0 && hasValidAddress" class="mt-8">
-                    <div class="bg-white border rounded p-6">
-                        <h3 v-if="selectedDay" class="text-lg font-medium mb-6">
-                            Bezorgmomenten voor {{ deliverySlots.find(d => d.date === selectedDay)?.day_name }} {{ deliverySlots.find(d => d.date === selectedDay)?.formatted_date }}
-                        </h3>
-                        
-                        <div v-if="selectedDay" class="space-y-4">
-                            <div 
-                                v-for="slot in getSlotsForDay(selectedDay)" 
-                                :key="slot.id"
-                                class="flex items-center justify-between py-3 border-b last:border-b-0"
-                            >
-                                <div class="flex-1">
-                                    <span class="text-sm font-medium">{{ slot.time_display }}</span>
-                                </div>
-                                <div class="flex items-center space-x-4">
-                                    <!-- FIXED: Use helper function for safe price formatting -->
-                                    <span class="text-sm font-medium">€ {{ formatPrice(slot.price) }}</span>
+                        <!-- Address Section -->
+                        <div class="bg-white border rounded-lg shadow-sm">
+                            <div class="p-6">
+                                <h3 class="text-lg font-medium mb-4">Bezorgadres</h3>
+                                <div class="flex items-start justify-between">
+                                    <div class="flex-1">
+                                        <div :class="[
+                                            'p-4 border rounded-md',
+                                            hasValidAddress ? 'bg-gray-50 border-gray-200' : 'bg-red-50 border-red-200'
+                                        ]">
+                                            <div :class="[
+                                                'text-sm',
+                                                hasValidAddress ? 'text-gray-700' : 'text-red-700'
+                                            ]">
+                                                {{ formatAddress() }}
+                                            </div>
+                                        </div>
+                                    </div>
                                     <button 
-                                        @click="selectDeliverySlot(slot.id)"
-                                        :disabled="isSelectingSlot"
-                                        :class="[
-                                            'px-6 py-2 text-sm border hover:bg-gray-50 transition-colors rounded',
-                                            selectedSlot === slot.id 
-                                                ? 'bg-green-50 text-green-700 border-green-300' 
-                                                : 'bg-white border-gray-300',
-                                            isSelectingSlot ? 'opacity-50 cursor-not-allowed' : ''
-                                        ]"
+                                        @click="openAddressModal"
+                                        class="ml-4 px-6 py-2 bg-white border border-gray-300 text-sm text-gray-700 hover:bg-gray-50 rounded-md transition-colors"
                                     >
-                                        {{ selectedSlot === slot.id ? 'Gekozen' : 'Kies' }}
+                                        {{ hasValidAddress ? 'Wijzigen' : 'Instellen' }}
                                     </button>
                                 </div>
                             </div>
                         </div>
-
-                        <div v-else class="text-center text-gray-500 py-8">
-                            Selecteer een dag om bezorgmomenten te bekijken
-                        </div>
                     </div>
-                </div>
 
-                <!-- Selected Slot Confirmation -->
-                <div v-if="selectedSlotDetails" class="mt-8">
-                    <div class="bg-green-50 border border-green-200 rounded p-4">
-                        <div class="flex items-center">
-                            <svg class="h-5 w-5 text-green-400 mr-3" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                            </svg>
-                            <div>
-                                <h4 class="text-sm font-medium text-green-800">Bezorgmoment geselecteerd</h4>
-                                <p class="text-sm text-green-700">
-                                    {{ selectedSlotDetails.day_name }} {{ selectedSlotDetails.formatted_date }} om {{ selectedSlotDetails.time_display }}
-                                    (€ {{ formatPrice(selectedSlotDetails.price) }})
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                    <!-- Right column: Order Summary -->
+                    <div class="lg:col-span-1">
+                        <OrderSummary
+                            :delivery-fee="deliveryFee"
+                            :selected-slot-details="selectedSlotDetails"
+                            :delivery-address="deliveryAddress"
+                            :is-processing="isProcessingOrder"
+                            :show-actions="true"
+                            @proceed="proceedToConfirmation"
+                            @back-to-cart="router.get('/cart')"
+                        />
 
-                <!-- Address Section -->
-                <div v-if="cartItems.length > 0" class="mt-8">
-                    <div class="bg-white border rounded p-6">
-                        <h3 class="text-lg font-medium mb-4">Bezorgadres</h3>
-                        <div class="flex items-start justify-between">
-                            <div class="flex-1">
-                                <div v-if="hasValidAddress" class="p-4 bg-gray-50 border rounded">
-                                    <div class="text-sm text-gray-700">{{ formatAddress() }}</div>
-                                </div>
-                                <div v-else class="p-4 bg-red-50 border border-red-200 rounded">
-                                    <div class="text-sm text-red-700">{{ formatAddress() }}</div>
-                                </div>
-                            </div>
-                            <button class="ml-4 px-6 py-2 bg-white border text-sm hover:bg-gray-50 rounded transition-colors">
-                                {{ hasValidAddress ? 'Wijzigen' : 'Instellen' }}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Order Summary -->
-                <div v-if="cartItems.length > 0" class="mt-8">
-                    <div class="bg-white border rounded p-6">
-                        <h3 class="text-lg font-medium mb-4">Bestelling samenvatting</h3>
-                        
-                        <!-- Cart items -->
-                        <div class="space-y-3 mb-6">
-                            <div 
-                                v-for="item in cartItems" 
-                                :key="item.id"
-                                class="flex items-center justify-between py-2 border-b"
+                        <!-- Quick action buttons -->
+                        <div v-if="canProceed" class="mt-6 space-y-3">
+                            <button 
+                                @click="processOrderDirectly"
+                                :disabled="isProcessingOrder"
+                                :class="[
+                                    'w-full px-6 py-3 rounded-md font-medium transition-colors',
+                                    isProcessingOrder
+                                        ? 'bg-gray-400 text-gray-700 cursor-not-allowed'
+                                        : 'bg-green-600 text-white hover:bg-green-700'
+                                ]"
                             >
-                                <div class="flex items-center space-x-3">
-                                    <img 
-                                        :src="item.image_path" 
-                                        :alt="item.name"
-                                        class="w-12 h-12 object-cover rounded"
-                                        @error="$event.target.src = '/images/placeholder.jpg'"
-                                    >
-                                    <div>
-                                        <p class="text-sm font-medium">{{ item.name }}</p>
-                                        <p class="text-xs text-gray-500">{{ item.quantity }}x</p>
-                                    </div>
-                                </div>
-                                <!-- FIXED: Use helper function for safe line total formatting -->
-                                <span class="text-sm font-medium">€ {{ formatLineTotal(item) }}</span>
-                            </div>
-                        </div>
-
-                        <!-- Totals -->
-                        <div class="space-y-2 border-t pt-4">
-                            <div class="flex justify-between text-sm">
-                                <span>Subtotaal ({{ cartItems.length }} artikel{{ cartItems.length > 1 ? 'en' : '' }}):</span>
-                                <!-- FIXED: Use helper function for safe price formatting -->
-                                <span>€ {{ formatPrice(cartTotal) }}</span>
-                            </div>
-                            <div class="flex justify-between text-sm">
-                                <span>Bezorgkosten:</span>
-                                <!-- FIXED: Use computed value which is already safe -->
-                                <span>€ {{ formatPrice(deliveryFee) }}</span>
-                            </div>
-                            <div class="flex justify-between text-lg font-semibold border-t pt-2">
-                                <span>Totaal:</span>
-                                <!-- FIXED: Use computed value which is already safe -->
-                                <span>€ {{ formatPrice(orderTotal) }}</span>
-                            </div>
+                                {{ isProcessingOrder ? 'Bestelling plaatsen...' : '🚀 Direct bestellen' }}
+                            </button>
+                            
+                            <p class="text-xs text-center text-gray-500">
+                                Of ga verder naar de bevestigingspagina voor meer opties
+                            </p>
                         </div>
                     </div>
-                </div>
-
-                <!-- Action Buttons -->
-                <div v-if="cartItems.length > 0" class="mt-8 flex items-center justify-between">
-                    <button 
-                        @click="router.get('/cart')"
-                        class="px-6 py-3 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
-                    >
-                        ← Terug naar winkelwagen
-                    </button>
-
-                    <button 
-                        @click="proceedToConfirmation"
-                        :disabled="!canProceed"
-                        :class="[
-                            'px-8 py-3 rounded-md font-medium transition-colors',
-                            canProceed 
-                                ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        ]"
-                    >
-                        Verder naar bevestiging →
-                    </button>
                 </div>
 
                 <!-- Help Text -->
-                <div v-if="cartItems.length > 0 && !canProceed" class="mt-6 text-center">
-                    <p class="text-sm text-gray-600">
-                        <span v-if="!hasValidAddress">Stel eerst een bezorgadres in en </span>
-                        <span v-if="!selectedSlot">selecteer een bezorgmoment om verder te gaan</span>
-                    </p>
+                <div v-if="!cartStore.isLoading && cartStore.hasItems && !canProceed" class="mt-8 text-center">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <p class="text-sm text-blue-800">
+                            <span v-if="!hasValidAddress">📍 Stel eerst een bezorgadres in</span>
+                            <span v-else-if="!selectedSlotId">⏰ Selecteer een bezorgmoment</span>
+                            <span v-else>✅ Controleer je bestelling</span>
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -500,67 +404,111 @@ onUnmounted(() => {
     <Footer />
 
     <!-- Session Expired Modal -->
-    <div v-if="showSessionModal" class="fixed inset-0 z-50 overflow-y-auto">
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <!-- Background overlay -->
-            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
-            
-            <!-- Modal panel -->
-            <div class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
-                <div class="sm:flex sm:items-start">
-                    <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 sm:mx-0 sm:h-10 sm:w-10">
-                        <svg class="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                        </svg>
-                    </div>
-                    <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                        <h3 class="text-lg leading-6 font-medium text-gray-900">
-                            Je sessie is verlopen
-                        </h3>
-                        <div class="mt-2">
-                            <p class="text-sm text-gray-500">
-                                Je bent automatisch uitgelogd voor je veiligheid. Je winkelwagen is bewaard. Wil je opnieuw inloggen of verdergaan als gast?
-                            </p>
-                        </div>
+    <div v-if="showSessionModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-500 bg-opacity-75">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+        
+        <div class="bg-white rounded-lg p-6 text-left overflow-hidden shadow-xl transform transition-all max-w-lg w-full mx-4">
+            <div class="sm:flex sm:items-start">
+                <div class="flex justify-center mb-6">
+                    <div class="rounded-full bg-amber-100 p-3">
+                        <ExclamationTriangleIcon class="h-8 w-8 text-amber-600" />
                     </div>
                 </div>
-                <div class="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse space-y-2 sm:space-y-0 sm:space-x-reverse sm:space-x-3">
-                    <button 
-                        @click="handleSessionExpiredAction('login')"
-                        type="button" 
-                        class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm"
-                    >
-                        Opnieuw inloggen
-                    </button>
-                    <button 
-                        @click="handleSessionExpiredAction('continue')"
-                        type="button" 
-                        class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:mt-0 sm:w-auto sm:text-sm"
-                    >
-                        Verder als gast
-                    </button>
+                <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">
+                        Je sessie is verlopen
+                    </h3>
+                    <div class="mt-2">
+                        <p class="text-sm text-gray-500">
+                            Je bent automatisch uitgelogd voor je veiligheid. Je winkelwagen is bewaard. Wil je opnieuw inloggen of verdergaan als gast?
+                        </p>
+                    </div>
                 </div>
             </div>
+            <div class="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse space-y-2 sm:space-y-0 sm:space-x-reverse sm:space-x-3">
+                <button 
+                    @click="handleSessionExpiredAction('login')"
+                    type="button" 
+                    class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm"
+                >
+                    Opnieuw inloggen
+                </button>
+                <button 
+                    @click="handleSessionExpiredAction('continue')"
+                    type="button" 
+                    class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:mt-0 sm:w-auto sm:text-sm"
+                >
+                    Verder als gast
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Address Modal (placeholder - you'd implement the actual address form) -->
+    <div v-if="showAddressModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-500 bg-opacity-75">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 class="text-lg font-medium mb-4">Bezorgadres instellen</h3>
+            <p class="text-sm text-gray-600 mb-4">
+                Deze functionaliteit wordt binnenkort toegevoegd. Voor nu kunt u contact opnemen met de klantenservice.
+            </p>
+            <button 
+                @click="showAddressModal = false"
+                class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            >
+                Sluiten
+            </button>
         </div>
     </div>
 </template>
 
 <style scoped>
-/* Custom styles for better mobile responsiveness */
-@media (max-width: 640px) {
-    .grid-cols-7 {
-        grid-template-columns: repeat(3, 1fr);
-        gap: 0.25rem;
+/* Responsive grid adjustments */
+@media (max-width: 1024px) {
+    .grid.grid-cols-1.lg\\:grid-cols-3 {
+        grid-template-columns: 1fr;
     }
     
-    .grid-cols-7 button {
-        padding: 0.75rem 0.5rem;
+    .lg\\:col-span-2,
+    .lg\\:col-span-1 {
+        grid-column: span 1;
     }
 }
 
-@media (max-width: 480px) {
-    .grid-cols-7 {
-        grid-template-columns: repeat(2, 1fr);
+/* Custom focus styles for better accessibility */
+button:focus {
+    outline: 2px solid #3B82F6;
+    outline-offset: 2px;
+}
+
+/* Smooth transitions */
+.transition-colors {
+    transition: all 0.2s ease-in-out;
+}
+
+/* Loading animation */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
     }
+}
+
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+/* Enhanced card shadows on hover */
+.bg-white.border.rounded-lg.shadow-sm:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    transition: box-shadow 0.2s ease-in-out;
+}
+
+/* Status indicator animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.bg-blue-50, .bg-red-50, .bg-green-50 {
+    animation: fadeIn 0.3s ease-in-out;
 }
 </style>

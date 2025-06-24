@@ -3,43 +3,76 @@
 namespace Database\Seeders;
 
 use App\Models\DeliverySlot;
-use Illuminate\Database\Seeder;
 use Carbon\Carbon;
+use Illuminate\Database\Seeder;
 
 class DeliverySlotSeeder extends Seeder
 {
-    public function run()
+    /**
+     * Run the database seeds.
+     */
+    public function run(): void
     {
-        // Clear existing slots
-        DeliverySlot::query()->delete();
+        // Delete only future delivery slots to avoid foreign key constraint issues with existing orders
+        DeliverySlot::where('date', '>=', Carbon::today())->delete();
 
-        // Time slots configuration
-        $timeSlots = [
-            ['start' => '08:00', 'end' => '12:00', 'price' => 4.95, 'capacity' => 10],
-            ['start' => '12:00', 'end' => '16:00', 'price' => 4.95, 'capacity' => 10],
-            ['start' => '16:00', 'end' => '20:00', 'price' => 6.95, 'capacity' => 8],
-            ['start' => '19:00', 'end' => '21:00', 'price' => 7.50, 'capacity' => 5],
-            ['start' => '20:00', 'end' => '22:00', 'price' => 7.50, 'capacity' => 5],
-        ];
+        $today = Carbon::today();
 
-        // Create slots for the next 14 days
+        // Generate delivery slots for the next 14 days
         for ($i = 0; $i < 14; $i++) {
-            $date = Carbon::today()->addDays($i);
-            
-            // Skip Sundays (no delivery)
+            $date = $today->copy()->addDays($i);
+
+            // Skip Sundays (no delivery available)
             if ($date->isSunday()) {
                 continue;
             }
 
-            foreach ($timeSlots as $slot) {
+            // Standard delivery slots
+            DeliverySlot::create([
+                'date' => $date,
+                'start_time' => '09:00',
+                'end_time' => '12:00',
+                'price' => 4.95,
+                'available_slots' => 10
+            ]);
+
+            DeliverySlot::create([
+                'date' => $date,
+                'start_time' => '12:00',
+                'end_time' => '15:00',
+                'price' => 4.95,
+                'available_slots' => 10
+            ]);
+
+            DeliverySlot::create([
+                'date' => $date,
+                'start_time' => '15:00',
+                'end_time' => '18:00',
+                'price' => 4.95,
+                'available_slots' => 10
+            ]);
+
+            // Evening delivery slot (premium pricing)
+            DeliverySlot::create([
+                'date' => $date,
+                'start_time' => '18:00',
+                'end_time' => '21:00',
+                'price' => 6.95,
+                'available_slots' => 8
+            ]);
+
+            // Add Saturday morning premium slot
+            if ($date->isSaturday()) {
                 DeliverySlot::create([
                     'date' => $date,
-                    'start_time' => $slot['start'],
-                    'end_time' => $slot['end'],
-                    'price' => $slot['price'],
-                    'available_slots' => $slot['capacity']
+                    'start_time' => '08:00',
+                    'end_time' => '11:00',
+                    'price' => 7.95,
+                    'available_slots' => 5
                 ]);
             }
         }
+
+        $this->command->info('Created delivery slots for the next 14 days');
     }
 }

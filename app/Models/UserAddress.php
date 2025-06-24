@@ -11,16 +11,33 @@ class UserAddress extends Model
         'user_id',
         'street',
         'house_number',
-        'postal_code',
         'city',
-        'country',
+        'postal_code',
+        'country'
     ];
 
-    /**
-     * Get the user associated with the address.
-     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get formatted address string
+     */
+    public function getFormattedAddressAttribute(): string
+    {
+        $address = $this->street;
+        
+        if ($this->house_number) {
+            $address .= ' ' . $this->house_number;
+        }
+        
+        $address .= ', ' . $this->postal_code . ' ' . $this->city;
+        
+        if ($this->country && $this->country !== 'Netherlands') {
+            $address .= ', ' . $this->country;
+        }
+        
+        return $address;
     }
 }

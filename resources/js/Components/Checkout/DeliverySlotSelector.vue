@@ -17,14 +17,24 @@
                     <button 
                         v-for="day in deliverySlots" 
                         :key="day.date"
-                        @click="selectedDay = day.date"
+                        @click="selectDay(day.date)"
+                        :disabled="!hasAvailableSlots(day)"
                         :class="[
-                            'px-3 py-3 text-sm hover:bg-gray-50 border-r last:border-r-0 transition-colors',
-                            selectedDay === day.date ? 'bg-blue-50 text-blue-600 font-medium' : 'bg-white text-gray-700'
+                            'px-3 py-3 text-sm border-r last:border-r-0 transition-colors relative',
+                            selectedDay === day.date ? 'bg-blue-50 text-blue-600 font-medium' : 'bg-white text-gray-700',
+                            hasAvailableSlots(day) ? 'hover:bg-gray-50 cursor-pointer' : 'opacity-50 cursor-not-allowed bg-gray-100'
                         ]"
                     >
                         <div class="font-medium">{{ day.day_name }}</div>
                         <div class="text-xs text-gray-500">{{ day.formatted_date }}</div>
+                        
+                        <!-- Availability indicator -->
+                        <div v-if="hasAvailableSlots(day)" class="absolute top-1 right-1">
+                            <div class="w-2 h-2 bg-green-400 rounded-full"></div>
+                        </div>
+                        <div v-else class="absolute top-1 right-1">
+                            <div class="w-2 h-2 bg-red-400 rounded-full"></div>
+                        </div>
                     </button>
                 </div>
 
@@ -38,13 +48,40 @@
                         <div 
                             v-for="slot in getSlotsForDay(selectedDay)" 
                             :key="slot.id"
-                            class="flex items-center justify-between p-4 border rounded-md hover:bg-gray-50 transition-colors"
+                            :class="[
+                                'flex items-center justify-between p-4 border rounded-md transition-all duration-200',
+                                selectedSlotId === slot.id 
+                                    ? 'border-green-300 bg-green-50' 
+                                    : slot.current_available === 0
+                                        ? 'border-gray-200 bg-gray-50'
+                                        : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                            ]"
                         >
                             <div class="flex-1">
                                 <div class="flex items-center space-x-3">
                                     <span class="text-sm font-medium">{{ slot.time_display }}</span>
+                                    
+                                    <!-- Availability status -->
+                                    <span :class="[
+                                        'text-xs px-2 py-1 rounded-full',
+                                        slot.current_available === 0 
+                                            ? 'bg-red-100 text-red-800'
+                                            : slot.current_available <= 2
+                                                ? 'bg-orange-100 text-orange-800'
+                                                : 'bg-green-100 text-green-800'
+                                    ]">
+                                        <span v-if="slot.current_available === 0">Vol</span>
+                                        <span v-else-if="slot.current_available <= 2">
+                                            {{ slot.current_available }} {{ slot.current_available === 1 ? 'plek' : 'plekken' }}
+                                        </span>
+                                        <span v-else>Beschikbaar</span>
+                                    </span>
+                                </div>
+
+                                <!-- Show last updated time for real-time data -->
+                                <div v-if="slot.current_available !== slot.available_slots" class="mt-1">
                                     <span class="text-xs text-gray-500">
-                                        ({{ slot.available_slots }} {{ slot.available_slots === 1 ? 'plek' : 'plekken' }} beschikbaar)
+                                        Bijgewerkt {{ getTimeAgo(slot.last_updated) }}
                                     </span>
                                 </div>
                             </div>
@@ -56,24 +93,31 @@
                                 
                                 <button 
                                     @click="selectSlot(slot)"
-                                    :disabled="isSelectingSlot || slot.available_slots === 0"
+                                    :disabled="isSelectingSlot || slot.current_available === 0"
                                     :class="[
-                                        'px-4 py-2 text-sm border rounded-md font-medium transition-colors',
+                                        'px-4 py-2 text-sm border rounded-md font-medium transition-all duration-200',
                                         selectedSlotId === slot.id 
-                                            ? 'bg-green-50 text-green-700 border-green-300' 
-                                            : slot.available_slots === 0
+                                            ? 'bg-green-100 text-green-700 border-green-300 shadow-sm' 
+                                            : slot.current_available === 0
                                                 ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50',
-                                        isSelectingSlot ? 'opacity-50 cursor-not-allowed' : ''
+                                                : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50 hover:border-blue-400',
+                                        isSelectingSlot && selectedSlotId === slot.id ? 'opacity-50 cursor-not-allowed' : ''
                                     ]"
                                 >
                                     <span v-if="isSelectingSlot && selectedSlotId === slot.id">
+                                        <svg class="animate-spin h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
                                         Selecteren...
                                     </span>
                                     <span v-else-if="selectedSlotId === slot.id">
-                                        ✓ Geselecteerd
+                                        <svg class="h-4 w-4 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                        </svg>
+                                        Geselecteerd
                                     </span>
-                                    <span v-else-if="slot.available_slots === 0">
+                                    <span v-else-if="slot.current_available === 0">
                                         Vol
                                     </span>
                                     <span v-else>
@@ -82,6 +126,23 @@
                                 </button>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Refresh slots button -->
+                    <div class="flex justify-center mt-4">
+                        <button 
+                            @click="refreshSlots"
+                            :disabled="isRefreshing"
+                            class="text-sm text-blue-600 hover:text-blue-500 disabled:opacity-50 flex items-center space-x-1"
+                        >
+                            <svg :class="[
+                                'h-4 w-4',
+                                isRefreshing ? 'animate-spin' : ''
+                            ]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            <span>{{ isRefreshing ? 'Vernieuwen...' : 'Vernieuw beschikbaarheid' }}</span>
+                        </button>
                     </div>
                 </div>
 
@@ -97,7 +158,13 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
                 </div>
-                <p class="text-gray-600">Er zijn momenteel geen bezorgmomenten beschikbaar.</p>
+                <p class="text-gray-600 mb-4">Er zijn momenteel geen bezorgmomenten beschikbaar.</p>
+                <button 
+                    @click="refreshSlots"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
+                    Opnieuw laden
+                </button>
             </div>
 
             <!-- Selected Slot Confirmation -->
@@ -127,6 +194,13 @@
                     </div>
                     <div class="ml-3">
                         <p class="text-sm text-red-800">{{ errorMessage }}</p>
+                        <button 
+                            v-if="showRetryButton"
+                            @click="retryLastAction"
+                            class="mt-2 text-sm text-red-600 hover:text-red-500 underline"
+                        >
+                            Opnieuw proberen
+                        </button>
                     </div>
                 </div>
             </div>
@@ -135,8 +209,8 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import axios from 'axios';
 
 // Props
 const props = defineProps({
@@ -151,38 +225,51 @@ const props = defineProps({
 });
 
 // Emits
-const emit = defineEmits(['slot-selected', 'delivery-fee-updated']);
+const emit = defineEmits(['slot-selected', 'delivery-fee-updated', 'refresh-slots']);
 
 // Reactive state
 const selectedDay = ref(null);
 const isSelectingSlot = ref(false);
 const isLoading = ref(false);
+const isRefreshing = ref(false);
 const errorMessage = ref(null);
+const showRetryButton = ref(false);
+const lastAction = ref(null);
 
-// Set first available day as default
-if (props.deliverySlots.length > 0) {
-    selectedDay.value = props.deliverySlots[0].date;
-}
+// Methods - Define these first before using them
+const hasAvailableSlots = (day) => {
+    return day.slots && day.slots.some(slot => slot.current_available > 0);
+};
 
-// Get slots for selected day
 const getSlotsForDay = (date) => {
     const day = props.deliverySlots.find(d => d.date === date);
     return day ? day.slots : [];
 };
 
-// Get selected day name
 const getSelectedDayName = () => {
     if (!selectedDay.value) return '';
     const day = props.deliverySlots.find(d => d.date === selectedDay.value);
     return day ? `${day.day_name} ${day.formatted_date}` : '';
 };
 
-// Get selected slot details
-const selectedSlotDetails = computed(() => {
+// Set first available day as default - do this after methods are defined
+onMounted(() => {
+    if (props.deliverySlots.length > 0) {
+        const firstAvailableDay = props.deliverySlots.find(day => hasAvailableSlots(day));
+        selectedDay.value = firstAvailableDay ? firstAvailableDay.date : props.deliverySlots[0].date;
+    }
+});
+
+const selectDay = (date) => {
+    selectedDay.value = date;
+    errorMessage.value = null;
+};
+
+const getSelectedSlotDetails = () => {
     if (!props.selectedSlotId) return null;
     
     for (const day of props.deliverySlots) {
-        const slot = day.slots.find(s => s.id === props.selectedSlotId);
+        const slot = day.slots ? day.slots.find(s => s.id === props.selectedSlotId) : null;
         if (slot) {
             return {
                 ...slot,
@@ -192,53 +279,122 @@ const selectedSlotDetails = computed(() => {
         }
     }
     return null;
-});
+};
 
-// Select delivery slot
+// Computed properties
+const selectedSlotDetails = computed(() => getSelectedSlotDetails());
+
+// Select delivery slot with enhanced error handling
 const selectSlot = async (slot) => {
-    if (isSelectingSlot.value || slot.available_slots === 0) return;
+    if (isSelectingSlot.value || slot.current_available === 0) return;
     
     isSelectingSlot.value = true;
     errorMessage.value = null;
+    showRetryButton.value = false;
+    lastAction.value = { type: 'selectSlot', payload: slot };
     
     try {
-        await router.post('/checkout/select-slot', {
+        const response = await axios.post('/checkout/select-slot', {
             delivery_slot_id: slot.id
-        }, {
-            preserveState: true,
-            onSuccess: (page) => {
-                // Emit events to parent component
-                emit('slot-selected', {
-                    slotId: slot.id,
-                    deliveryFee: slot.price,
-                    slotDetails: {
-                        ...slot,
-                        day_name: props.deliverySlots.find(d => 
-                            d.slots.some(s => s.id === slot.id)
-                        )?.day_name,
-                        formatted_date: props.deliverySlots.find(d => 
-                            d.slots.some(s => s.id === slot.id)
-                        )?.formatted_date
-                    }
-                });
-                
-                emit('delivery-fee-updated', slot.price);
-            },
-            onError: (errors) => {
-                console.error('Error selecting slot:', errors);
-                if (errors.slot) {
-                    errorMessage.value = errors.slot;
-                } else {
-                    errorMessage.value = 'Er is een fout opgetreden bij het selecteren van het bezorgmoment.';
-                }
-            }
         });
+        
+        if (response.data.success) {
+            // Emit events to parent component
+            emit('slot-selected', {
+                slotId: slot.id,
+                deliveryFee: slot.price,
+                slotDetails: {
+                    ...slot,
+                    day_name: props.deliverySlots.find(d => 
+                        d.slots && d.slots.some(s => s.id === slot.id)
+                    )?.day_name,
+                    formatted_date: props.deliverySlots.find(d => 
+                        d.slots && d.slots.some(s => s.id === slot.id)
+                    )?.formatted_date
+                }
+            });
+            
+            emit('delivery-fee-updated', slot.price);
+            
+            // Show success message briefly
+            const tempMessage = errorMessage.value;
+            errorMessage.value = null;
+            setTimeout(() => {
+                if (!errorMessage.value) {
+                    // Success feedback could go here
+                }
+            }, 100);
+        } else {
+            throw new Error(response.data.message || 'Failed to select slot');
+        }
+        
     } catch (error) {
-        console.error('Unexpected error:', error);
-        errorMessage.value = 'Er is een onverwachte fout opgetreden. Probeer het opnieuw.';
+        console.error('Error selecting slot:', error);
+        
+        if (error.response?.status === 422) {
+            errorMessage.value = error.response.data.message || 'Dit bezorgmoment is niet meer beschikbaar.';
+        } else if (error.response?.status === 500) {
+            errorMessage.value = 'Er is een serverfout opgetreden. Probeer het later opnieuw.';
+            showRetryButton.value = true;
+        } else {
+            errorMessage.value = error.message || 'Er is een fout opgetreden bij het selecteren van het bezorgmoment.';
+            showRetryButton.value = true;
+        }
     } finally {
         isSelectingSlot.value = false;
     }
+};
+
+// Refresh delivery slots
+const refreshSlots = async () => {
+    if (isRefreshing.value) return;
+    
+    isRefreshing.value = true;
+    errorMessage.value = null;
+    
+    try {
+        // Emit refresh event to parent to reload delivery slots
+        emit('refresh-slots');
+        
+        // You could also make a direct API call here if needed
+        // const response = await axios.get('/api/delivery-slots');
+        // Handle response...
+        
+    } catch (error) {
+        console.error('Error refreshing slots:', error);
+        errorMessage.value = 'Kon beschikbaarheid niet vernieuwen. Probeer het opnieuw.';
+        showRetryButton.value = true;
+    } finally {
+        isRefreshing.value = false;
+    }
+};
+
+// Retry last failed action
+const retryLastAction = () => {
+    if (!lastAction.value) return;
+    
+    switch (lastAction.value.type) {
+        case 'selectSlot':
+            selectSlot(lastAction.value.payload);
+            break;
+        case 'refreshSlots':
+            refreshSlots();
+            break;
+    }
+};
+
+// Get time ago helper
+const getTimeAgo = (timestamp) => {
+    if (!timestamp) return '';
+    
+    const now = new Date();
+    const time = new Date(timestamp);
+    const diffInMinutes = Math.floor((now - time) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return 'zojuist';
+    if (diffInMinutes < 60) return `${diffInMinutes} min geleden`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)} uur geleden`;
+    return time.toLocaleDateString();
 };
 
 // Watch for changes in selected slot and emit delivery fee updates
@@ -247,6 +403,22 @@ watch(() => selectedSlotDetails.value, (newSlot) => {
         emit('delivery-fee-updated', newSlot.price);
     }
 }, { immediate: true });
+
+// Auto-refresh slot availability every 2 minutes
+let refreshInterval;
+onMounted(() => {
+    refreshInterval = setInterval(() => {
+        if (!isRefreshing.value && !isSelectingSlot.value) {
+            refreshSlots();
+        }
+    }, 120000); // 2 minutes
+});
+
+onUnmounted(() => {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+    }
+});
 </script>
 
 <style scoped>
@@ -266,5 +438,36 @@ watch(() => selectedSlotDetails.value, (newSlot) => {
     .grid-cols-7 {
         grid-template-columns: repeat(2, 1fr);
     }
+}
+
+/* Enhanced button states */
+.transition-all {
+    transition: all 0.2s ease-in-out;
+}
+
+/* Loading animation for buttons */
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Custom focus styles */
+button:focus {
+    outline: 2px solid #3B82F6;
+    outline-offset: 2px;
+}
+
+/* Availability indicator animations */
+.bg-green-400, .bg-red-400 {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
 }
 </style>

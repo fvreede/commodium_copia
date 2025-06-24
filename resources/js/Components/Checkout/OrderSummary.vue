@@ -4,34 +4,40 @@
         <div class="p-6">
             <h3 class="text-lg font-medium mb-6">Bestelling overzicht</h3>
             
+            <!-- Loading state -->
+            <div v-if="cartStore.isLoading" class="text-center py-8">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                <p class="mt-2 text-sm text-gray-600">Bestelling laden...</p>
+            </div>
+            
             <!-- Empty cart state -->
-            <div v-if="cartItems.length === 0" class="text-center py-8">
+            <div v-else-if="!cartStore.hasItems" class="text-center py-8">
                 <div class="text-gray-400 mb-4">
                     <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.5 1.5M7 13l1.5 1.5M17 21a2 2 0 100-4 2 2 0 000 4zM9 21a2 2 0 100-4 2 2 0 000 4z"/>
                     </svg>
                 </div>
                 <p class="text-gray-600">Je winkelwagen is leeg</p>
-                <router-link 
-                    to="/" 
+                <a 
+                    href="/categories" 
                     class="mt-4 inline-block px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                 >
                     Verder winkelen
-                </router-link>
+                </a>
             </div>
 
             <!-- Cart items -->
             <div v-else>
                 <div class="space-y-4 mb-6">
                     <div 
-                        v-for="item in cartItems" 
+                        v-for="item in cartStore.sortedItems" 
                         :key="item.id || item.product_id"
                         class="flex items-start space-x-4 py-4 border-b last:border-b-0"
                     >
                         <!-- Product image -->
                         <div class="flex-shrink-0">
                             <img 
-                                :src="item.image_path || '/images/placeholder.jpg'" 
+                                :src="getImageUrl(item.image_path)" 
                                 :alt="item.name"
                                 class="w-16 h-16 object-cover rounded-md border"
                                 @error="handleImageError"
@@ -53,7 +59,7 @@
                                     {{ item.quantity }}x à € {{ formatPrice(item.price) }}
                                 </div>
                                 <div class="text-sm font-medium text-gray-900">
-                                    € {{ formatPrice(item.line_total) }}
+                                    € {{ formatPrice(item.price * item.quantity) }}
                                 </div>
                             </div>
 
@@ -61,6 +67,12 @@
                             <div v-if="item.stock_quantity && item.quantity > item.stock_quantity" 
                                  class="mt-2 text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
                                 ⚠️ Slechts {{ item.stock_quantity }} op voorraad
+                            </div>
+                            
+                            <!-- Low stock warning -->
+                            <div v-else-if="item.stock_quantity && item.stock_quantity <= 5" 
+                                 class="mt-2 text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
+                                Nog {{ item.stock_quantity }} op voorraad
                             </div>
                         </div>
                     </div>
@@ -71,9 +83,9 @@
                     <!-- Subtotal -->
                     <div class="flex justify-between text-sm">
                         <span class="text-gray-600">
-                            Subtotaal ({{ totalItems }} {{ totalItems === 1 ? 'artikel' : 'artikelen' }}):
+                            Subtotaal ({{ cartStore.totalItems }} {{ cartStore.totalItems === 1 ? 'artikel' : 'artikelen' }}):
                         </span>
-                        <span class="font-medium">€ {{ formatPrice(cartTotal) }}</span>
+                        <span class="font-medium">€ {{ formatPrice(cartStore.subtotal) }}</span>
                     </div>
 
                     <!-- Delivery fee -->
@@ -129,8 +141,25 @@
                         <div>
                             <h4 class="text-sm font-medium text-gray-700">Bezorgadres</h4>
                             <p class="text-sm text-gray-600">
-                                {{ deliveryAddress.street }}<br>
-                                {{ deliveryAddress.postal_code }} {{ deliveryAddress.city }}
+                                {{ formatAddress() }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Error state for stock issues -->
+                <div v-if="hasStockIssues" class="mt-6 p-4 bg-red-50 border border-red-200 rounded-md">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-red-800">Voorraad probleem</h3>
+                            <p class="mt-1 text-sm text-red-700">
+                                Sommige producten in je winkelwagen zijn niet meer voldoende op voorraad. 
+                                Pas de hoeveelheden aan voordat je verder gaat.
                             </p>
                         </div>
                     </div>
@@ -142,15 +171,21 @@
                     <button 
                         v-if="canProceed"
                         @click="$emit('proceed')"
-                        class="w-full px-6 py-3 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 transition-colors"
+                        :disabled="isProcessing"
+                        :class="[
+                            'w-full px-6 py-3 font-medium rounded-md transition-colors',
+                            isProcessing
+                                ? 'bg-gray-400 text-gray-700 cursor-not-allowed'
+                                : 'bg-blue-600 text-white hover:bg-blue-700'
+                        ]"
                     >
-                        Doorgaan naar bevestiging
+                        {{ isProcessing ? 'Bezig...' : 'Doorgaan naar bevestiging' }}
                     </button>
                     
                     <!-- Warning when can't proceed -->
                     <div v-else class="text-center">
                         <p class="text-sm text-gray-600 mb-3">
-                            {{ !selectedSlotDetails ? 'Selecteer eerst een bezorgmoment' : 'Controleer je bestelling' }}
+                            {{ getCannotProceedReason() }}
                         </p>
                     </div>
 
@@ -187,18 +222,11 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, onMounted, watch, onUnmounted } from 'vue';
+import { useCartStore } from '@/Stores/cart';
 
 // Props
 const props = defineProps({
-    cartItems: {
-        type: Array,
-        default: () => []
-    },
-    cartTotal: {
-        type: Number,
-        default: 0
-    },
     deliveryFee: {
         type: Number,
         default: 0
@@ -217,7 +245,7 @@ const props = defineProps({
     },
     showActions: {
         type: Boolean,
-        default: false
+        default: true
     },
     showOrderNotes: {
         type: Boolean,
@@ -226,6 +254,10 @@ const props = defineProps({
     orderNotes: {
         type: String,
         default: ''
+    },
+    isProcessing: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -236,27 +268,100 @@ const emit = defineEmits([
     'update:order-notes'
 ]);
 
-// Computed properties
-const totalItems = computed(() => {
-    return props.cartItems.reduce((total, item) => total + item.quantity, 0);
+// Initialize cart store
+const cartStore = useCartStore();
+
+// Load cart on mount
+onMounted(async () => {
+    if (!cartStore.hasItems && !cartStore.isLoading) {
+        await cartStore.loadCart();
+    }
 });
 
+// Computed properties
 const orderTotal = computed(() => {
-    return props.cartTotal + props.deliveryFee - (props.discount || 0);
+    return cartStore.subtotal + props.deliveryFee - (props.discount || 0);
 });
 
 const canProceed = computed(() => {
-    return props.cartItems.length > 0 && props.selectedSlotDetails;
+    return cartStore.hasItems && 
+           props.selectedSlotDetails && 
+           !hasStockIssues.value &&
+           !props.isProcessing;
+});
+
+const hasStockIssues = computed(() => {
+    return cartStore.sortedItems.some(item => 
+        item.stock_quantity !== undefined && 
+        item.quantity > item.stock_quantity
+    );
 });
 
 // Methods
 const formatPrice = (price) => {
-    return Number(price).toFixed(2);
+    return Number(price || 0).toFixed(2);
+};
+
+const getImageUrl = (imagePath) => {
+    if (!imagePath) {
+        return '/images/placeholder.jpg';
+    }
+
+    // If it's already a full URL, return as is
+    if (imagePath.startsWith('http') || imagePath.startsWith('/storage/') || imagePath.startsWith('/images/')) {
+        return imagePath;
+    }
+
+    // Assume it's a storage path
+    return `/storage/${imagePath}`;
 };
 
 const handleImageError = (event) => {
     event.target.src = '/images/placeholder.jpg';
 };
+
+const formatAddress = () => {
+    if (!props.deliveryAddress) return 'Geen adres ingesteld';
+    
+    const addr = props.deliveryAddress;
+    let formatted = addr.street;
+    
+    if (addr.house_number) {
+        formatted += ` ${addr.house_number}`;
+    }
+    
+    formatted += `, ${addr.postal_code} ${addr.city}`;
+    
+    return formatted;
+};
+
+const getCannotProceedReason = () => {
+    if (!cartStore.hasItems) return 'Je winkelwagen is leeg';
+    if (!props.selectedSlotDetails) return 'Selecteer eerst een bezorgmoment';
+    if (hasStockIssues.value) return 'Controleer de voorraad van je producten';
+    return 'Controleer je bestelling';
+};
+
+// Watch for cart changes and emit updates
+watch(() => cartStore.subtotal, (newSubtotal) => {
+    // You can emit subtotal changes if needed
+}, { immediate: true });
+
+// Auto-refresh cart data every 30 seconds to catch stock changes
+let refreshInterval;
+onMounted(() => {
+    refreshInterval = setInterval(async () => {
+        if (!cartStore.isLoading) {
+            await cartStore.loadCart();
+        }
+    }, 30000);
+});
+
+onUnmounted(() => {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+    }
+});
 </script>
 
 <style scoped>

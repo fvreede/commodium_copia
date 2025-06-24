@@ -107,13 +107,23 @@
                           class="flex py-6 group hover:bg-gray-50 transition-colors rounded-lg -mx-2 px-2"
                         >
                           <!-- Product image -->
-                          <div class="h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+                          <div class="h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 relative">
                             <img 
+                              v-if="getImageUrl(item.image_path) && !hasImageError(item.product_id)"
                               :src="getImageUrl(item.image_path)" 
                               :alt="item.name" 
                               class="h-full w-full object-cover object-center transition-transform group-hover:scale-105" 
-                              @error="handleImageError"
+                              @error="() => handleImageError(item.product_id)"
                             />
+                            <!-- Fallback when no image or image error -->
+                            <div 
+                              v-if="!getImageUrl(item.image_path) || hasImageError(item.product_id)" 
+                              class="h-full w-full flex items-center justify-center bg-gray-100"
+                            >
+                              <svg class="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                            </div>
                           </div>
 
                           <div class="ml-4 flex flex-1 flex-col justify-between">
@@ -209,7 +219,7 @@
                         type="button" 
                         :disabled="cartStore.sortedItems.length === 0 || hasOutOfStockItems"
                         class="w-full rounded-md border border-transparent bg-indigo-600 px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                        @click="router.visit('/checkout')"
+                        @click="goToCheckout"
                       >
                         <span v-if="hasOutOfStockItems">Controleer voorraad</span>
                         <span v-else>Bestelling afronden</span>
@@ -248,7 +258,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue';
 import { 
   XMarkIcon, 
@@ -264,7 +274,7 @@ import { useCartStore } from '@/Stores/cart';
 import { router } from '@inertiajs/vue3';
 
 // Props
-defineProps({
+const props = defineProps({
   isOpen: {
     type: Boolean,
     required: true
@@ -280,6 +290,20 @@ const cartStore = useCartStore();
 // Local state
 const updatingItems = ref(new Set());
 const clearingCart = ref(false);
+const imageErrors = ref(new Set()); // Track image errors
+
+// Load cart when component mounts or when opened
+onMounted(async () => {
+  await cartStore.loadCart();
+});
+
+// Watch for when cart opens to refresh data
+watch(() => props.isOpen, async (isOpen) => {
+  if (isOpen) {
+    await cartStore.loadCart(true); // Force refresh when opening
+    imageErrors.value.clear(); // Clear image errors when reopening
+  }
+});
 
 // Computed properties
 const sortDirectionLabel = computed(() => {
@@ -296,12 +320,28 @@ const formatPrice = (price) => {
 };
 
 const getImageUrl = (imagePath) => {
-  if (!imagePath) return '/images/placeholder.jpg';
+  if (!imagePath) return null;
+  
+  // If it's already a full URL, return as is
+  if (imagePath.startsWith('http') || imagePath.startsWith('/storage/') || imagePath.startsWith('/images/')) {
+    return imagePath;
+  }
+  
+  // Assume it's a storage path
   return `/storage/${imagePath}`;
 };
 
-const handleImageError = (event) => {
-  event.target.src = '/images/placeholder.jpg';
+const handleImageError = (productId) => {
+  // Add product ID to the set of items with image errors
+  imageErrors.value.add(productId);
+};
+
+const hasImageError = (productId) => {
+  return imageErrors.value.has(productId);
+};
+
+const goToCheckout = () => {
+  router.visit('/checkout');
 };
 
 const incrementQuantity = async (item) => {
@@ -362,3 +402,14 @@ const clearCart = async () => {
   }
 };
 </script>
+
+<style scoped>
+/* Line clamp utility for product names */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2; /* Standard property for compatibility */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+</style>

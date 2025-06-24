@@ -37,22 +37,87 @@ class CheckoutController extends Controller
             abort(403, 'Je hebt geen toegang tot deze pagina.');
         }
 
+        // Check if cart has items - let frontend handle this via cart store
         $cartItems = $this->cartService->getItems();
 
         if (empty($cartItems)) {
-            return Inertia::location(route('cart.index'));
+            return redirect()->route('cart.index');
         }
 
         // Load the user's delivery address
         $deliveryAddress = $user->address;
 
         return Inertia::render('CheckoutPage', [
-            'cartItems' => $cartItems,
-            'cartTotal' => (float) $this->cartService->getTotals()['subtotal'], // Ensure it's a float
+            // Remove cartItems and cartTotal from props - frontend will use store
             'deliverySlots' => $this->getFormattedDeliverySlots(),
             'deliveryAddress' => $deliveryAddress,
             'selectedSlotId' => session('selected_delivery_slot_id'),
+            // Add user info for potential address management
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ]
         ]);
+    }
+
+    /**
+     * API endpoint to get current cart data (for real-time updates)
+     */
+    public function getCartData()
+    {
+        if (!Auth::check()) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $cartItems = $this->cartService->getItems();
+        $totals = $this->cartService->getTotals();
+
+        return response()->json([
+            'cartItems' => $this->formatCartItemsForFrontend($cartItems),
+            'totals' => $totals,
+            'hasItems' => !empty($cartItems)
+        ]);
+    }
+
+    /**
+     * Format cart items with proper image URLs and safety checks
+     */
+    private function formatCartItemsForFrontend(array $cartItems): array
+    {
+        return array_map(function ($item) {
+            return [
+                'id' => $item['id'],
+                'product_id' => $item['product_id'],
+                'name' => $item['name'],
+                'price' => (float) $item['price'],
+                'quantity' => (int) $item['quantity'],
+                'stock_quantity' => (int) $item['stock_quantity'],
+                'image_path' => $this->getImageUrl($item['image_path'] ?? null),
+                'short_description' => $item['short_description'] ?? '',
+                'is_active' => (bool) $item['is_active'],
+                'line_total' => (float) ($item['price'] * $item['quantity'])
+            ];
+        }, $cartItems);
+    }
+
+    /**
+     * Get proper image URL with fallback
+     */
+    private function getImageUrl(?string $imagePath): string
+    {
+        if (!$imagePath) {
+            return asset('images/placeholder.jpg');
+        }
+
+        // Check if image exists in storage
+        $fullPath = storage_path('app/public/' . $imagePath);
+        if (file_exists($fullPath)) {
+            return asset('storage/' . $imagePath);
+        }
+
+        // Fallback to placeholder
+        return asset('images/placeholder.jpg');
     }
 
     /**
@@ -126,7 +191,15 @@ class CheckoutController extends Controller
             // Store selected slot in session for persistence
             session(['selected_delivery_slot_id' => $request->delivery_slot_id]);
 
-            return response()->json(['success' => true]);
+            return response()->json([
+                'success' => true,
+                'slot' => [
+                    'id' => $slot->id,
+                    'time_display' => $slot->start_time . ' - ' . $slot->end_time,
+                    'price' => (float) $slot->price,
+                    'date' => $slot->date
+                ]
+            ]);
         } catch (\Exception $e) {
             Log::error('Error selecting delivery slot', [
                 'slot_id' => $request->delivery_slot_id,
@@ -155,7 +228,7 @@ class CheckoutController extends Controller
         $selectedSlotId = session('selected_delivery_slot_id');
 
         if (empty($cartItems) || !$selectedSlotId) {
-            return Inertia::location(route('checkout.index'));
+            return redirect()->route('checkout.index');
         }
 
         $deliverySlot = DeliverySlot::find($selectedSlotId);
@@ -163,16 +236,22 @@ class CheckoutController extends Controller
         // Validate slot is still available
         if (!$deliverySlot || $deliverySlot->getCurrentAvailableSlots() <= 0) {
             session()->forget('selected_delivery_slot_id');
-            return Inertia::location(route('checkout.index'))
+            return redirect()->route('checkout.index')
                 ->with('error', 'Het geselecteerde bezorgmoment is niet meer beschikbaar.');
         }
 
         $deliveryAddress = $user->address;
+        $totals = $this->cartService->getTotals();
 
         return Inertia::render('CheckoutConfirm', [
-            'cartItems' => $cartItems,
-            'cartTotal' => (float) $this->cartService->getTotals()['subtotal'], // Ensure it's a float
-            'deliverySlot' => $deliverySlot,
+            'cartItems' => $this->formatCartItemsForFrontend($cartItems),
+            'totals' => $totals,
+            'deliverySlot' => [
+                'id' => $deliverySlot->id,
+                'time_display' => $deliverySlot->start_time . ' - ' . $deliverySlot->end_time,
+                'price' => (float) $deliverySlot->price,
+                'date' => $deliverySlot->date
+            ],
             'deliveryAddress' => $deliveryAddress,
         ]);
     }
@@ -195,7 +274,10 @@ class CheckoutController extends Controller
         $cartItems = $this->cartService->getItems();
 
         if (empty($cartItems)) {
-            return Inertia::location(route('cart.index'));
+            return response()->json([
+                'success' => false,
+                'message' => 'Je winkelwagen is leeg.'
+            ], 400);
         }
 
         DB::beginTransaction();
@@ -208,38 +290,97 @@ class CheckoutController extends Controller
                 throw new \Exception('Bezorgmoment niet meer beschikbaar');
             }
 
+            // Calculate totals
+            $totals = $this->cartService->getTotals();
+            $deliveryFee = (float) $deliverySlot->price;
+            $finalTotal = $totals['subtotal'] + $deliveryFee;
+
             $order = Order::create([
                 'user_id' => $user->id,
                 'delivery_slot_id' => $request->input('delivery_slot_id'),
                 'status' => 'pending',
-                'total_price' => $this->cartService->getTotals()['total'],
+                'subtotal' => $totals['subtotal'],
+                'delivery_fee' => $deliveryFee,
+                'total' => $finalTotal,
                 'order_date' => Carbon::now(),
             ]);
 
+            // Create order items and update stock
             foreach ($cartItems as $item) {
+                // Double-check stock availability
+                $product = \App\Models\Product::find($item['product_id']);
+                if (!$product || $product->stock_quantity < $item['quantity']) {
+                    throw new \Exception("Product '{$item['name']}' is niet meer voldoende op voorraad.");
+                }
+
                 OrderItem::create([
                     'order_id' => $order->id,
                     'product_id' => $item['product_id'],
                     'quantity' => $item['quantity'],
                     'price' => $item['price'],
+                    'product_name' => $item['name'], // Store name for historical purposes
                 ]);
+
+                // Update product stock
+                $product->decrement('stock_quantity', $item['quantity']);
             }
 
+            // Clear cart and session
             $this->cartService->clear();
             session()->forget('selected_delivery_slot_id');
 
             DB::commit();
 
-            return Inertia::location(route('orders.show', $order->id));
+            // Return JSON response for AJAX or redirect for regular requests
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Bestelling succesvol geplaatst!',
+                    'order_id' => $order->id,
+                    'redirect' => route('orders.show', $order->id)
+                ]);
+            }
+
+            return redirect()->route('orders.show', $order->id);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Checkout failed', [
                 'error' => $e->getMessage(),
                 'user_id' => $user->id,
+                'trace' => $e->getTraceAsString()
             ]);
             
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage()
+                ], 400);
+            }
+            
             return redirect()->route('checkout.index')
-                ->with('error', 'Er is een fout opgetreden bij het plaatsen van uw bestelling.');
+                ->with('error', 'Er is een fout opgetreden bij het plaatsen van uw bestelling: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * API endpoint for session check (used by frontend)
+     */
+    public function checkSession()
+    {
+        $authenticated = Auth::check();
+        $timeRemaining = null;
+
+        if ($authenticated) {
+            // Laravel session lifetime in minutes (default 120)
+            $sessionLifetime = config('session.lifetime') * 60; // Convert to seconds
+            $lastActivity = session('_token') ? session()->get('_flash.old', []) : null;
+
+            $timeRemaining = $sessionLifetime;
+        }
+
+        return response()->json([
+            'authenticated' => $authenticated,
+            'time_remaining' => $timeRemaining
+        ]);
     }
 }

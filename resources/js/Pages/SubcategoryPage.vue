@@ -1,23 +1,33 @@
-<!-- SubcategoryPage.vue -->
+<!-- Enhanced SubcategoryPage.vue -->
 <template>
     <NavBar/>
     <div class="bg-gray-100">
-        <div class="relative category-banner">
-            <div class="absolute inset-0 bg-gradient-to-r from-black/70 to-black/20 z-10"></div>
-            <img :src="resolveImagePath(props.bannerSrc)" alt="Category banner" class="w-full h-64 object-cover object-center" />
-            <div class="absolute inset-0 z-20 flex flex-col items-center justify-center p-4">
-                <h2 class="text-2xl font-bold tracking-tight h_text sm:text-2xl md:text-4xl lg:text-6xl text-center mb-4 md:mb-0 md:absolute md:left-6 md:top-1/2 md:-translate-y-1/2">
-                    {{ props.categoryName }}
-                </h2>
-                <Link :href="route('AllCategories')" class="flex items-center px-4 py-2 text-xs font-medium text-white bg-gray-800 hover:bg-gray-900 rounded-full md:absolute md:right-4 md:top-1/2 md:transform md:-translate-y-1/2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                    </svg>
-                    Terug naar categorieën
-                </Link>
+        <!-- Enhanced Responsive Banner -->
+        <div class="relative category-banner overflow-hidden pt-16">
+            <div class="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent z-10"></div>
+            <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent z-10"></div>
+            <img :src="resolveImagePath(props.bannerSrc)" 
+                 alt="Category banner" 
+                 class="w-full h-48 sm:h-72 md:h-80 object-cover object-center transform scale-105 transition-transform duration-700 hover:scale-110" />
+                <div class="absolute inset-0 top-16 sm:top-16 z-20 flex flex-col items-start justify-center p-6 sm:p-8">
+                <div class="max-w-7xl w-full mx-auto flex flex-col md:flex-row md:items-center md:justify-between">
+                    <div class="mb-6 md:mb-0">
+                        <h2 class="text-2xl font-bold tracking-tight h_text sm:text-3xl md:text-5xl lg:text-6xl mb-2">
+                            {{ props.categoryName }}
+                        </h2>
+                    </div>
+                    <Link :href="route('AllCategories')" 
+                          class="group flex items-center px-6 py-3 text-sm font-medium text-white bg-white/10 backdrop-blur-sm hover:bg-white/20 rounded-full border border-white/20 transition-all duration-300 hover:scale-105 min-h-[48px]">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                        Terug naar categorieën
+                    </Link>
+                </div>
             </div>
         </div>
 
+        <!-- Product Grid -->
         <div class="mx-auto max-w-2xl px-4 py-16 sm:px-6 sm:py-24 lg:max-w-7xl lg:px-8">
             <div v-for="subcategory in props.subcategories" :key="subcategory.id" class="mb-12">
                 <h3 class="text-xl font-semibold leading-6 text-gray-900">{{ subcategory.name }}</h3>
@@ -80,7 +90,7 @@ const resolveImagePath = (path) => {
 <style scoped>
 .h_text {
     font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+    text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
     color: #F6EBD8;
 }
 
@@ -91,5 +101,13 @@ const resolveImagePath = (path) => {
 .group:hover {
     transform: scale(1.01);
     transition: all 0.2s ease-in-out;
+}
+
+.line-clamp-2 {
+    display: -webkit-box;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 </style>

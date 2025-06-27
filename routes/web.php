@@ -1,6 +1,6 @@
 <?php
 
-// Web.php - Fixed cart routes and checkout integration
+// Web.php - Updated with 3-step checkout routes
 
 use App\Models\Category;
 use App\Models\Subcategory;
@@ -163,14 +163,26 @@ Route::get('/dashboard', function () {
     abort(403, 'Je hebt geen toegang tot dit dashboard.');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-// Checkout routes - accessible only to authenticated users
+// 3-Step Checkout routes - accessible only to authenticated users
 Route::middleware(['auth'])->group(function () {
-    Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
-    Route::post('/checkout/select-slot', [CheckoutController::class, 'selectDeliverySlot'])->name('checkout.select-slot');
+    // Step 1: Delivery slot selection
+    Route::get('/checkout/delivery', [CheckoutController::class, 'delivery'])->name('checkout.delivery');
+    Route::get('/checkout', function() {
+        return redirect()->route('checkout.delivery');
+    })->name('checkout.index'); // Redirect old checkout to step 1
+    
+    // Step 2: Review order
+    Route::get('/checkout/review', [CheckoutController::class, 'review'])->name('checkout.review');
+    
+    // Step 3: Confirm and place order
     Route::get('/checkout/confirm', [CheckoutController::class, 'confirm'])->name('checkout.confirm');
+    
+    // API endpoints for checkout functionality
+    Route::post('/checkout/select-slot', [CheckoutController::class, 'selectDeliverySlot'])->name('checkout.select-slot');
+    Route::post('/checkout/store-selected-slot', [CheckoutController::class, 'storeSelectedSlot'])->name('checkout.store-slot');
     Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
     
-    // API routes for real-time data
+    // Cart and session API endpoints
     Route::get('/api/checkout/cart-data', [CheckoutController::class, 'getCartData'])->name('checkout.cart-data');
     Route::get('/api/session-check', [CheckoutController::class, 'checkSession'])->name('session.check');
 });
@@ -179,7 +191,7 @@ Route::middleware(['auth'])->group(function () {
 Route::get('/session-expired', [SessionExpiredController::class, 'show'])->name('session.expired');
 Route::post('/session-expired', [SessionExpiredController::class, 'handle'])->name('session.expiry.handle');
 
-// Add API endpoint for session check
+// Additional session management routes (accessible to all)
 Route::get('/api/session-check', function(Request $request) {
     return response()->json([
         'authenticated' => Auth::check(),

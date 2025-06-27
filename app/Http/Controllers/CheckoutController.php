@@ -23,9 +23,17 @@ class CheckoutController extends Controller
     }
 
     /**
-     * Show checkout page with all necessary data
+     * Legacy index method - redirect to step 1
      */
     public function index()
+    {
+        return redirect()->route('checkout.delivery');
+    }
+
+    /**
+     * Step 1: Show delivery slot selection page
+     */
+    public function delivery()
     {
         $user = Auth::user();
 
@@ -37,28 +45,174 @@ class CheckoutController extends Controller
             abort(403, 'Je hebt geen toegang tot deze pagina.');
         }
 
-        // Check if cart has items - let frontend handle this via cart store
+        // Check if cart has items
         $cartItems = $this->cartService->getItems();
-
         if (empty($cartItems)) {
-            return redirect()->route('cart.index');
+            return redirect()->route('cart.index')
+                ->with('error', 'Je winkelwagen is leeg.');
         }
 
         // Load the user's delivery address
         $deliveryAddress = $user->address;
 
-        return Inertia::render('CheckoutPage', [
-            // Remove cartItems and cartTotal from props - frontend will use store
+        return Inertia::render('Checkout/Step1Delivery', [
             'deliverySlots' => $this->getFormattedDeliverySlots(),
             'deliveryAddress' => $deliveryAddress,
             'selectedSlotId' => session('selected_delivery_slot_id'),
-            // Add user info for potential address management
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
             ]
         ]);
+    }
+
+    /**
+     * Step 2: Review order details
+     */
+    public function review()
+    {
+        $user = Auth::user();
+
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        // Check if cart has items
+        $cartItems = $this->cartService->getItems();
+        if (empty($cartItems)) {
+            return redirect()->route('cart.index')
+                ->with('error', 'Je winkelwagen is leeg.');
+        }
+
+        // Check if delivery slot is selected
+        $selectedSlotId = session('selected_delivery_slot_id');
+        $deliveryAddress = $user->address;
+
+        if (!$selectedSlotId || !$deliveryAddress) {
+            return redirect()->route('checkout.delivery')
+                ->with('error', 'Selecteer eerst een bezorgmoment en controleer je adresgegevens.');
+        }
+
+        // Validate selected slot is still available
+        $deliverySlot = DeliverySlot::find($selectedSlotId);
+        if (!$deliverySlot || $deliverySlot->getCurrentAvailableSlots() <= 0) {
+            session()->forget('selected_delivery_slot_id');
+            return redirect()->route('checkout.delivery')
+                ->with('error', 'Het geselecteerde bezorgmoment is niet meer beschikbaar.');
+        }
+
+        return Inertia::render('Checkout/Step2Review', [
+            'deliverySlots' => $this->getFormattedDeliverySlots(),
+            'deliveryAddress' => $deliveryAddress,
+            'selectedSlotId' => $selectedSlotId,
+            'deliveryFee' => (float) $deliverySlot->price,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ]
+        ]);
+    }
+
+    /**
+     * Step 3: Final confirmation and payment
+     */
+    public function confirm()
+    {
+        $user = Auth::user();
+
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        // Check if cart has items
+        $cartItems = $this->cartService->getItems();
+        if (empty($cartItems)) {
+            return redirect()->route('cart.index')
+                ->with('error', 'Je winkelwagen is leeg.');
+        }
+
+        // Check if delivery slot is selected
+        $selectedSlotId = session('selected_delivery_slot_id');
+        $deliveryAddress = $user->address;
+
+        if (!$selectedSlotId || !$deliveryAddress) {
+            return redirect()->route('checkout.delivery')
+                ->with('error', 'Controleer je bezorggegevens voordat je verder gaat.');
+        }
+
+        // Validate selected slot is still available
+        $deliverySlot = DeliverySlot::find($selectedSlotId);
+        if (!$deliverySlot || $deliverySlot->getCurrentAvailableSlots() <= 0) {
+            session()->forget('selected_delivery_slot_id');
+            return redirect()->route('checkout.delivery')
+                ->with('error', 'Het geselecteerde bezorgmoment is niet meer beschikbaar.');
+        }
+
+        return Inertia::render('Checkout/Step3Confirm', [
+            'deliverySlots' => $this->getFormattedDeliverySlots(),
+            'deliveryAddress' => $deliveryAddress,
+            'selectedSlotId' => $selectedSlotId,
+            'deliveryFee' => (float) $deliverySlot->price,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ]
+        ]);
+    }
+
+    /**
+     * Store selected delivery slot in session (new method for step persistence)
+     */
+    public function storeSelectedSlot(Request $request)
+    {
+        $request->validate([
+            'delivery_slot_id' => 'required|exists:delivery_slots,id',
+            'delivery_fee' => 'required|numeric|min:0'
+        ]);
+
+        try {
+            $slot = DeliverySlot::findOrFail($request->delivery_slot_id);
+            
+            // Check if slot is still available
+            if ($slot->getCurrentAvailableSlots() <= 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Dit bezorgmoment is niet meer beschikbaar.'
+                ], 422);
+            }
+            
+            // Check if slot date is still valid
+            if ($slot->date < today()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Dit bezorgmoment is verlopen.'
+                ], 422);
+            }
+
+            // Store in session for persistence across steps
+            session([
+                'selected_delivery_slot_id' => $request->delivery_slot_id,
+                'delivery_fee' => $request->delivery_fee
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Bezorgmoment opgeslagen'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error storing delivery slot', [
+                'slot_id' => $request->delivery_slot_id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Er is een fout opgetreden bij het opslaan van het bezorgmoment.'
+            ], 500);
+        }
     }
 
     /**
@@ -78,6 +232,188 @@ class CheckoutController extends Controller
             'totals' => $totals,
             'hasItems' => !empty($cartItems)
         ]);
+    }
+
+    /**
+     * Select delivery slot (AJAX endpoint) - Legacy method, kept for compatibility
+     */
+    public function selectDeliverySlot(Request $request)
+    {
+        $request->validate([
+            'delivery_slot_id' => ['required', 'exists:delivery_slots,id'],
+        ]);
+
+        try {
+            $slot = DeliverySlot::findOrFail($request->delivery_slot_id);
+            
+            // Check if slot is still available
+            if ($slot->getCurrentAvailableSlots() <= 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Dit bezorgmoment is niet meer beschikbaar.'
+                ], 422);
+            }
+            
+            // Check if slot date is still valid
+            if ($slot->date < today()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Dit bezorgmoment is verlopen.'
+                ], 422);
+            }
+
+            // Store selected slot in session for persistence
+            session(['selected_delivery_slot_id' => $request->delivery_slot_id]);
+
+            return response()->json([
+                'success' => true,
+                'slot' => [
+                    'id' => $slot->id,
+                    'time_display' => $slot->start_time . ' - ' . $slot->end_time,
+                    'price' => (float) $slot->price,
+                    'date' => $slot->date
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error selecting delivery slot', [
+                'slot_id' => $request->delivery_slot_id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Er is een fout opgetreden bij het selecteren van het bezorgmoment.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Handle checkout form submission (final order processing)
+     */
+    public function store(Request $request)
+    {
+        $request->validate([
+            'delivery_slot_id' => ['required', 'exists:delivery_slots,id'],
+            'order_notes' => 'nullable|string|max:500',
+            'payment_method' => 'required|in:ideal,card,paypal,cash'
+        ]);
+
+        $user = Auth::user();
+        
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Je bent niet ingelogd.'
+            ], 401);
+        }
+
+        $cartItems = $this->cartService->getItems();
+
+        if (empty($cartItems)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Je winkelwagen is leeg.'
+            ], 422);
+        }
+
+        // Validate delivery address
+        if (!$user->address) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Geen geldig bezorgadres gevonden.'
+            ], 422);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $deliverySlot = DeliverySlot::findOrFail($request->input('delivery_slot_id'));
+            
+            // Final availability check
+            if ($deliverySlot->getCurrentAvailableSlots() <= 0) {
+                throw new \Exception('Het geselecteerde bezorgmoment is niet meer beschikbaar.');
+            }
+
+            // Calculate totals
+            $totals = $this->cartService->getTotals();
+            $deliveryFee = (float) $deliverySlot->price;
+            $finalTotal = $totals['subtotal'] + $deliveryFee;
+
+            // Create order
+            $order = Order::create([
+                'user_id' => $user->id,
+                'delivery_slot_id' => $request->input('delivery_slot_id'),
+                'status' => 'pending',
+                'subtotal' => $totals['subtotal'],
+                'delivery_fee' => $deliveryFee,
+                'total' => $finalTotal,
+                'payment_method' => $request->payment_method,
+                'payment_status' => $request->payment_method === 'cash' ? 'pending' : 'pending',
+                'delivery_address' => $user->address->toArray(),
+                'order_notes' => $request->order_notes,
+                'order_date' => Carbon::now(),
+            ]);
+
+            // Create order items and update stock
+            foreach ($cartItems as $item) {
+                // Double-check stock availability
+                $product = \App\Models\Product::find($item['product_id']);
+                if (!$product || $product->stock_quantity < $item['quantity']) {
+                    throw new \Exception("Product '{$item['name']}' is niet meer voldoende op voorraad.");
+                }
+
+                OrderItem::create([
+                    'order_id' => $order->id,
+                    'product_id' => $item['product_id'],
+                    'quantity' => $item['quantity'],
+                    'price' => $item['price'],
+                    'total' => $item['price'] * $item['quantity'],
+                    'product_name' => $item['name'], // Store name for historical purposes
+                ]);
+
+                // Update product stock
+                $product->decrement('stock_quantity', $item['quantity']);
+            }
+
+            // Update delivery slot availability
+            $deliverySlot->decrement('current_available', 1);
+
+            // Clear cart and session
+            $this->cartService->clear();
+            session()->forget(['selected_delivery_slot_id', 'delivery_fee']);
+
+            DB::commit();
+
+            // Determine redirect based on payment method
+            if ($request->payment_method === 'cash') {
+                $redirectUrl = route('orders.show', $order->id);
+            } else {
+                // For online payments, you would integrate with payment processor here
+                $redirectUrl = route('orders.show', $order->id);
+                // Example: $paymentUrl = $this->createPaymentSession($order);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Bestelling succesvol geplaatst!',
+                'order_id' => $order->id,
+                'redirect' => $redirectUrl
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Checkout failed', [
+                'error' => $e->getMessage(),
+                'user_id' => $user->id,
+                'delivery_slot_id' => $request->input('delivery_slot_id'),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 422);
+        }
     }
 
     /**
@@ -134,15 +470,18 @@ class CheckoutController extends Controller
                 
                 return [
                     'date' => $date,
-                    'day_name' => $carbonDate->format('D'), // Mon, Tue, etc.
-                    'formatted_date' => $carbonDate->format('M j'), // Jan 15, etc.
+                    'day_name' => $carbonDate->translatedFormat('l'), // Monday, Tuesday, etc. (localized)
+                    'formatted_date' => $carbonDate->translatedFormat('j M'), // 15 Jan (localized)
                     'slots' => $daySlots->map(function ($slot) {
                         return [
                             'id' => $slot->id,
-                            'time_display' => $slot->start_time . ' - ' . $slot->end_time,
+                            'start_time' => $slot->start_time,
+                            'end_time' => $slot->end_time,
+                            'time_display' => Carbon::parse($slot->start_time)->format('H:i') . ' - ' . Carbon::parse($slot->end_time)->format('H:i'),
                             'price' => (float) ($slot->price ?? 0), // Ensure price is always a float
                             'available_slots' => (int) ($slot->available_slots ?? 0), // Ensure it's always an integer
                             'current_available' => $slot->getCurrentAvailableSlots(), // Real-time availability
+                            'last_updated' => $slot->updated_at
                         ];
                     })->values()
                 ];
@@ -161,208 +500,6 @@ class CheckoutController extends Controller
     }
 
     /**
-     * Select delivery slot (AJAX endpoint)
-     */
-    public function selectDeliverySlot(Request $request)
-    {
-        $request->validate([
-            'delivery_slot_id' => ['required', 'exists:delivery_slots,id'],
-        ]);
-
-        try {
-            $slot = DeliverySlot::findOrFail($request->delivery_slot_id);
-            
-            // Check if slot is still available
-            if ($slot->getCurrentAvailableSlots() <= 0) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Dit bezorgmoment is niet meer beschikbaar.'
-                ], 422);
-            }
-            
-            // Check if slot date is still valid
-            if ($slot->date < today()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Dit bezorgmoment is verlopen.'
-                ], 422);
-            }
-
-            // Store selected slot in session for persistence
-            session(['selected_delivery_slot_id' => $request->delivery_slot_id]);
-
-            return response()->json([
-                'success' => true,
-                'slot' => [
-                    'id' => $slot->id,
-                    'time_display' => $slot->start_time . ' - ' . $slot->end_time,
-                    'price' => (float) $slot->price,
-                    'date' => $slot->date
-                ]
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Error selecting delivery slot', [
-                'slot_id' => $request->delivery_slot_id,
-                'error' => $e->getMessage()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Er is een fout opgetreden bij het selecteren van het bezorgmoment.'
-            ], 500);
-        }
-    }
-
-    /**
-     * Show confirmation page
-     */
-    public function confirm()
-    {
-        $user = Auth::user();
-        
-        if (!$user) {
-            return redirect()->route('login');
-        }
-
-        $cartItems = $this->cartService->getItems();
-        $selectedSlotId = session('selected_delivery_slot_id');
-
-        if (empty($cartItems) || !$selectedSlotId) {
-            return redirect()->route('checkout.index');
-        }
-
-        $deliverySlot = DeliverySlot::find($selectedSlotId);
-        
-        // Validate slot is still available
-        if (!$deliverySlot || $deliverySlot->getCurrentAvailableSlots() <= 0) {
-            session()->forget('selected_delivery_slot_id');
-            return redirect()->route('checkout.index')
-                ->with('error', 'Het geselecteerde bezorgmoment is niet meer beschikbaar.');
-        }
-
-        $deliveryAddress = $user->address;
-        $totals = $this->cartService->getTotals();
-
-        return Inertia::render('CheckoutConfirm', [
-            'cartItems' => $this->formatCartItemsForFrontend($cartItems),
-            'totals' => $totals,
-            'deliverySlot' => [
-                'id' => $deliverySlot->id,
-                'time_display' => $deliverySlot->start_time . ' - ' . $deliverySlot->end_time,
-                'price' => (float) $deliverySlot->price,
-                'date' => $deliverySlot->date
-            ],
-            'deliveryAddress' => $deliveryAddress,
-        ]);
-    }
-
-    /**
-     * Handle checkout form submission
-     */
-    public function store(Request $request)
-    {
-        $request->validate([
-            'delivery_slot_id' => ['required', 'exists:delivery_slots,id'],
-        ]);
-
-        $user = Auth::user();
-        
-        if (!$user) {
-            return redirect()->route('login');
-        }
-
-        $cartItems = $this->cartService->getItems();
-
-        if (empty($cartItems)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Je winkelwagen is leeg.'
-            ], 400);
-        }
-
-        DB::beginTransaction();
-
-        try {
-            $deliverySlot = DeliverySlot::findOrFail($request->input('delivery_slot_id'));
-            
-            // Final availability check
-            if ($deliverySlot->getCurrentAvailableSlots() <= 0) {
-                throw new \Exception('Bezorgmoment niet meer beschikbaar');
-            }
-
-            // Calculate totals
-            $totals = $this->cartService->getTotals();
-            $deliveryFee = (float) $deliverySlot->price;
-            $finalTotal = $totals['subtotal'] + $deliveryFee;
-
-            $order = Order::create([
-                'user_id' => $user->id,
-                'delivery_slot_id' => $request->input('delivery_slot_id'),
-                'status' => 'pending',
-                'subtotal' => $totals['subtotal'],
-                'delivery_fee' => $deliveryFee,
-                'total' => $finalTotal,
-                'order_date' => Carbon::now(),
-            ]);
-
-            // Create order items and update stock
-            foreach ($cartItems as $item) {
-                // Double-check stock availability
-                $product = \App\Models\Product::find($item['product_id']);
-                if (!$product || $product->stock_quantity < $item['quantity']) {
-                    throw new \Exception("Product '{$item['name']}' is niet meer voldoende op voorraad.");
-                }
-
-                OrderItem::create([
-                    'order_id' => $order->id,
-                    'product_id' => $item['product_id'],
-                    'quantity' => $item['quantity'],
-                    'price' => $item['price'],
-                    'product_name' => $item['name'], // Store name for historical purposes
-                ]);
-
-                // Update product stock
-                $product->decrement('stock_quantity', $item['quantity']);
-            }
-
-            // Clear cart and session
-            $this->cartService->clear();
-            session()->forget('selected_delivery_slot_id');
-
-            DB::commit();
-
-            // Return JSON response for AJAX or redirect for regular requests
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Bestelling succesvol geplaatst!',
-                    'order_id' => $order->id,
-                    'redirect' => route('orders.show', $order->id)
-                ]);
-            }
-
-            return redirect()->route('orders.show', $order->id);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Checkout failed', [
-                'error' => $e->getMessage(),
-                'user_id' => $user->id,
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $e->getMessage()
-                ], 400);
-            }
-            
-            return redirect()->route('checkout.index')
-                ->with('error', 'Er is een fout opgetreden bij het plaatsen van uw bestelling: ' . $e->getMessage());
-        }
-    }
-
-    /**
      * API endpoint for session check (used by frontend)
      */
     public function checkSession()
@@ -373,8 +510,6 @@ class CheckoutController extends Controller
         if ($authenticated) {
             // Laravel session lifetime in minutes (default 120)
             $sessionLifetime = config('session.lifetime') * 60; // Convert to seconds
-            $lastActivity = session('_token') ? session()->get('_flash.old', []) : null;
-
             $timeRemaining = $sessionLifetime;
         }
 

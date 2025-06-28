@@ -1,6 +1,6 @@
 <!-- Pages/Checkout/Step2Review.vue -->
 <script setup>
-import CheckoutLayout from '@/Layouts/CheckoutLayout.vue';
+import CheckoutLayout from '@/Layouts/Checkout/CheckoutLayout.vue';
 import OrderSummary from '@/Components/Checkout/OrderSummary.vue';
 import { router } from '@inertiajs/vue3';
 import { ref, computed, onMounted } from 'vue';

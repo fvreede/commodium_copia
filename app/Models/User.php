@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
+use App\Models\UserAddress;
 
 use Illuminate\Support\Facades\Log;
 
@@ -169,6 +170,14 @@ class User extends Authenticatable
      * @return \Illuminate\Database\Eloquent\Relations\HasOne
      */
     public function address() 
+    {
+        return $this->hasOne(UserAddress::class);
+    }
+
+    /**
+     * Get the user's address.
+     */
+    public function userAddress()
     {
         return $this->hasOne(UserAddress::class);
     }

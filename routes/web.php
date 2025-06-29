@@ -185,6 +185,11 @@ Route::middleware(['auth'])->group(function () {
     // Cart and session API endpoints
     Route::get('/api/checkout/cart-data', [CheckoutController::class, 'getCartData'])->name('checkout.cart-data');
     Route::get('/api/session-check', [CheckoutController::class, 'checkSession'])->name('session.check');
+
+    // Address Management API endpoints
+    Route::post('/api/user/address', [ProfileController::class, 'storeAddress'])->name('api.address.store');
+    Route::put('/api/user/address', [ProfileController::class, 'updateAddress'])->name('api.address.update');
+    Route::get('/api/user/address', [ProfileController::class, 'getAddress'])->name('api.address.show');
 });
 
 // Session expired routes

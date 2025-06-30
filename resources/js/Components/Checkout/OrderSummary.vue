@@ -1,7 +1,7 @@
 <!-- resources/js/Components/Checkout/OrderSummary.vue -->
 <template>
-    <div class="bg-white border rounded-lg shadow-sm">
-        <div class="p-6">
+    <div class="bg-white border rounded-xl shadow-sm">
+        <div class="p-4 sm:p-6">
             <h3 class="text-lg font-medium mb-6">Bestelling overzicht</h3>
             
             <!-- Loading state -->
@@ -13,16 +13,13 @@
             <!-- Empty cart state -->
             <div v-else-if="!cartStore.hasItems" class="text-center py-8">
                 <div class="text-gray-400 mb-4">
-                    <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.5 1.5M7 13l1.5 1.5M17 21a2 2 0 100-4 2 2 0 000 4zM9 21a2 2 0 100-4 2 2 0 000 4z"/>
-                    </svg>
+                    <ShoppingCartIcon class="w-12 h-12 mx-auto" />
                 </div>
-                <p class="text-gray-600">Je winkelwagen is leeg</p>
-                <a 
-                    href="/categories" 
-                    class="mt-4 inline-block px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                >
-                    Verder winkelen
+                <p class="text-gray-600 mb-4">Je winkelwagen is leeg</p>
+                <a href="/categories" class="inline-block">
+                    <PrimaryButton>
+                        Verder winkelen
+                    </PrimaryButton>
                 </a>
             </div>
 
@@ -32,133 +29,131 @@
                     <div 
                         v-for="item in cartStore.sortedItems" 
                         :key="item.id || item.product_id"
-                        class="flex flex-col sm:flex-row sm:items-start sm:space-x-4 py-4 border-b last:border-b-0 space-y-3 sm:space-y-0"
+                        class="flex items-start space-x-3 py-4 border-b last:border-b-0"
                     >
                         <!-- Product image -->
                         <div class="flex-shrink-0">
                             <img 
                                 :src="getImageUrl(item.image_path)" 
                                 :alt="item.name"
-                                class="w-12 h-12 sm:w-16 sm:h-16 object-cover rounded-md border"
+                                class="w-12 h-12 sm:w-16 sm:h-16 object-cover rounded-lg border border-gray-200"
                                 @error="handleImageError"
                             >
                         </div>
 
                         <!-- Product details -->
                         <div class="flex-1 min-w-0">
-                            <h4 class="text-sm font-medium text-gray-900 mb-1">
+                            <h4 class="text-sm font-medium text-gray-900 mb-1 line-clamp-2">
                                 {{ item.name }}
                             </h4>
-                            <p v-if="item.short_description" class="text-xs text-gray-500 mb-2">
+                            <p v-if="item.short_description" class="text-xs text-gray-500 mb-2 line-clamp-1">
                                 {{ item.short_description }}
                             </p>
                             
-                            <!-- Price and quantity info -->
-                            <div class="flex items-center justify-between">
-                                <div class="text-sm text-gray-600">
-                                    {{ item.quantity }}x à € {{ formatPrice(item.price) }}
+                            <!-- Price info -->
+                            <div class="space-y-1">
+                                <!-- Quantity and unit price -->
+                                <div class="flex items-center justify-between text-sm">
+                                    <span class="text-gray-600">
+                                        {{ item.quantity }}x à €{{ formatPrice(item.price) }}
+                                    </span>
+                                    <span class="font-medium text-gray-900">
+                                        €{{ formatPrice(item.price * item.quantity) }}
+                                    </span>
                                 </div>
-                                <div class="text-sm font-medium text-gray-900">
-                                    € {{ formatPrice(item.price * item.quantity) }}
-                                </div>
-                            </div>
 
-                            <!-- Stock warning -->
-                            <div v-if="item.stock_quantity && item.quantity > item.stock_quantity" 
-                                 class="mt-2 text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
-                                ⚠️ Slechts {{ item.stock_quantity }} op voorraad
-                            </div>
-                            
-                            <!-- Low stock warning -->
-                            <div v-else-if="item.stock_quantity && item.stock_quantity <= 5" 
-                                 class="mt-2 text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
-                                Nog {{ item.stock_quantity }} op voorraad
+                                <!-- Stock warnings -->
+                                <div v-if="item.stock_quantity && item.quantity > item.stock_quantity" 
+                                     class="text-xs text-red-600 bg-red-50 px-2 py-1 rounded-md inline-block">
+                                    ⚠️ Slechts {{ item.stock_quantity }} op voorraad
+                                </div>
+                                
+                                <div v-else-if="item.stock_quantity && item.stock_quantity <= 5" 
+                                     class="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded-md inline-block">
+                                    Nog {{ item.stock_quantity }} op voorraad
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Price breakdown -->
-                <div class="space-y-3 pt-4 border-t">
+                <div class="space-y-3 pt-4 border-t border-gray-200">
                     <!-- Subtotal -->
                     <div class="flex justify-between text-sm">
                         <span class="text-gray-600">
-                            Subtotaal ({{ cartStore.totalItems }} {{ cartStore.totalItems === 1 ? 'artikel' : 'artikelen' }}):
+                            Artikelen ({{ cartStore.totalItems }}):
                         </span>
-                        <span class="font-medium">€ {{ formatPrice(cartStore.subtotal) }}</span>
+                        <span class="font-medium">€{{ formatPrice(cartStore.subtotal) }}</span>
                     </div>
 
                     <!-- Delivery fee -->
                     <div class="flex justify-between text-sm">
                         <span class="text-gray-600">Bezorgkosten:</span>
                         <span class="font-medium">
-                            {{ deliveryFee > 0 ? `€ ${formatPrice(deliveryFee)}` : 'Nog te bepalen' }}
+                            {{ deliveryFee > 0 ? `€${formatPrice(deliveryFee)}` : 'Nog te bepalen' }}
                         </span>
                     </div>
 
                     <!-- Discount (if applicable) -->
                     <div v-if="discount && discount > 0" class="flex justify-between text-sm text-green-600">
                         <span>Korting:</span>
-                        <span>-€ {{ formatPrice(discount) }}</span>
+                        <span>-€{{ formatPrice(discount) }}</span>
                     </div>
 
                     <!-- Total -->
-                    <div class="flex justify-between text-lg font-semibold pt-3 border-t">
-                        <span>Totaal:</span>
-                        <span>€ {{ formatPrice(orderTotal) }}</span>
+                    <div class="flex justify-between text-lg font-semibold pt-3 border-t border-gray-200">
+                        <span class="text-gray-900">Totaal:</span>
+                        <span class="text-gray-900">€{{ formatPrice(orderTotal) }}</span>
                     </div>
 
                     <!-- Savings info -->
-                    <div v-if="discount && discount > 0" class="text-center">
+                    <div v-if="discount && discount > 0" class="text-center pt-2">
                         <span class="inline-block px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">
-                            Je bespaart € {{ formatPrice(discount) }}!
+                            Je bespaart €{{ formatPrice(discount) }}!
                         </span>
                     </div>
                 </div>
 
                 <!-- Delivery slot info -->
-                <div v-if="selectedSlotDetails" class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
-                    <div class="flex items-center">
-                        <svg class="h-5 w-5 text-blue-400 mr-3" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
-                        </svg>
-                        <div>
-                            <h4 class="text-sm font-medium text-blue-800">Bezorgmoment</h4>
+                <div v-if="selectedSlotDetails" class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div class="flex items-start">
+                        <CalendarDaysIcon class="h-5 w-5 text-blue-400 mr-3 flex-shrink-0 mt-0.5" />
+                        <div class="min-w-0">
+                            <h4 class="text-sm font-medium text-blue-800 mb-1">Bezorgmoment</h4>
                             <p class="text-sm text-blue-700">
-                                {{ selectedSlotDetails.day_name }} {{ selectedSlotDetails.formatted_date }} 
-                                om {{ selectedSlotDetails.time_display }}
+                                {{ selectedSlotDetails.day_name }} {{ selectedSlotDetails.formatted_date }}
+                            </p>
+                            <p class="text-sm text-blue-700 font-medium">
+                                {{ selectedSlotDetails.time_display }}
                             </p>
                         </div>
                     </div>
                 </div>
 
                 <!-- Delivery address info -->
-                <div v-if="deliveryAddress" class="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-md">
+                <div v-if="deliveryAddress" class="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
                     <div class="flex items-start">
-                        <svg class="h-5 w-5 text-gray-400 mr-3 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
-                        </svg>
-                        <div>
-                            <h4 class="text-sm font-medium text-gray-700">Bezorgadres</h4>
-                            <p class="text-sm text-gray-600">
-                                {{ formatAddress() }}
+                        <MapPinIcon class="h-5 w-5 text-gray-400 mr-3 mt-0.5 flex-shrink-0" />
+                        <div class="min-w-0">
+                            <h4 class="text-sm font-medium text-gray-700 mb-1">Bezorgadres</h4>
+                            <p class="text-sm text-gray-600 break-words">
+                                <span v-for="line in formatAddress()" :key="line" class="block" >{{ line }}</span>
                             </p>
                         </div>
                     </div>
                 </div>
 
                 <!-- Error state for stock issues -->
-                <div v-if="hasStockIssues" class="mt-6 p-4 bg-red-50 border border-red-200 rounded-md">
-                    <div class="flex">
+                <div v-if="hasStockIssues" class="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <div class="flex items-start">
                         <div class="flex-shrink-0">
-                            <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-                            </svg>
+                            <XCircleIcon class="h-5 w-5 text-red-400 mt-0.5" />
                         </div>
                         <div class="ml-3">
                             <h3 class="text-sm font-medium text-red-800">Voorraad probleem</h3>
                             <p class="mt-1 text-sm text-red-700">
-                                Sommige producten in je winkelwagen zijn niet meer voldoende op voorraad. 
+                                Sommige producten zijn niet meer voldoende op voorraad. 
                                 Pas de hoeveelheden aan voordat je verder gaat.
                             </p>
                         </div>
@@ -168,34 +163,32 @@
                 <!-- Action buttons for checkout page -->
                 <div v-if="showActions" class="mt-6 space-y-3">
                     <!-- Continue to next step button -->
-                    <button 
+                    <PrimaryButton 
                         v-if="canProceed"
                         @click="$emit('proceed')"
                         :disabled="isProcessing"
-                        :class="[
-                            'w-full px-6 py-3 font-medium rounded-md transition-colors',
-                            isProcessing
-                                ? 'bg-gray-400 text-gray-700 cursor-not-allowed'
-                                : 'bg-blue-600 text-white hover:bg-blue-700'
-                        ]"
+                        class="w-full justify-center py-3 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {{ isProcessing ? 'Bezig...' : 'Doorgaan naar bevestiging' }}
-                    </button>
+                    </PrimaryButton>
                     
                     <!-- Warning when can't proceed -->
                     <div v-else class="text-center">
-                        <p class="text-sm text-gray-600 mb-3">
-                            {{ getCannotProceedReason() }}
-                        </p>
+                        <div class="inline-flex items-center px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <ExclamationTriangleIcon class="w-4 h-4 text-yellow-600 mr-2 flex-shrink-0" />
+                            <p class="text-sm text-yellow-800">
+                                {{ getCannotProceedReason() }}
+                            </p>
+                        </div>
                     </div>
 
                     <!-- Back to cart button -->
-                    <button 
+                    <SecondaryButton 
                         @click="$emit('back-to-cart')"
-                        class="w-full px-6 py-3 bg-white border border-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-50 transition-colors"
+                        class="w-full justify-center"
                     >
                         Terug naar winkelwagen
-                    </button>
+                    </SecondaryButton>
                 </div>
 
                 <!-- Order notes input (for confirmation page) -->
@@ -208,11 +201,11 @@
                         :value="orderNotes"
                         @input="$emit('update:order-notes', $event.target.value)"
                         rows="3"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg resize-none"
                         placeholder="Bijv. bel aan bij de achterdeur, laat pakket bij de buren, etc."
                         maxlength="500"
                     ></textarea>
-                    <p class="mt-1 text-xs text-gray-500">
+                    <p class="mt-1 text-xs text-gray-500 text-right">
                         {{ orderNotes?.length || 0 }}/500 karakters
                     </p>
                 </div>
@@ -224,6 +217,15 @@
 <script setup>
 import { computed, onMounted, watch, onUnmounted } from 'vue';
 import { useCartStore } from '@/Stores/cart';
+import PrimaryButton from '@/Components/PrimaryButton.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
+import {
+    ShoppingCartIcon,
+    CalendarDaysIcon,
+    MapPinIcon,
+    XCircleIcon,
+    ExclamationTriangleIcon
+} from '@heroicons/vue/24/outline';
 
 // Props
 const props = defineProps({
@@ -324,19 +326,18 @@ const handleImageError = (event) => {
 };
 
 const formatAddress = () => {
-    if (!props.deliveryAddress) return 'Geen adres ingesteld';
-    
-    const addr = props.deliveryAddress;
-    let formatted = addr.street;
-    
-    if (addr.house_number) {
-        formatted += ` ${addr.house_number}`;
-    }
-    
-    formatted += `, ${addr.postal_code} ${addr.city}`;
-    
-    return formatted;
-};
+    const addr = props.deliveryAddress
+    let lines = []
+
+    let streetLine = addr.street
+    if (addr.house_number) streetLine += ` ${addr.house_number}`
+    if (addr.addition) streetLine += `, ${addr.addition}`
+
+    lines.push(streetLine)
+    lines.push(`${addr.postal_code} ${addr.city}`)
+
+    return lines
+}
 
 const getCannotProceedReason = () => {
     if (!cartStore.hasItems) return 'Je winkelwagen is leeg';
@@ -368,16 +369,31 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* Custom focus styles for better accessibility */
+/* Remove focus rings */
 button:focus,
 textarea:focus {
-    outline: 2px solid #3B82F6;
-    outline-offset: 2px;
+    outline: none;
 }
 
-/* Smooth transitions for interactive elements */
-button,
-.transition-colors {
-    transition: all 0.2s ease-in-out;
+/* Line clamp utilities for text truncation - modern approach */
+.line-clamp-1 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    line-clamp: 1;
+    -webkit-line-clamp: 1;
+    overflow: hidden;
+}
+
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+}
+
+/* Disable textarea resize */
+.resize-none {
+    resize: none;
 }
 </style>

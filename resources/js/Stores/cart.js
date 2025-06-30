@@ -1,4 +1,4 @@
-// @/Stores/cart.js - Complete fixed version
+// @/Stores/cart.js - Enhanced version with order integration
 import { defineStore } from 'pinia'
 import axios from 'axios'
 
@@ -19,6 +19,10 @@ export const useCartStore = defineStore('cart', {
         pendingUpdates: new Set(), // Track pending API calls
         updateQueue: new Map(), // Queue voor pending updates
         lastUpdateTime: new Map(), // Track laatste update tijd per product
+        // NEW: Order integration state
+        orderProcessing: false,
+        orderSuccess: false,
+        lastOrderId: null,
     }),
 
     getters: {
@@ -66,6 +70,14 @@ export const useCartStore = defineStore('cart', {
         isStale: (state) => {
             if (!state.lastUpdated) return true;
             return (Date.now() - state.lastUpdated) > 30000;
+        },
+
+        // NEW: Check if ready for checkout
+        isReadyForCheckout: (state) => {
+            return state.hasItems && 
+                   !state.isLoading && 
+                   !state.orderProcessing &&
+                   state.items.every(item => item.stock_quantity >= item.quantity);
         }
     },
 
@@ -477,6 +489,89 @@ export const useCartStore = defineStore('cart', {
             }
         },
 
+        // NEW: Order-related methods
+        async prepareForCheckout() {
+            try {
+                // Validate cart before checkout
+                await this.validateCart();
+                
+                if (!this.hasItems) {
+                    throw new Error('Winkelwagen is leeg');
+                }
+
+                // Check stock for all items
+                const stockIssues = this.items.filter(item => 
+                    item.stock_quantity !== undefined && 
+                    item.quantity > item.stock_quantity
+                );
+
+                if (stockIssues.length > 0) {
+                    throw new Error('Sommige producten zijn niet meer voldoende op voorraad');
+                }
+
+                return { success: true };
+                
+            } catch (error) {
+                this.lastError = error.message;
+                return { success: false, message: error.message };
+            }
+        },
+
+        async markOrderProcessing(orderId = null) {
+            this.orderProcessing = true;
+            this.lastOrderId = orderId;
+            this.orderSuccess = false;
+        },
+
+        async markOrderSuccess(orderId) {
+            this.orderProcessing = false;
+            this.orderSuccess = true;
+            this.lastOrderId = orderId;
+            
+            // Clear cart after successful order
+            await this.clearCartAfterOrder();
+        },
+
+        async markOrderFailed() {
+            this.orderProcessing = false;
+            this.orderSuccess = false;
+            // Don't clear cart on failure so user can retry
+        },
+
+        async clearCartAfterOrder() {
+            try {
+                // Clear local state immediately
+                this.items = [];
+                this.totals = {
+                    subtotal: 0,
+                    total: 0,
+                    total_items: 0,
+                    items_count: 0
+                };
+                
+                // Clear any pending updates
+                this.pendingUpdates.clear();
+                this.updateQueue.clear();
+                this.lastUpdateTime.clear();
+                
+                this.lastUpdated = Date.now();
+                
+                console.log('Cart cleared after successful order');
+                
+                return { success: true };
+                
+            } catch (error) {
+                console.error('Error clearing cart after order:', error);
+                return { success: false, message: 'Fout bij leegmaken winkelwagen' };
+            }
+        },
+
+        resetOrderState() {
+            this.orderProcessing = false;
+            this.orderSuccess = false;
+            this.lastOrderId = null;
+        },
+
         setSorting(sortBy) {
             if (!['name', 'price', 'quantity'].includes(sortBy)) {
                 console.warn('Invalid sort option:', sortBy);
@@ -563,7 +658,10 @@ export const useCartStore = defineStore('cart', {
                 total: this.total,
                 hasItems: this.hasItems,
                 isLoading: this.isLoading,
-                lastError: this.lastError
+                lastError: this.lastError,
+                orderProcessing: this.orderProcessing,
+                orderSuccess: this.orderSuccess,
+                isReadyForCheckout: this.isReadyForCheckout
             };
         }
     }

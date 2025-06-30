@@ -1,6 +1,6 @@
 <?php
 
-// Web.php - Updated with 3-step checkout routes
+// web.php - Updated with Order Management Routes
 
 use App\Models\Category;
 use App\Models\Subcategory;
@@ -20,6 +20,7 @@ use App\Http\Controllers\Editor\BannerController;
 use App\Http\Controllers\EditorController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\OrderController; // NEW
 use App\Http\Controllers\SessionExpiredController;
 use App\Http\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
@@ -80,7 +81,7 @@ Route::get('/subcategories/{categoryId}', function ($categoryId) {
                         'id' => $product->id,
                         'name' => $product->name,
                         'description' => $product->short_description,
-                        'price' => (float) $product->price, // Ensure it's a float
+                        'price' => (float) $product->price,
                         'imageSrc' => $product->image_path,
                     ];
                 })
@@ -177,6 +178,9 @@ Route::middleware(['auth'])->group(function () {
     // Step 3: Confirm and place order
     Route::get('/checkout/confirm', [CheckoutController::class, 'confirm'])->name('checkout.confirm');
     
+    // Order success page - NEW
+    Route::get('/checkout/success/{order}', [CheckoutController::class, 'success'])->name('checkout.success');
+    
     // API endpoints for checkout functionality
     Route::post('/checkout/select-slot', [CheckoutController::class, 'selectDeliverySlot'])->name('checkout.select-slot');
     Route::post('/checkout/store-selected-slot', [CheckoutController::class, 'storeSelectedSlot'])->name('checkout.store-slot');
@@ -190,6 +194,24 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/api/user/address', [ProfileController::class, 'storeAddress'])->name('api.address.store');
     Route::put('/api/user/address', [ProfileController::class, 'updateAddress'])->name('api.address.update');
     Route::get('/api/user/address', [ProfileController::class, 'getAddress'])->name('api.address.show');
+    
+    // ORDER MANAGEMENT ROUTES - NEW
+    Route::prefix('orders')->name('orders.')->group(function () {
+        // Order history and listing
+        Route::get('/', [OrderController::class, 'index'])->name('index');
+        
+        // View specific order
+        Route::get('/{order}', [OrderController::class, 'show'])->name('show');
+        
+        // Track order
+        Route::get('/{order}/track', [OrderController::class, 'track'])->name('track');
+        
+        // Cancel order
+        Route::patch('/{order}/cancel', [OrderController::class, 'cancel'])->name('cancel');
+        
+        // Send confirmation email
+        Route::post('/{order}/send-confirmation', [OrderController::class, 'sendConfirmation'])->name('send-confirmation');
+    });
 });
 
 // Session expired routes

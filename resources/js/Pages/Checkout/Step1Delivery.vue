@@ -72,20 +72,17 @@ const stepValidationMessage = computed(() => {
 
 // Methods
 const formatAddress = () => {
-    if (!hasValidAddress.value) {
-        return 'Nog geen adres ingesteld'
-    }
-    
     const addr = props.deliveryAddress
-    let formatted = addr.street
-    
-    if (addr.house_number) {
-        formatted += ` ${addr.house_number}`
-    }
-    
-    formatted += `, ${addr.postal_code} ${addr.city}`
-    
-    return formatted
+    let lines = []
+
+    let streetLine = addr.street
+    if (addr.house_number) streetLine += ` ${addr.house_number}`
+    if (addr.addition) streetLine += `, ${addr.addition}`
+
+    lines.push(streetLine)
+    lines.push(`${addr.postal_code} ${addr.city}`)
+
+    return lines
 }
 
 const openAddressModal = () => {
@@ -186,13 +183,6 @@ const updateSelectedSlotDetails = () => {
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-4">
                         <div class="flex items-center space-x-2">
-                            <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                                <CheckCircleIcon class="w-5 h-5 text-white" />
-                            </div>
-                            <span class="text-sm font-medium text-gray-900">Winkelwagen</span>
-                        </div>
-                        <div class="w-12 h-px bg-gray-300"></div>
-                        <div class="flex items-center space-x-2">
                             <div :class="[
                                 'w-8 h-8 rounded-full flex items-center justify-center',
                                 hasValidAddress ? 'bg-green-500' : 'bg-blue-500'
@@ -250,8 +240,10 @@ const updateSelectedSlotDetails = () => {
                             ]">
                                 <div v-if="hasValidAddress" class="flex items-start justify-between">
                                     <div class="flex-1">
-                                        <h3 class="font-medium text-gray-900 mb-1">Bezorgadres</h3>
-                                        <p class="text-gray-700">{{ formatAddress() }}</p>
+                                        <h3 class="font-semibold text-gray-900 mb-1">Bezorgadres</h3>
+                                        <p class="text-gray-700">
+                                            <span v-for="line in formatAddress()" :key="line" class="block">{{ line }}</span>    
+                                        </p>
                                     </div>
                                     <SecondaryButton @click="openAddressModal" class="ml-4">
                                         <PencilIcon class="w-4 h-4 mr-1.5" />

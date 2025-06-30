@@ -26,11 +26,18 @@ use Illuminate\Support\Facades\Log;
  * @property \DateTime $created_at When the user was created
  * @property \DateTime $updated_at When the user was last updated
  * 
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Order[] $orders
+ * @property-read \App\Models\UserAddress|null $address
+ * @property-read \App\Models\UserAddress|null $userAddress
+ * 
  * @method static \Database\Factories\UserFactory factory($count = null, $state = [])
  * @method bool hasRole(string|array $roles, string $guard = null)
  * @method bool hasAnyRole(string|array $roles)
  * @method void assignRole(string|array $roles)
  * @method bool can(string $permission, string $guard = null)
+ * @method \Illuminate\Database\Eloquent\Relations\HasMany orders()
+ * @method \Illuminate\Database\Eloquent\Relations\HasOne address()
+ * @method \Illuminate\Database\Eloquent\Relations\HasOne userAddress()
  * 
  * @property-read \Illuminate\Database\Eloquent\Collection|\Spatie\Permission\Models\Role[] $roles
  * @property-read \Illuminate\Database\Eloquent\Collection|\Spatie\Permission\Models\Permission[] $permissions

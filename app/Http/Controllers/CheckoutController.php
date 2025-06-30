@@ -289,13 +289,14 @@ class CheckoutController extends Controller
 
     /**
      * Handle checkout form submission (final order processing)
+     * ENHANCED VERSION with order number generation and better status handling
      */
     public function store(Request $request)
     {
         $request->validate([
             'delivery_slot_id' => ['required', 'exists:delivery_slots,id'],
             'order_notes' => 'nullable|string|max:500',
-            'payment_method' => 'required|in:ideal,card,paypal,cash'
+            'payment_method' => 'required|in:ideal,card,cash'
         ]);
 
         $user = Auth::user();
@@ -339,16 +340,20 @@ class CheckoutController extends Controller
             $deliveryFee = (float) $deliverySlot->price;
             $finalTotal = $totals['subtotal'] + $deliveryFee;
 
-            // Create order
+            // Generate unique order number
+            $orderNumber = $this->generateOrderNumber();
+
+            // Create order with enhanced data
             $order = Order::create([
                 'user_id' => $user->id,
                 'delivery_slot_id' => $request->input('delivery_slot_id'),
-                'status' => 'pending',
+                'order_number' => $orderNumber,
+                'status' => 'confirmed', // Since no payment needed, mark as confirmed
                 'subtotal' => $totals['subtotal'],
                 'delivery_fee' => $deliveryFee,
                 'total' => $finalTotal,
                 'payment_method' => $request->payment_method,
-                'payment_status' => $request->payment_method === 'cash' ? 'pending' : 'pending',
+                'payment_status' => 'completed', // No actual payment needed
                 'delivery_address' => $user->address->toArray(),
                 'order_notes' => $request->order_notes,
                 'order_date' => Carbon::now(),
@@ -376,7 +381,7 @@ class CheckoutController extends Controller
             }
 
             // Update delivery slot availability
-            $deliverySlot->decrement('current_available', 1);
+            $deliverySlot->decrement('available_slots', 1);
 
             // Clear cart and session
             $this->cartService->clear();
@@ -384,20 +389,20 @@ class CheckoutController extends Controller
 
             DB::commit();
 
-            // Determine redirect based on payment method
-            if ($request->payment_method === 'cash') {
-                $redirectUrl = route('orders.show', $order->id);
-            } else {
-                // For online payments, you would integrate with payment processor here
-                $redirectUrl = route('orders.show', $order->id);
-                // Example: $paymentUrl = $this->createPaymentSession($order);
-            }
+            // Log successful order
+            Log::info('Order created successfully', [
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'user_id' => $user->id,
+                'total' => $finalTotal
+            ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Bestelling succesvol geplaatst!',
                 'order_id' => $order->id,
-                'redirect' => $redirectUrl
+                'order_number' => $order->order_number,
+                'redirect' => route('checkout.success', $order->id)
             ]);
 
         } catch (\Exception $e) {
@@ -414,6 +419,69 @@ class CheckoutController extends Controller
                 'message' => $e->getMessage()
             ], 422);
         }
+    }
+
+    /**
+     * Show order success page
+     */
+    public function success(Order $order)
+    {
+        // Ensure user can only see their own orders
+        if ($order->user_id !== Auth::id()) {
+            abort(403, 'Je hebt geen toegang tot deze bestelling.');
+        }
+
+        // Load order with relationships
+        $order->load(['items.product', 'deliverySlot', 'user']);
+
+        return Inertia::render('Checkout/OrderSuccess', [
+            'order' => [
+                'id' => $order->id,
+                'order_number' => $order->order_number,
+                'status' => $order->status,
+                'subtotal' => $order->subtotal,
+                'delivery_fee' => $order->delivery_fee,
+                'total_amount' => $order->total,
+                'payment_method' => $order->payment_method,
+                'payment_status' => $order->payment_status ?? 'completed',
+                'order_notes' => $order->order_notes,
+                'created_at' => $order->created_at,
+            ],
+            'orderItems' => $order->items->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'quantity' => $item->quantity,
+                    'unit_price' => $item->price,
+                    'product' => [
+                        'name' => $item->product_name ?? $item->product?->name ?? 'Product niet gevonden',
+                        'image_url' => $item->product?->image_path ? asset('storage/' . $item->product->image_path) : null,
+                    ]
+                ];
+            }),
+            'deliveryAddress' => $order->delivery_address,
+            'deliverySlot' => $order->deliverySlot ? [
+                'delivery_date' => $order->deliverySlot->date->format('Y-m-d'),
+                'time_start' => $order->deliverySlot->start_time,
+                'time_end' => $order->deliverySlot->end_time,
+            ] : null,
+            'user' => [
+                'name' => $order->user->name,
+                'email' => $order->user->email,
+            ]
+        ]);
+    }
+
+    /**
+     * Generate unique order number
+     */
+    private function generateOrderNumber(): string
+    {
+        do {
+            // Format: CC-YYYY-NNNNNN (Commodum Copia - Year - 6-digit number)
+            $orderNumber = 'CC-' . date('Y') . '-' . str_pad(mt_rand(1, 999999), 6, '0', STR_PAD_LEFT);
+        } while (Order::where('order_number', $orderNumber)->exists());
+
+        return $orderNumber;
     }
 
     /**

@@ -60,7 +60,7 @@
                                         </h4>
                                         <div class="text-sm text-gray-600 space-y-1">
                                             <p>Aantal: {{ item.quantity }}</p>
-                                            <p>Prijs per stuk: €{{ item.price.toFixed(2) }}</p>
+                                            <p>Prijs per stuk: €{{ Number(item.price).toFixed(2) }}</p>
                                             <p v-if="!item.product?.is_active" class="text-red-600">
                                                 ⚠️ Product niet meer beschikbaar
                                             </p>
@@ -70,7 +70,7 @@
                                     <!-- Item Total -->
                                     <div class="flex-shrink-0 text-right">
                                         <p class="text-lg font-semibold text-gray-900">
-                                            €{{ item.total.toFixed(2) }}
+                                            €{{ Number(item.total).toFixed(2) }}
                                         </p>
                                     </div>
                                 </div>
@@ -173,15 +173,15 @@
                                 <div class="space-y-3">
                                     <div class="flex justify-between text-sm">
                                         <span class="text-gray-600">Subtotaal:</span>
-                                        <span class="font-medium">€{{ order.subtotal.toFixed(2) }}</span>
+                                        <span class="font-medium">€{{ Number(order.subtotal).toFixed(2) }}</span>
                                     </div>
                                     <div class="flex justify-between text-sm">
                                         <span class="text-gray-600">Bezorgkosten:</span>
-                                        <span class="font-medium">€{{ order.delivery_fee.toFixed(2) }}</span>
+                                        <span class="font-medium">€{{ Number(order.delivery_fee).toFixed(2) }}</span>
                                     </div>
                                     <div class="border-t border-gray-200 pt-3 flex justify-between text-lg font-bold">
                                         <span class="text-gray-900">Totaal:</span>
-                                        <span class="text-green-600">€{{ order.total.toFixed(2) }}</span>
+                                        <span class="text-green-600">€{{ Number(order.total).toFixed(2) }}</span>
                                     </div>
                                 </div>
                             </div>

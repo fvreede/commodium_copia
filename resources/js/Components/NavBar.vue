@@ -100,7 +100,7 @@
 
                 <!-- Desktop: Cart + Profile -->
                 <div class="hidden sm:flex sm:items-center sm:ml-6 sm:space-x-3">
-                    <!-- Desktop cart -->
+                    <!-- Desktop cart
                     <div class="relative">
                         <button @click="toggleCart" type="button" class="relative rounded-full bg-slate-50 p-1 text-gray-700 hover:bg-slate-200 hover:text-gray-900">
                             <ShoppingCartIcon class="h-6 w-6" />
@@ -108,17 +108,22 @@
                                 {{ cartItemCount }}
                             </span>
                         </button>
-                    </div>
+                    </div>  -->
                     
-                    <!-- Desktop profile menu -->
+                    <!-- Desktop profile menu with better slot usage -->
                     <Menu as="div" class="relative">
-                        <div>
-                            <MenuButton class="relative flex rounded-full bg-slate-50 p-1 text-gray-700 hover:bg-slate-200 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-200">
+                        <MenuButton v-slot="{ open }" as="template">
+                            <button 
+                                :class="[
+                                    'relative flex rounded-full p-1 text-gray-700 hover:bg-slate-200 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-200 transition-colors duration-150',
+                                    open ? 'bg-slate-200' : 'bg-slate-50'
+                                ]"
+                            >
                                 <span class="absolute -inset-1.5"/>
                                 <span class="sr-only">Open user menu</span>
                                 <UserIcon class="h-6 w-6" aria-hidden="true"/>
-                            </MenuButton>
-                        </div>
+                            </button>
+                        </MenuButton>
                         
                         <Transition 
                             enter-active-class="transition ease-out duration-100" 
@@ -128,41 +133,113 @@
                             leave-from-class="transform opacity-100 scale-100" 
                             leave-to-class="transform opacity-0 scale-95"
                         >
-                            <MenuItems class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-slate-50 py-1 shadow-md ring-1 ring-black ring-opacity-5 focus:outline-none">
-                                <!-- Your existing desktop profile menu items -->
+                            <MenuItems class="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                                 <template v-if="!isAuthenticated">
+                                    <!-- Guest menu items -->
                                     <MenuItem v-slot="{ active }">
-                                        <Link :href="route('login')" :class="[active ? 'bg-gray-500' : '', 'block px-4 py-2 text-sm text-black']">
+                                        <Link 
+                                            :href="route('login')" 
+                                            :class="[
+                                                active ? 'bg-gray-100 text-gray-900' : 'text-gray-700',
+                                                'group flex items-center px-4 py-2 text-sm font-medium w-full'
+                                            ]"
+                                        >
+                                            <UserIcon class="mr-3 h-5 w-5 text-gray-400 group-hover:text-gray-500" />
                                             Inloggen
                                         </Link>
                                     </MenuItem>
+                                    
                                     <MenuItem v-slot="{ active }">
-                                        <Link :href="route('register')" :class="[active ? 'bg-gray-500' : '', 'block px-4 py-2 text-sm text-black']">
+                                        <Link 
+                                            :href="route('register')" 
+                                            :class="[
+                                                active ? 'bg-gray-100 text-gray-900' : 'text-gray-700',
+                                                'group flex items-center px-4 py-2 text-sm font-medium w-full'
+                                            ]"
+                                        >
+                                            <UserPlusIcon class="mr-3 h-5 w-5 text-gray-400 group-hover:text-gray-500" />
                                             Registreren
                                         </Link>
                                     </MenuItem>
                                 </template>
                                 
                                 <template v-else>
-                                    <div class="px-4 py-2 border-b border-gray-200">
-                                        <p class="text-sm font-medium text-gray-900">{{ user.name }}</p>
-                                        <p class="text-xs text-gray-500">{{ user.email }}</p>
+                                    <!-- User info header -->
+                                    <div class="px-4 py-3 border-b border-gray-200">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0">
+                                                <div class="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                                    <UserIcon class="h-5 w-5 text-gray-500" />
+                                                </div>
+                                            </div>
+                                            <div class="ml-3 min-w-0 flex-1">
+                                                <p class="text-sm font-medium text-gray-900 truncate">{{ user.name }}</p>
+                                                <p class="text-xs text-gray-500 truncate">{{ user.email }}</p>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <MenuItem v-slot="{ active }">
-                                        <Link :href="route('dashboard')" :class="[active ? 'bg-gray-500' : '', 'block px-4 py-2 text-sm text-black']">
-                                            Dashboard
-                                        </Link>
-                                    </MenuItem>
-                                    <MenuItem v-slot="{ active }">
-                                        <Link :href="route('profile.edit')" :class="[active ? 'bg-gray-500' : '', 'block px-4 py-2 text-sm text-black']">
-                                            Profiel Instellingen
-                                        </Link>  
-                                    </MenuItem>
-                                    <MenuItem v-slot="{ active }">
-                                        <Link :href="route('logout')" method="post" :class="[active ? 'bg-gray-500' : '', 'block px-4 py-2 text-sm text-black']">
-                                            Uitloggen
-                                        </Link>
-                                    </MenuItem>
+                                    
+                                    <!-- Navigation items -->
+                                    <div class="py-1">
+                                        <MenuItem v-slot="{ active }">
+                                            <Link 
+                                                :href="route('dashboard')" 
+                                                :class="[
+                                                    active ? 'bg-gray-100 text-gray-900' : 'text-gray-700',
+                                                    'group flex items-center px-4 py-2 text-sm w-full'
+                                                ]"
+                                            >
+                                                <HomeIcon class="mr-3 h-5 w-5 text-gray-400 group-hover:text-gray-500" />
+                                                Dashboard
+                                            </Link>
+                                        </MenuItem>
+                                        
+                                        <MenuItem v-slot="{ active }">
+                                            <Link 
+                                                :href="route('orders.index')" 
+                                                :class="[
+                                                    active ? 'bg-gray-100 text-gray-900' : 'text-gray-700',
+                                                    'group flex items-center px-4 py-2 text-sm w-full'
+                                                ]"
+                                            >
+                                                <ShoppingBagIcon class="mr-3 h-5 w-5 text-gray-400 group-hover:text-gray-500" />
+                                                Mijn Bestellingen
+                                            </Link>
+                                        </MenuItem>
+                                        
+                                        <MenuItem v-slot="{ active }">
+                                            <Link 
+                                                :href="route('profile.edit')" 
+                                                :class="[
+                                                    active ? 'bg-gray-100 text-gray-900' : 'text-gray-700',
+                                                    'group flex items-center px-4 py-2 text-sm w-full'
+                                                ]"
+                                            >
+                                                <Cog6ToothIcon class="mr-3 h-5 w-5 text-gray-400 group-hover:text-gray-500" />
+                                                Profiel Instellingen
+                                            </Link>
+                                        </MenuItem>
+                                    </div>
+                                    
+                                    <!-- Divider -->
+                                    <div class="border-t border-gray-100"></div>
+                                    
+                                    <!-- Logout -->
+                                    <div class="py-1">
+                                        <MenuItem v-slot="{ active }">
+                                            <Link 
+                                                :href="route('logout')" 
+                                                method="post"
+                                                :class="[
+                                                    active ? 'bg-red-50 text-red-700' : 'text-red-600',
+                                                    'group flex items-center px-4 py-2 text-sm font-medium w-full'
+                                                ]"
+                                            >
+                                                <ArrowRightStartOnRectangleIcon class="mr-3 h-5 w-5" />
+                                                Uitloggen
+                                            </Link>
+                                        </MenuItem>
+                                    </div>
                                 </template>
                             </MenuItems>
                         </Transition>
@@ -313,7 +390,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { Disclosure, DisclosureButton, DisclosurePanel, Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/vue'
-import { Bars3Icon, XMarkIcon, ShoppingCartIcon, UserIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline'
+import { Bars3Icon, XMarkIcon, ShoppingCartIcon, UserIcon, MagnifyingGlassIcon, UserPlusIcon, HomeIcon, ShoppingBagIcon, Cog6ToothIcon, ArrowRightStartOnRectangleIcon } from '@heroicons/vue/24/outline'
 import ShoppingCart from '@/Components/ShoppingCart.vue'
 import { useCartStore } from '@/Stores/cart'
 import NavLink from './NavLink.vue'

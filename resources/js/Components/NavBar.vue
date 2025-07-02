@@ -1,4 +1,4 @@
-<!-- Updated NavBar.vue with better mobile UX -->
+<!-- Updated NavBar.vue with better mobile UX and consistent icons -->
 <template>
     <Disclosure as="nav" class="bg-slate-100 fixed w-full top-0 z-[1000] shadow-md" v-slot="{ open }">
         <div class="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
@@ -100,7 +100,7 @@
 
                 <!-- Desktop: Cart + Profile -->
                 <div class="hidden sm:flex sm:items-center sm:ml-6 sm:space-x-3">
-                    <!-- Desktop cart
+                    <!-- Desktop cart -->
                     <div class="relative">
                         <button @click="toggleCart" type="button" class="relative rounded-full bg-slate-50 p-1 text-gray-700 hover:bg-slate-200 hover:text-gray-900">
                             <ShoppingCartIcon class="h-6 w-6" />
@@ -108,7 +108,7 @@
                                 {{ cartItemCount }}
                             </span>
                         </button>
-                    </div>  -->
+                    </div> 
                     
                     <!-- Desktop profile menu with better slot usage -->
                     <Menu as="div" class="relative">
@@ -319,19 +319,23 @@
                 <!-- Profile section -->
                 <div class="pt-2">
                     <template v-if="!isAuthenticated">
+                        <!-- Login -->
                         <DisclosureButton 
                             as="a" 
                             :href="route('login')"
                             class="text-gray-700 hover:bg-gray-200 hover:text-gray-900 flex items-center rounded-md px-3 py-2 text-base font-medium"
                         >
-                            <UserIcon class="h-5 w-5 mr-3" />
+                            <UserIcon class="h-5 w-5 mr-3 text-gray-400" />
                             Inloggen
                         </DisclosureButton>
+                        
+                        <!-- Register -->
                         <DisclosureButton 
                             as="a" 
                             :href="route('register')"
-                            class="text-gray-700 hover:bg-gray-200 hover:text-gray-900 block rounded-md px-3 py-2 text-base font-medium ml-8"
+                            class="text-gray-700 hover:bg-gray-200 hover:text-gray-900 flex items-center rounded-md px-3 py-2 text-base font-medium"
                         >
+                            <UserPlusIcon class="h-5 w-5 mr-3 text-gray-400" />
                             Registreren
                         </DisclosureButton>
                     </template>
@@ -340,35 +344,56 @@
                         <!-- User info -->
                         <div class="px-3 py-2 border-b border-gray-200 mb-2">
                             <div class="flex items-center">
-                                <UserIcon class="h-8 w-8 text-gray-400 mr-3" />
-                                <div>
-                                    <p class="text-sm font-medium text-gray-900">{{ user.name }}</p>
-                                    <p class="text-xs text-gray-500">{{ user.email }}</p>
+                                <div class="flex-shrink-0">
+                                    <div class="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                        <UserIcon class="h-5 w-5 text-gray-500" />
+                                    </div>
+                                </div>
+                                <div class="ml-3 min-w-0 flex-1">
+                                    <p class="text-sm font-medium text-gray-900 truncate">{{ user.name }}</p>
+                                    <p class="text-xs text-gray-500 truncate">{{ user.email }}</p>
                                 </div>
                             </div>
                         </div>
                         
-                        <!-- Profile menu items -->
+                        <!-- Dashboard -->
                         <DisclosureButton 
                             as="a" 
                             :href="route('dashboard')"
-                            class="text-gray-700 hover:bg-gray-200 hover:text-gray-900 block rounded-md px-3 py-2 text-base font-medium"
+                            class="text-gray-700 hover:bg-gray-200 hover:text-gray-900 flex items-center rounded-md px-3 py-2 text-base font-medium"
                         >
+                            <HomeIcon class="h-5 w-5 mr-3 text-gray-400" />
                             Dashboard
                         </DisclosureButton>
+                        
+                        <!-- My Orders -->
+                        <DisclosureButton 
+                            as="a" 
+                            :href="route('orders.index')"
+                            class="text-gray-700 hover:bg-gray-200 hover:text-gray-900 flex items-center rounded-md px-3 py-2 text-base font-medium"
+                        >
+                            <ShoppingBagIcon class="h-5 w-5 mr-3 text-gray-400" />
+                            Mijn Bestellingen
+                        </DisclosureButton>
+                        
+                        <!-- Profile Settings -->
                         <DisclosureButton 
                             as="a" 
                             :href="route('profile.edit')"
-                            class="text-gray-700 hover:bg-gray-200 hover:text-gray-900 block rounded-md px-3 py-2 text-base font-medium"
+                            class="text-gray-700 hover:bg-gray-200 hover:text-gray-900 flex items-center rounded-md px-3 py-2 text-base font-medium"
                         >
+                            <Cog6ToothIcon class="h-5 w-5 mr-3 text-gray-400" />
                             Profiel Instellingen
                         </DisclosureButton>
+                        
+                        <!-- Logout -->
                         <DisclosureButton 
                             as="a" 
                             :href="route('logout')" 
                             method="post"
-                            class="text-red-600 hover:bg-red-50 hover:text-red-700 block rounded-md px-3 py-2 text-base font-medium"
+                            class="text-red-600 hover:bg-red-50 hover:text-red-700 flex items-center rounded-md px-3 py-2 text-base font-medium"
                         >
+                            <ArrowRightStartOnRectangleIcon class="h-5 w-5 mr-3" />
                             Uitloggen
                         </DisclosureButton>
                     </template>
@@ -435,7 +460,6 @@ watch(cartItemCount, () => {
 
 // Computed properties
 const showSearch = computed(() => activeButton.value === 'search')
-const profileOpen = computed(() => activeButton.value === 'profile')
 
 // Search functions
 const performSearch = () => {
@@ -567,8 +591,6 @@ const closeCart = () => {
 // User authentication
 const user = computed(() => usePage().props.auth.user);
 const isAuthenticated = computed(() => !!user.value);
-const canLogin = computed(() => usePage().props.auth.canLogin);
-const canRegister = computed(() => usePage().props.auth.canRegister);
 
 const showLogoutModal = ref(false)
 

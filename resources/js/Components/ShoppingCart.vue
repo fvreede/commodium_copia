@@ -1,7 +1,7 @@
 <!-- Mobile-Friendly ShoppingCart.vue -->
 <template>
   <TransitionRoot as="template" :show="isOpen">
-    <Dialog as="div" class="relative z-[200]" @close="$emit('close')">
+    <Dialog as="div" class="relative z-[1100] sm:z-[200]" @close="$emit('close')">
       <TransitionChild 
         as="template" 
         enter="ease-in-out duration-500" 
@@ -89,14 +89,13 @@
                       <p class="text-sm text-gray-500 text-center mb-6">
                         Voeg producten toe aan uw winkelwagen om verder te gaan met bestellen.
                       </p>
-                      <button 
-                        type="button" 
-                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-colors"
+                      <PrimaryButton 
+                        class="px-4 py-2 text-sm font-medium"
                         @click="$emit('close')"
                       >
                         Begin met winkelen
                         <ArrowRightIcon class="ml-2 h-4 w-4" />
-                      </button>
+                      </PrimaryButton>
                     </div>
 
                     <!-- Cart items - Mobile optimized layout -->
@@ -211,9 +210,6 @@
                               </div>
                             </div>
                           </div>
-
-                          <!-- Optional: Swipe actions for mobile (advanced UX) -->
-                          <!-- You can implement swipe-to-delete functionality here if desired -->
                         </li>
                       </ul>
                     </div>
@@ -234,25 +230,23 @@
                     </div>
 
                     <!-- Action buttons -->
-                    <div class="space-y-3">
-                      <button 
-                        type="button" 
+                    <div class="space-y-4">
+                      <PrimaryButton 
                         :disabled="cartStore.sortedItems.length === 0 || hasOutOfStockItems"
-                        class="w-full rounded-lg border border-transparent bg-indigo-600 px-6 py-4 sm:py-3 text-lg sm:text-base font-medium text-white shadow-sm hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                        class="w-full justify-center px-6 py-4 sm:py-3 text-lg sm:text-base font-medium disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                         @click="goToCheckout"
                       >
                         <span v-if="hasOutOfStockItems">Controleer voorraad</span>
                         <span v-else>Bestelling afronden</span>
-                      </button>
+                      </PrimaryButton>
                       
-                      <button 
-                        type="button" 
-                        class="w-full text-center text-base sm:text-sm font-medium text-indigo-600 hover:text-indigo-500 py-2 transition-colors"
+                      <SecondaryButton 
+                        class="w-full justify-center text-base sm:text-sm font-medium py-2"
                         @click="$emit('close')"
                       >
                         Verder winkelen
                         <ArrowRightIcon class="ml-1 h-4 w-4 inline" />
-                      </button>
+                      </SecondaryButton>
                     </div>
 
                     <!-- Clear cart option -->
@@ -279,6 +273,8 @@
 
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue';
+import PrimaryButton from './PrimaryButton.vue';
+import SecondaryButton from './SecondaryButton.vue';
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue';
 import { 
   XMarkIcon, 

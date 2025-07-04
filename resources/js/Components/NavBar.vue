@@ -427,7 +427,7 @@ import LogoutSuccessModal from '@/Components/LogoutSuccessModal.vue'
 // Navigation options
 const navigation = [
     { name: 'Producten', href: '/categories' },
-    { name: 'Bestellen', href: '/checkout' },
+    //{ name: 'Bestellen', href: '/checkout' },
 ]
 
 const activeButton = ref(null)

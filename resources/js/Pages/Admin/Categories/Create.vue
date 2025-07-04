@@ -7,6 +7,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
+import { FolderPlusIcon, PhotoIcon, ArrowLeftIcon, MagnifyingGlassMinusIcon, MagnifyingGlassPlusIcon, ArrowPathIcon } from '@heroicons/vue/24/outline';
 
 const imagePreview = ref(null);
 const imagePosition = reactive({ x: 0, y: 0});
@@ -324,10 +325,12 @@ const handleImageChange = (e) => {
 
 const handleBack = () => {
     if (hasSavedChanges()) {
-        if (!confirm('Je hebt niet-opgeslagen wijzigingen. Weet je zeker dat je deze pagina wilt verlaten?')) {
+        if (!confirm('You have unsaved changes. Are you sure you want to leave this page?')) {
             return;
         }
     }
+    // Remove the beforeunload listener to prevent double warning
+    window.removeEventListener('beforeunload', handleBeforeUnload);
     window.location = route('admin.categories.index');
 };
 
@@ -345,160 +348,212 @@ const submit = () => {
     <Head title="Create Category" />
 
     <AdminLayout>
-        <div class="py-12">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
-                        <section class="max-w-xl">
-                            <header>
-                                <h2 class="text-lg font-medium text-gray-900">Create Category</h2>
-                                <p class="mt-1 text-sm text-gray-600">
-                                    Add a new category to organize products.
-                                </p>
-                            </header>
+        <div class="py-4 sm:py-6 lg:py-8">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="bg-white overflow-hidden shadow-sm rounded-lg">
+                    <!-- Header -->
+                    <div class="px-4 py-4 sm:px-6 border-b border-gray-200">
+                        <div class="flex items-center space-x-3">
+                            <div class="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-lg">
+                                <FolderPlusIcon class="w-5 h-5 text-blue-600" />
+                            </div>
+                            <div>
+                                <h2 class="text-lg sm:text-xl font-semibold text-gray-900">Create Category</h2>
+                                <p class="text-sm text-gray-600">Add a new category to organize products</p>
+                            </div>
+                        </div>
+                    </div>
 
-                            <form @submit.prevent="submit" class="mt-6 space-y-6">
-                                <div>
-                                    <InputLabel for="name" value="Category Name" />
-                                    <TextInput
-                                        id="name"
-                                        v-model="form.name"
-                                        type="text"
-                                        class="mt-1 block w-full"
-                                        required
-                                        autofocus
-                                    />
-                                    <InputError :message="form.errors.name" class="mt-2" />
-                                </div>
+                    <!-- Form -->
+                    <div class="p-4 sm:p-6">
+                        <form @submit.prevent="submit" class="space-y-6">
+                            <!-- Category Name -->
+                            <div>
+                                <InputLabel for="name" value="Category Name" class="text-sm font-medium text-gray-700" />
+                                <TextInput
+                                    id="name"
+                                    v-model="form.name"
+                                    type="text"
+                                    class="mt-2 block w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="Enter category name"
+                                    required
+                                    autofocus
+                                    :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': form.errors.name }"
+                                />
+                                <InputError :message="form.errors.name" class="mt-2" />
+                            </div>
 
-                                <div>
-                                    <InputLabel for="description" value="Description" />
-                                    <textarea 
-                                        id="description"
-                                        v-model="form.description"
-                                        class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm resize-none"
-                                        rows="3"
-                                        required
-                                    />
-                                    <InputError :message="form.errors.description" class="mt-2" />
-                                </div>
+                            <!-- Description -->
+                            <div>
+                                <InputLabel for="description" value="Description" class="text-sm font-medium text-gray-700" />
+                                <textarea 
+                                    id="description"
+                                    v-model="form.description"
+                                    class="mt-2 block w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                                    rows="3"
+                                    placeholder="Enter category description"
+                                    required
+                                    :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': form.errors.description }"
+                                />
+                                <InputError :message="form.errors.description" class="mt-2" />
+                            </div>
 
-                                <div>
-                                    <InputLabel for="image" value="Category Image" />
+                            <!-- Image Upload -->
+                            <div>
+                                <InputLabel for="image" value="Category Image" class="text-sm font-medium text-gray-700" />
+                                <div class="mt-2">
                                     <input 
                                         type="file"
                                         id="image"
                                         @input="handleImageChange"
                                         accept="image/*"
-                                        class="mt-1 block w-full"
+                                        class="block w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
                                         required
                                     />
-                                    <p class="mt-1 text-sm text-gray-500">
-                                        Square image recommended (will be displayed in a 1:1 ratio)
+                                    <p class="mt-2 text-sm text-gray-500">
+                                        Square images work best (displayed in 1:1 ratio)
                                     </p>
                                     <InputError :message="form.errors.image" class="mt-2" />
+                                </div>
 
-                                    <!-- Image Preview -->
-                                    <div v-if="imagePreview" class="mt-4">
-                                        <!-- Zoom Controls -->
-                                        <div class="flex items-center gap-2 mb-3 p-2 bg-gray-50 rounded-lg">
-                                            <button
-                                                type="button"
-                                                @click="zoomOut"
-                                                :disabled="imageZoom <= minZoom"
-                                                class="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                            >
-                                                −
-                                            </button>
-                                            <span class="text-sm text-gray-600 min-w-[3rem] text-center">
-                                                {{ Math.round(imageZoom * 100) }}%
-                                            </span>
-                                            <button
-                                                type="button"
-                                                @click="zoomIn"
-                                                :disabled="imageZoom >= maxZoom"
-                                                class="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                            >
-                                                +
-                                            </button>
+                                <!-- Image Preview with Editor -->
+                                <div v-if="imagePreview" class="mt-6">
+                                    <!-- Mobile-Friendly Zoom Controls -->
+                                    <div class="mb-4 p-3 bg-gray-50 rounded-lg">
+                                        <h4 class="text-sm font-medium text-gray-700 mb-3">Image Editor</h4>
+                                        <div class="flex items-center justify-between gap-3">
+                                            <div class="flex items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    @click="zoomOut"
+                                                    :disabled="imageZoom <= minZoom"
+                                                    class="flex items-center justify-center w-10 h-10 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                                >
+                                                    <MagnifyingGlassMinusIcon class="w-4 h-4" />
+                                                </button>
+                                                <span class="text-sm text-gray-600 min-w-[3.5rem] text-center font-medium">
+                                                    {{ Math.round(imageZoom * 100) }}%
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    @click="zoomIn"
+                                                    :disabled="imageZoom >= maxZoom"
+                                                    class="flex items-center justify-center w-10 h-10 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                                >
+                                                    <MagnifyingGlassPlusIcon class="w-4 h-4" />
+                                                </button>
+                                            </div>
                                             <button
                                                 type="button"
                                                 @click="resetZoom"
-                                                class="px-3 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-50 ml-2"
+                                                class="flex items-center gap-2 px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                                             >
-                                                Reset
+                                                <ArrowPathIcon class="w-4 h-4" />
+                                                <span class="hidden sm:inline">Reset</span>
                                             </button>
                                         </div>
+                                    </div>
 
-                                        <div class="group relative">
+                                    <!-- Image Preview Container -->
+                                    <div class="group relative bg-gray-100 rounded-lg overflow-hidden">
+                                        <div 
+                                            ref="containerRef"
+                                            class="aspect-square w-full overflow-hidden relative bg-gray-200"
+                                            @wheel="handleWheel"
+                                        >
                                             <div 
-                                                ref="containerRef"
-                                                class="aspect-square w-full overflow-hidden rounded-lg bg-gray-200 relative"
-                                                @wheel="handleWheel"
+                                                class="absolute inset-0 cursor-move overflow-hidden"
+                                                @mousedown="startDrag" 
+                                                @touchstart="startDrag"
                                             >
-                                                <div 
-                                                    class="absolute inset-0 cursor-move overflow-hidden"
-                                                    @mousedown="startDrag" 
-                                                    @touchstart="startDrag"
-                                                >
-                                                    <img 
-                                                        ref="imageRef"
-                                                        :src="imagePreview" 
-                                                        :style="{
-                                                            transform: imageTransform,
-                                                            cursor: isDragging ? 'grabbing' : 'grab',
-                                                            transformOrigin: 'center center',
-                                                        }"
-                                                        class="min-h-full min-w-full object-cover select-none transition-transform"
-                                                        :class="{ 'duration-200 ease-out': !isDragging }"
-                                                        draggable="false"
-                                                    />
-                                                </div>
-                                                <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300 pointer-events-none"></div>
-                                                
-                                                <!-- Alignment guides (optional visual feedback) -->
-                                                <div class="absolute inset-0 pointer-events-none">
-                                                    <!-- Center lines -->
-                                                    <div class="absolute left-1/2 top-0 bottom-0 w-px bg-blue-300 opacity-0 group-hover:opacity-30 transition-opacity transform -translate-x-px"></div>
-                                                    <div class="absolute top-1/2 left-0 right-0 h-px bg-blue-300 opacity-0 group-hover:opacity-30 transition-opacity transform -translate-y-px"></div>
-                                                </div>
+                                                <img 
+                                                    ref="imageRef"
+                                                    :src="imagePreview" 
+                                                    :style="{
+                                                        transform: imageTransform,
+                                                        cursor: isDragging ? 'grabbing' : 'grab',
+                                                        transformOrigin: 'center center',
+                                                    }"
+                                                    class="min-h-full min-w-full object-cover select-none transition-transform"
+                                                    :class="{ 'duration-200 ease-out': !isDragging }"
+                                                    draggable="false"
+                                                />
                                             </div>
-                                            <h3 class="mt-2 text-sm text-gray-700 truncate">
+                                            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300 pointer-events-none"></div>
+                                            
+                                            <!-- Alignment guides -->
+                                            <div class="absolute inset-0 pointer-events-none">
+                                                <!-- Center lines -->
+                                                <div class="absolute left-1/2 top-0 bottom-0 w-px bg-blue-300 opacity-0 group-hover:opacity-30 transition-opacity transform -translate-x-px"></div>
+                                                <div class="absolute top-1/2 left-0 right-0 h-px bg-blue-300 opacity-0 group-hover:opacity-30 transition-opacity transform -translate-y-px"></div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Category Preview Info -->
+                                        <div class="p-4 bg-white border-t border-gray-200">
+                                            <h3 class="text-sm font-medium text-gray-900 truncate">
                                                 {{ form.name || 'Category Name' }}
                                             </h3>
-                                            <p class="mt-1 text-xs sm:text-sm font-medium text-gray-900 line-clamp-2">
+                                            <p class="mt-1 text-xs text-gray-600 line-clamp-2">
                                                 {{ form.description || 'Category description will appear here' }}
                                             </p>
                                         </div>
-                                        <div class="mt-2 space-y-1">
-                                            <p class="text-sm text-gray-500 italic">
-                                                Drag to reposition • Scroll to zoom • Magnetic border alignment
-                                            </p>
-                                            <p class="text-xs text-gray-400">
-                                                Position: {{ Math.round(imagePosition.x) }}, {{ Math.round(imagePosition.y) }} • 
-                                                Zoom: {{ Math.round(imageZoom * 100) }}%
-                                            </p>
-                                        </div>
-                                        <InputError :message="form.errors.image" class="mt-2" />
-                                        <InputError :message="form.errors['imagePosition.x']" class="mt-2" />
-                                        <InputError :message="form.errors['imagePosition.y']" class="mt-2" />
-                                        <InputError :message="form.errors['imageZoom']" class="mt-2" />
                                     </div>
-                                </div>
 
-                                <div class="flex items-center gap-4">
-                                    <PrimaryButton :disabled="form.processing">
-                                        Create Category
+                                    <!-- Instructions -->
+                                    <div class="mt-3 p-3 bg-blue-50 rounded-lg">
+                                        <div class="flex items-start space-x-2">
+                                            <PhotoIcon class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                                            <div class="text-sm text-blue-800">
+                                                <p class="font-medium mb-1">Image Editor Instructions:</p>
+                                                <ul class="text-xs space-y-1 text-blue-700">
+                                                    <li>• Drag to reposition the image</li>
+                                                    <li>• Use zoom controls or scroll to zoom</li>
+                                                    <li>• Image auto-aligns to borders and center</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Debug Info (hidden on mobile) -->
+                                    <div class="hidden sm:block mt-2 text-xs text-gray-400">
+                                        Position: {{ Math.round(imagePosition.x) }}, {{ Math.round(imagePosition.y) }} • 
+                                        Zoom: {{ Math.round(imageZoom * 100) }}%
+                                    </div>
+
+                                    <!-- Image Error Messages -->
+                                    <InputError :message="form.errors['imagePosition.x']" class="mt-2" />
+                                    <InputError :message="form.errors['imagePosition.y']" class="mt-2" />
+                                    <InputError :message="form.errors['imageZoom']" class="mt-2" />
+                                </div>
+                            </div>
+
+                            <!-- Form Actions -->
+                            <div class="pt-6 border-t border-gray-200">
+                                <div class="flex flex-col sm:flex-row gap-3 sm:justify-end">
+                                    <PrimaryButton 
+                                        type="submit"
+                                        :disabled="form.processing"
+                                        class="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 text-sm font-medium transition-colors"
+                                    >
+                                        <svg v-if="form.processing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <FolderPlusIcon v-else class="w-4 h-4 mr-2" />
+                                        {{ form.processing ? 'Creating...' : 'Create Category' }}
                                     </PrimaryButton>
                                     <SecondaryButton
                                         type="button"
                                         @click="handleBack"
+                                        class="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                                     >
+                                        <ArrowLeftIcon class="w-4 h-4 mr-2" />
                                         Cancel
                                     </SecondaryButton>
                                 </div>
-                            </form>
-                        </section>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -529,5 +584,14 @@ img {
 /* Square aspect ratio container */
 .aspect-square {
     aspect-ratio: 1 / 1;
+}
+
+/* Line clamp utility */
+.line-clamp-2 {
+    display: -webkit-box;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 </style>

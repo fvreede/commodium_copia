@@ -1,5 +1,30 @@
 <template>
   <NavBar />
+  
+  <!-- Toast Notification - Same as product page -->
+  <Transition
+    enter-active-class="transform ease-out duration-300 transition"
+    enter-from-class="translate-y-2 opacity-0 sm:translate-y-0 sm:translate-x-2"
+    enter-to-class="translate-y-0 opacity-100 sm:translate-x-0"
+    leave-active-class="transition ease-in duration-100"
+    leave-from-class="opacity-100"
+    leave-to-class="opacity-0"
+  >
+    <div v-if="showToast" class="fixed top-20 right-4 z-50 max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden">
+      <div class="p-4">
+        <div class="flex items-start">
+          <div class="flex-shrink-0">
+            <CheckCircleIcon class="h-6 w-6 text-green-400" />
+          </div>
+          <div class="ml-3 w-0 flex-1 pt-0.5">
+            <p class="text-sm font-medium text-gray-900">Toegevoegd aan winkelwagen!</p>
+            <p class="mt-1 text-sm text-gray-500">{{ lastAddedProduct }} toegevoegd</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </Transition>
+
   <div class="bg-gray-100 min-h-screen pt-16">
     <!-- Header -->
     <div class="bg-white shadow-sm border-b border-gray-200">
@@ -54,8 +79,21 @@
             </div>
           </Link>
           <div class="px-4 pb-4">
-            <button @click="addToCart(product)" class="w-full px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-150">
-              Toevoegen
+            <button 
+              @click="addToCart(product)" 
+              :disabled="loadingProducts.has(product.id)"
+              class="w-full px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            >
+              <template v-if="loadingProducts.has(product.id)">
+                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Toevoegen...
+              </template>
+              <template v-else>
+                Toevoegen
+              </template>
             </button>
           </div>
         </div>
@@ -72,8 +110,9 @@
 </template>
 
 <script setup>
+import { ref } from 'vue';
 import { Link } from '@inertiajs/vue3';
-import { MagnifyingGlassIcon, DocumentTextIcon } from '@heroicons/vue/24/outline';
+import { MagnifyingGlassIcon, DocumentTextIcon, CheckCircleIcon } from '@heroicons/vue/24/outline';
 import { useCartStore } from '@/Stores/cart';
 import NavBar from '@/Components/NavBar.vue';
 import Footer from '@/Components/Footer.vue';
@@ -87,14 +126,41 @@ const props = defineProps({
 
 const cartStore = useCartStore();
 
-const addToCart = (product) => {
-  cartStore.addItem({
-    id: product.id,
-    name: product.name,
-    price: product.price,
-    image: product.image_path,
-    quantity: 1,
-  });
+// Toast notification state
+const showToast = ref(false);
+const lastAddedProduct = ref('');
+const loadingProducts = ref(new Set());
+
+const addToCart = async (product) => {
+  try {
+    // Add loading state for this specific product
+    loadingProducts.value.add(product.id);
+    
+    const result = await cartStore.addToCart({
+      id: product.id,
+      quantity: 1
+    });
+    
+    if (result.success) {
+      // Show toast notification
+      lastAddedProduct.value = product.name;
+      showToast.value = true;
+      
+      // Auto-hide toast after 4 seconds
+      setTimeout(() => {
+        showToast.value = false;
+      }, 4000);
+      
+      console.log('Product added to cart successfully');
+    } else {
+      console.error('Failed to add product to cart:', result.message);
+    }
+  } catch (error) {
+    console.error('Error adding product to cart:', error);
+  } finally {
+    // Remove loading state
+    loadingProducts.value.delete(product.id);
+  }
 };
 
 const handleImageError = (event) => {

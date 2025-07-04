@@ -432,9 +432,11 @@ export const useCartStore = defineStore('cart', {
                     };
                 }
 
+                const requestedQuantity = parseInt(product.quantity) || 1;
+
                 const response = await axios.post('/cart/add', {
                     product_id: parseInt(product.id),
-                    quantity: 1
+                    quantity:  requestedQuantity
                 });
                 
                 if (response.data.totals) {

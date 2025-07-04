@@ -368,7 +368,6 @@ const incrementQuantity = async (item) => {
     const result = await cartStore.incrementQuantity(item);
     if (!result.success) {
       console.error('Failed to increment quantity:', result.message);
-      // Could show a toast notification here
     }
   } finally {
     updatingItems.value.delete(item.product_id);
@@ -391,10 +390,9 @@ const decrementQuantity = async (item) => {
 const removeItem = async (item) => {
   updatingItems.value.add(item.product_id);
   try {
-    const result = await cartStore.removeFromCart(item);
+    const result = await cartStore.removeFromCartOptimistic(item);
     if (!result.success) {
       console.error('Failed to remove item:', result.message);
-      // Could show a toast notification here
     }
   } finally {
     updatingItems.value.delete(item.product_id);
@@ -411,7 +409,6 @@ const clearCart = async () => {
     const result = await cartStore.clearCart();
     if (!result.success) {
       console.error('Failed to clear cart:', result.message);
-      // Could show a toast notification here
     }
   } finally {
     clearingCart.value = false;

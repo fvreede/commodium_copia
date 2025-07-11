@@ -130,9 +130,6 @@ watch(show, (newShow) => {
 
                 <!-- Street -->
                 <div>
-                    <label for="street" class="block text-sm font-medium text-gray-700 mb-1">
-                        Straatnaam *
-                    </label>
                     <input
                         id="street"
                         v-model="form.street"
@@ -142,16 +139,13 @@ watch(show, (newShow) => {
                             'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500',
                             errors.street ? 'border-red-300' : 'border-gray-300'
                         ]"
-                        placeholder="Bijv. Grote Markt"
+                        placeholder="Straatnaam*"
                     >
                     <p v-if="errors.street" class="mt-1 text-xs text-red-600">{{ errors.street[0] }}</p>
                 </div>
 
                 <!-- House Number -->
                 <div>
-                    <label for="house_number" class="block text-sm font-medium text-gray-700 mb-1">
-                        Huisnummer *
-                    </label>
                     <input
                         id="house_number"
                         v-model="form.house_number"
@@ -161,16 +155,13 @@ watch(show, (newShow) => {
                             'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500',
                             errors.house_number ? 'border-red-300' : 'border-gray-300'
                         ]"
-                        placeholder="42"
+                        placeholder="Huisnummer (bijv. 12A)*"
                     >
                     <p v-if="errors.house_number" class="mt-1 text-xs text-red-600">{{ errors.house_number[0] }}</p>
                 </div>
 
                 <!-- Postal Code -->
                 <div>
-                    <label for="postal_code" class="block text-sm font-medium text-gray-700 mb-1">
-                        Postcode *
-                    </label>
                     <input
                         id="postal_code"
                         v-model="form.postal_code"
@@ -181,16 +172,13 @@ watch(show, (newShow) => {
                             'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500',
                             errors.postal_code ? 'border-red-300' : 'border-gray-300'
                         ]"
-                        placeholder="2011 RJ"
+                        placeholder="Postcode (bijv. 1234 AB)*"
                     >
                     <p v-if="errors.postal_code" class="mt-1 text-xs text-red-600">{{ errors.postal_code[0] }}</p>
                 </div>
 
                 <!-- City -->
                 <div>
-                    <label for="city" class="block text-sm font-medium text-gray-700 mb-1">
-                        Plaats *
-                    </label>
                     <input
                         id="city"
                         v-model="form.city"
@@ -200,16 +188,13 @@ watch(show, (newShow) => {
                             'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500',
                             errors.city ? 'border-red-300' : 'border-gray-300'
                         ]"
-                        placeholder="Haarlem"
+                        placeholder="Plaats*"
                     >
                     <p v-if="errors.city" class="mt-1 text-xs text-red-600">{{ errors.city[0] }}</p>
                 </div>
 
                 <!-- Country -->
                 <div>
-                    <label for="country" class="block text-sm font-medium text-gray-700 mb-1">
-                        Land *
-                    </label>
                     <select
                         id="country"
                         v-model="form.country"
@@ -219,6 +204,7 @@ watch(show, (newShow) => {
                             errors.country ? 'border-red-300' : 'border-gray-300'
                         ]"
                     >
+                        <option value="" disabled>Land selecteren*</option>
                         <option value="Nederland">Nederland</option>
                         <option value="België">België</option>
                         <option value="Duitsland">Duitsland</option>

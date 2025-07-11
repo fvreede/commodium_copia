@@ -1,4 +1,4 @@
-<!--resources/js/Pages/Editor/Promotions/Edit.vue-->
+<!--resources/js/Pages/Editor/Promotions/Create.vue-->
 <script setup>
 import { Head, useForm } from '@inertiajs/vue3';
 import { ArrowLeftIcon } from '@heroicons/vue/24/outline';

@@ -1,5 +1,14 @@
 <?php
 
+/**
+ * Bestandsnaam: CheckoutController.php
+ * Auteur: Fabio Vreede
+ * Versie: v1.0.9
+ * Datum: 2025-07-01
+ * Tijd: 01:25:04
+ * Doel: Controller voor het complete afrekproces. Behandelt een meersstaps checkout flow inclusief bezorgslot selectie, bestelling validatie, order aanmaak en betalingsafhandeling.
+ */
+
 namespace App\Http\Controllers;
 
 use App\Models\DeliverySlot;
@@ -17,13 +26,20 @@ class CheckoutController extends Controller
 {
     private CartService $cartService;
 
+    /**
+     * Constructor - Injecteer de CartService dependency
+     * 
+     * @param \App\Services\CartService $cartService
+     */
     public function __construct(CartService $cartService)
     {
         $this->cartService = $cartService;
     }
 
     /**
-     * Legacy index method - redirect to step 1
+     * Legacy index methode - redirect naar stap 1
+     * 
+     * @return \Illuminate\Http\RedirectResponse
      */
     public function index()
     {
@@ -31,28 +47,32 @@ class CheckoutController extends Controller
     }
 
     /**
-     * Step 1: Show delivery slot selection page
+     * Stap 1: Toon bezorgslot selectie pagina
+     * 
+     * @return \Inertia\Response|\Illuminate\Http\RedirectResponse
      */
     public function delivery()
     {
         $user = Auth::user();
 
+        // Controleer of gebruiker is ingelogd
         if (!$user) {
             return redirect()->route('login')->with('message', 'Je moet inloggen om te kunnen afrekenen.');
         }
 
+        // Controleer of gebruiker customer rechten heeft
         if (!$user->isCustomer()) {
             abort(403, 'Je hebt geen toegang tot deze pagina.');
         }
 
-        // Check if cart has items
+        // Controleer of winkelwagen items bevat
         $cartItems = $this->cartService->getItems();
         if (empty($cartItems)) {
             return redirect()->route('cart.index')
                 ->with('error', 'Je winkelwagen is leeg.');
         }
 
-        // Load the user's delivery address
+        // Laad het bezorgadres van de gebruiker
         $deliveryAddress = $user->address;
 
         return Inertia::render('Checkout/Step1Delivery', [
@@ -68,24 +88,25 @@ class CheckoutController extends Controller
     }
 
     /**
-     * Step 2: Review order details
+     * Stap 2: Controleer bestelling details
+     * 
+     * @return \Inertia\Response|\Illuminate\Http\RedirectResponse
      */
     public function review()
     {
         $user = Auth::user();
-
         if (!$user) {
             return redirect()->route('login');
         }
 
-        // Check if cart has items
+        // Controleer of winkelwagen items bevat
         $cartItems = $this->cartService->getItems();
         if (empty($cartItems)) {
             return redirect()->route('cart.index')
                 ->with('error', 'Je winkelwagen is leeg.');
         }
 
-        // Check if delivery slot is selected
+        // Controleer of bezorgslot is geselecteerd
         $selectedSlotId = session('selected_delivery_slot_id');
         $deliveryAddress = $user->address;
 
@@ -94,7 +115,7 @@ class CheckoutController extends Controller
                 ->with('error', 'Selecteer eerst een bezorgmoment en controleer je adresgegevens.');
         }
 
-        // Validate selected slot is still available
+        // Valideer dat geselecteerde slot nog beschikbaar is
         $deliverySlot = DeliverySlot::find($selectedSlotId);
         if (!$deliverySlot || $deliverySlot->getCurrentAvailableSlots() <= 0) {
             session()->forget('selected_delivery_slot_id');
@@ -116,24 +137,25 @@ class CheckoutController extends Controller
     }
 
     /**
-     * Step 3: Final confirmation and payment
+     * Stap 3: Finale bevestiging en betaling
+     * 
+     * @return \Inertia\Response|\Illuminate\Http\RedirectResponse
      */
     public function confirm()
     {
         $user = Auth::user();
-
         if (!$user) {
             return redirect()->route('login');
         }
 
-        // Check if cart has items
+        // Controleer of winkelwagen items bevat
         $cartItems = $this->cartService->getItems();
         if (empty($cartItems)) {
             return redirect()->route('cart.index')
                 ->with('error', 'Je winkelwagen is leeg.');
         }
 
-        // Check if delivery slot is selected
+        // Controleer of bezorgslot is geselecteerd
         $selectedSlotId = session('selected_delivery_slot_id');
         $deliveryAddress = $user->address;
 
@@ -142,7 +164,7 @@ class CheckoutController extends Controller
                 ->with('error', 'Controleer je bezorggegevens voordat je verder gaat.');
         }
 
-        // Validate selected slot is still available
+        // Valideer dat geselecteerde slot nog beschikbaar is
         $deliverySlot = DeliverySlot::find($selectedSlotId);
         if (!$deliverySlot || $deliverySlot->getCurrentAvailableSlots() <= 0) {
             session()->forget('selected_delivery_slot_id');
@@ -164,10 +186,14 @@ class CheckoutController extends Controller
     }
 
     /**
-     * Store selected delivery slot in session (new method for step persistence)
+     * Sla geselecteerde bezorgslot op in sessie (nieuwe methode voor stap persistentie)
+     * 
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
      */
     public function storeSelectedSlot(Request $request)
     {
+        // Valideer inkomende gegevens
         $request->validate([
             'delivery_slot_id' => 'required|exists:delivery_slots,id',
             'delivery_fee' => 'required|numeric|min:0'
@@ -175,16 +201,16 @@ class CheckoutController extends Controller
 
         try {
             $slot = DeliverySlot::findOrFail($request->delivery_slot_id);
-            
-            // Check if slot is still available
+
+            // Controleer of slot nog beschikbaar is
             if ($slot->getCurrentAvailableSlots() <= 0) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Dit bezorgmoment is niet meer beschikbaar.'
                 ], 422);
             }
-            
-            // Check if slot date is still valid
+
+            // Controleer of slot datum nog geldig is
             if ($slot->date < today()) {
                 return response()->json([
                     'success' => false,
@@ -192,7 +218,7 @@ class CheckoutController extends Controller
                 ], 422);
             }
 
-            // Store in session for persistence across steps
+            // Sla op in sessie voor persistentie tussen stappen
             session([
                 'selected_delivery_slot_id' => $request->delivery_slot_id,
                 'delivery_fee' => $request->delivery_fee
@@ -202,12 +228,13 @@ class CheckoutController extends Controller
                 'success' => true,
                 'message' => 'Bezorgmoment opgeslagen'
             ]);
+
         } catch (\Exception $e) {
             Log::error('Error storing delivery slot', [
                 'slot_id' => $request->delivery_slot_id,
                 'error' => $e->getMessage()
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Er is een fout opgetreden bij het opslaan van het bezorgmoment.'
@@ -216,7 +243,9 @@ class CheckoutController extends Controller
     }
 
     /**
-     * API endpoint to get current cart data (for real-time updates)
+     * API endpoint om huidige cart data op te halen (voor real-time updates)
+     * 
+     * @return \Illuminate\Http\JsonResponse
      */
     public function getCartData()
     {
@@ -235,7 +264,10 @@ class CheckoutController extends Controller
     }
 
     /**
-     * Select delivery slot (AJAX endpoint) - Legacy method, kept for compatibility
+     * Selecteer bezorgslot (AJAX endpoint) - Legacy methode, behouden voor compatibiliteit
+     * 
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
      */
     public function selectDeliverySlot(Request $request)
     {
@@ -245,16 +277,16 @@ class CheckoutController extends Controller
 
         try {
             $slot = DeliverySlot::findOrFail($request->delivery_slot_id);
-            
-            // Check if slot is still available
+
+            // Controleer of slot nog beschikbaar is
             if ($slot->getCurrentAvailableSlots() <= 0) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Dit bezorgmoment is niet meer beschikbaar.'
                 ], 422);
             }
-            
-            // Check if slot date is still valid
+
+            // Controleer of slot datum nog geldig is
             if ($slot->date < today()) {
                 return response()->json([
                     'success' => false,
@@ -262,7 +294,7 @@ class CheckoutController extends Controller
                 ], 422);
             }
 
-            // Store selected slot in session for persistence
+            // Sla geselecteerde slot op in sessie voor persistentie
             session(['selected_delivery_slot_id' => $request->delivery_slot_id]);
 
             return response()->json([
@@ -274,12 +306,13 @@ class CheckoutController extends Controller
                     'date' => $slot->date
                 ]
             ]);
+
         } catch (\Exception $e) {
             Log::error('Error selecting delivery slot', [
                 'slot_id' => $request->delivery_slot_id,
                 'error' => $e->getMessage()
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Er is een fout opgetreden bij het selecteren van het bezorgmoment.'
@@ -288,11 +321,15 @@ class CheckoutController extends Controller
     }
 
     /**
-     * Handle checkout form submission (final order processing)
-     * ENHANCED VERSION with order number generation and better status handling
+     * Verwerk checkout formulier (finale bestelling verwerking)
+     * UITGEBREIDE VERSIE met bestelnummer generatie en betere status behandeling
+     * 
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
      */
     public function store(Request $request)
     {
+        // Valideer finale checkout gegevens
         $request->validate([
             'delivery_slot_id' => ['required', 'exists:delivery_slots,id'],
             'order_notes' => 'nullable|string|max:500',
@@ -300,7 +337,6 @@ class CheckoutController extends Controller
         ]);
 
         $user = Auth::user();
-        
         if (!$user) {
             return response()->json([
                 'success' => false,
@@ -308,8 +344,8 @@ class CheckoutController extends Controller
             ], 401);
         }
 
+        // Controleer winkelwagen inhoud
         $cartItems = $this->cartService->getItems();
-
         if (empty($cartItems)) {
             return response()->json([
                 'success' => false,
@@ -317,7 +353,7 @@ class CheckoutController extends Controller
             ], 422);
         }
 
-        // Validate delivery address
+        // Valideer bezorgadres
         if (!$user->address) {
             return response()->json([
                 'success' => false,
@@ -325,43 +361,44 @@ class CheckoutController extends Controller
             ], 422);
         }
 
+        // Start database transactie voor consistente data
         DB::beginTransaction();
 
         try {
             $deliverySlot = DeliverySlot::findOrFail($request->input('delivery_slot_id'));
-            
-            // Final availability check
+
+            // Finale beschikbaarheidscontrole
             if ($deliverySlot->getCurrentAvailableSlots() <= 0) {
                 throw new \Exception('Het geselecteerde bezorgmoment is niet meer beschikbaar.');
             }
 
-            // Calculate totals
+            // Bereken totalen
             $totals = $this->cartService->getTotals();
             $deliveryFee = (float) $deliverySlot->price;
             $finalTotal = $totals['subtotal'] + $deliveryFee;
 
-            // Generate unique order number
+            // Genereer uniek bestelnummer
             $orderNumber = $this->generateOrderNumber();
 
-            // Create order with enhanced data
+            // Maak bestelling aan met uitgebreide data
             $order = Order::create([
                 'user_id' => $user->id,
                 'delivery_slot_id' => $request->input('delivery_slot_id'),
                 'order_number' => $orderNumber,
-                'status' => 'confirmed', // Since no payment needed, mark as confirmed
+                'status' => 'confirmed', // Geen betaling nodig, markeer als bevestigd
                 'subtotal' => $totals['subtotal'],
                 'delivery_fee' => $deliveryFee,
                 'total' => $finalTotal,
                 'payment_method' => $request->payment_method,
-                'payment_status' => 'completed', // No actual payment needed
+                'payment_status' => 'completed', // Geen echte betaling nodig
                 'delivery_address' => $user->address->toArray(),
                 'order_notes' => $request->order_notes,
                 'order_date' => Carbon::now(),
             ]);
 
-            // Create order items and update stock
+            // Maak order items aan en werk voorraad bij
             foreach ($cartItems as $item) {
-                // Double-check stock availability
+                // Dubbele controle voorraad beschikbaarheid
                 $product = \App\Models\Product::find($item['product_id']);
                 if (!$product || $product->stock_quantity < $item['quantity']) {
                     throw new \Exception("Product '{$item['name']}' is niet meer voldoende op voorraad.");
@@ -373,23 +410,23 @@ class CheckoutController extends Controller
                     'quantity' => $item['quantity'],
                     'price' => $item['price'],
                     'total' => $item['price'] * $item['quantity'],
-                    'product_name' => $item['name'], // Store name for historical purposes
+                    'product_name' => $item['name'], // Sla naam op voor historische doeleinden
                 ]);
 
-                // Update product stock
+                // Werk product voorraad bij
                 $product->decrement('stock_quantity', $item['quantity']);
             }
 
-            // Update delivery slot availability
+            // Werk bezorgslot beschikbaarheid bij
             $deliverySlot->decrement('available_slots', 1);
 
-            // Clear cart and session
+            // Leeg winkelwagen en sessie
             $this->cartService->clear();
             session()->forget(['selected_delivery_slot_id', 'delivery_fee']);
 
             DB::commit();
 
-            // Log successful order
+            // Log succesvolle bestelling
             Log::info('Order created successfully', [
                 'order_id' => $order->id,
                 'order_number' => $order->order_number,
@@ -407,13 +444,14 @@ class CheckoutController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             Log::error('Checkout failed', [
                 'error' => $e->getMessage(),
                 'user_id' => $user->id,
                 'delivery_slot_id' => $request->input('delivery_slot_id'),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()
@@ -422,16 +460,19 @@ class CheckoutController extends Controller
     }
 
     /**
-     * Show order success page
+     * Toon bestelling succes pagina
+     * 
+     * @param \App\Models\Order $order
+     * @return \Inertia\Response
      */
     public function success(Order $order)
     {
-        // Ensure user can only see their own orders
+        // Zorg ervoor dat gebruiker alleen eigen bestellingen kan zien
         if ($order->user_id !== Auth::id()) {
             abort(403, 'Je hebt geen toegang tot deze bestelling.');
         }
 
-        // Load order with relationships
+        // Laad bestelling met relaties
         $order->load(['items.product', 'deliverySlot', 'user']);
 
         return Inertia::render('Checkout/OrderSuccess', [
@@ -472,12 +513,14 @@ class CheckoutController extends Controller
     }
 
     /**
-     * Generate unique order number
+     * Genereer uniek bestelnummer
+     * 
+     * @return string
      */
     private function generateOrderNumber(): string
     {
         do {
-            // Format: CC-YYYY-NNNNNN (Commodum Copia - Year - 6-digit number)
+            // Formaat: CC-YYYY-NNNNNN (Commodum Copia - Jaar - 6-cijferig nummer)
             $orderNumber = 'CC-' . date('Y') . '-' . str_pad(mt_rand(1, 999999), 6, '0', STR_PAD_LEFT);
         } while (Order::where('order_number', $orderNumber)->exists());
 
@@ -485,7 +528,10 @@ class CheckoutController extends Controller
     }
 
     /**
-     * Format cart items with proper image URLs and safety checks
+     * Formatteer cart items met juiste afbeelding URLs en veiligheidscontroles
+     * 
+     * @param array $cartItems
+     * @return array
      */
     private function formatCartItemsForFrontend(array $cartItems): array
     {
@@ -506,7 +552,10 @@ class CheckoutController extends Controller
     }
 
     /**
-     * Get proper image URL with fallback
+     * Krijg juiste afbeelding URL met fallback
+     * 
+     * @param string|null $imagePath
+     * @return string
      */
     private function getImageUrl(?string $imagePath): string
     {
@@ -514,41 +563,43 @@ class CheckoutController extends Controller
             return asset('images/placeholder.jpg');
         }
 
-        // Check if image exists in storage
+        // Controleer of afbeelding bestaat in storage
         $fullPath = storage_path('app/public/' . $imagePath);
         if (file_exists($fullPath)) {
             return asset('storage/' . $imagePath);
         }
 
-        // Fallback to placeholder
+        // Fallback naar placeholder
         return asset('images/placeholder.jpg');
     }
 
     /**
-     * Format delivery slots for frontend consumption with proper error handling
+     * Formatteer bezorgslots voor frontend consumptie met juiste error handling
+     * 
+     * @return \Illuminate\Support\Collection
      */
     private function getFormattedDeliverySlots()
     {
         try {
             $slots = DeliverySlot::available()->get();
-            
-            // Group slots by date and format for the frontend
+
+            // Groepeer slots per datum en formatteer voor frontend
             $grouped = $slots->groupBy('date')->map(function ($daySlots, $date) {
                 $carbonDate = Carbon::parse($date);
-                
+
                 return [
                     'date' => $date,
-                    'day_name' => $carbonDate->translatedFormat('l'), // Monday, Tuesday, etc. (localized)
-                    'formatted_date' => $carbonDate->translatedFormat('j M'), // 15 Jan (localized)
+                    'day_name' => $carbonDate->translatedFormat('l'), // Maandag, Dinsdag, etc. (gelokaliseerd)
+                    'formatted_date' => $carbonDate->translatedFormat('j M'), // 15 Jan (gelokaliseerd)
                     'slots' => $daySlots->map(function ($slot) {
                         return [
                             'id' => $slot->id,
                             'start_time' => $slot->start_time,
                             'end_time' => $slot->end_time,
                             'time_display' => Carbon::parse($slot->start_time)->format('H:i') . ' - ' . Carbon::parse($slot->end_time)->format('H:i'),
-                            'price' => (float) ($slot->price ?? 0), // Ensure price is always a float
-                            'available_slots' => (int) ($slot->available_slots ?? 0), // Ensure it's always an integer
-                            'current_available' => $slot->getCurrentAvailableSlots(), // Real-time availability
+                            'price' => (float) ($slot->price ?? 0), // Zorg ervoor dat prijs altijd een float is
+                            'available_slots' => (int) ($slot->available_slots ?? 0), // Zorg ervoor dat het altijd een integer is
+                            'current_available' => $slot->getCurrentAvailableSlots(), // Real-time beschikbaarheid
                             'last_updated' => $slot->updated_at
                         ];
                     })->values()
@@ -556,19 +607,22 @@ class CheckoutController extends Controller
             })->values();
 
             return $grouped;
+
         } catch (\Exception $e) {
             Log::error('Error formatting delivery slots', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
-            // Return empty array on error to prevent frontend crashes
+
+            // Return lege array bij fout om frontend crashes te voorkomen
             return collect([]);
         }
     }
 
     /**
-     * API endpoint for session check (used by frontend)
+     * API endpoint voor sessie controle (gebruikt door frontend)
+     * 
+     * @return \Illuminate\Http\JsonResponse
      */
     public function checkSession()
     {
@@ -576,8 +630,8 @@ class CheckoutController extends Controller
         $timeRemaining = null;
 
         if ($authenticated) {
-            // Laravel session lifetime in minutes (default 120)
-            $sessionLifetime = config('session.lifetime') * 60; // Convert to seconds
+            // Laravel sessie levensduur in minuten (standaard 120)
+            $sessionLifetime = config('session.lifetime') * 60; // Converteer naar seconden
             $timeRemaining = $sessionLifetime;
         }
 

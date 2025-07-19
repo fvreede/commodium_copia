@@ -2,40 +2,39 @@
 
 ## Inhoudsopgave
 
-<details>
-  <summary><strong>Inhoudsopgave</strong></summary>
-
 1. [Inleiding](#inleiding)  
 2. [Projectbeschrijving](#projectbeschrijving)  
 3. [Gebruikte tools](#gebruikte-tools)  
    - [Frontend](#frontend)  
    - [Backend](#backend-tools)  
 4. [Projectstructuur](#projectstructuur)  
-   - [Frontend](#frontend)  
-     - [Componenten](#componenten-resourcesjscomponents)  
+   - [Frontend](#frontend-1)  
+     - [Components](#components)  
        - [Admin/Layout](#adminlayout)  
        - [Checkout](#checkout)  
        - [Editor/Layout](#editorlayout)  
-     - [Layouts](#layouts-resourcesjslayouts)  
-     - [Pages](#pages-resourcesjspages)  
+     - [Layouts](#layouts)
+     - [Pages](#pages)  
        - [Admin](#admin-pages)  
        - [Checkout](#checkout-pages)  
        - [Editor](#editor-pages)  
-     - [Composables](#composables-resourcesjscomposables)  
-     - [Stores](#stores-resourcesjsstores)  
-     - [Blade Templates](#blade-templates-resourcesviews)  
+       - [Orders](#orders)
+     - [Composables](#composables)  
+     - [Stores](#stores)  
+     - [Blade Templates](#blade-templates)  
    - [Backend](#backend)  
-     - [Controllers](#controllers-apphttpcontrollers)  
+     - [Controllers](#controllers)  
        - [Admin](#admin-controllers)  
        - [Editor](#editor-controllers)  
        - [Checkout](#checkout-controllers)  
        - [Customer](#customer-controllers)  
        - [Overig](#overig-controllers)  
-     - [Models](#models-appmodels)  
-     - [Services](#services-appservices)  
+     - [Listeners](#listeners)
+     - [Models](#models)  
+     - [Services](#services)  
      - [Routes](#routes)  
    - [Database](#database)  
-     - [Migrations](#migrations-databasemigrations)  
+     - [Migrations](#migrations)  
 5. [Installatie en Setup](#installatie-en-setup)  
    - [Vereisten](#vereisten)  
    - [Installatiestappen](#installatiestappen)  
@@ -49,25 +48,25 @@
 9. [Troubleshooting](#troubleshooting)  
 10. [Feedback](#feedback)
 
-</details>
-
 ---
 
-## Inleiding {#inleiding}
+## Inleiding
 
 Dit is mijn complete huiswerkopdracht voor de MBO4 Softwareontwikkeling aan de LOI. Het project combineert Vue.js en TailwindCSS voor een gebruiksvriendelijke en responsieve frontend met Laravel als backend. Samen vormen ze een volledig en dynamisch systeem voor mijn e-commerce website, Commodium Copia.
 
 **Live Demo (frontend-only)**: [Commodium Copia](https://commodium-copia-fe-67wm.vercel.app)
 
-## Projectbeschrijving {#projectbeschrijving}
+## Projectbeschrijving
 
 De supermarkt Commodium Copia, vanaf hier genoemd 'klant', wil een nieuwe website laten ontwikkelen om haar concurrentiepositie in de huidige markt te behouden. Zij richt hiervoor een aparte bv op voor de online verkoop, die integreert met de huidige distributie- en ICT-systemen.
 
 Het belangrijkste onderdeel van deze nieuwe website is het thuis kunnen laten bezorgen van producten bij klanten. Andere supermarktketens lopen op dit moment voor in deze ontwikkeling: Halbert Eijn, Jombu en Vamor bieden allemaal al mogelijkheden om hun producten thuis te laten bezorgen.
 
-## Gebruikte tools {#gebruikte-tools}
+↑ [Terug naar Inhoudsopgave](#inhoudsopgave)
 
-### Frontend {#frontend}
+## Gebruikte tools
+
+### Frontend
 
 1. Vue.js 3.4.0
 2. Tailwind.css 3.4.1
@@ -78,7 +77,7 @@ Het belangrijkste onderdeel van deze nieuwe website is het thuis kunnen laten be
 7. Pinia 2.2.4 for state management
 8. TinyMCE 7.6.1
 
-### Backend-tools {#backend-tools}
+### Backend-tools
 
 1. Laravel 11.31 (PHP v8.2)
 2. MariaDB
@@ -89,13 +88,13 @@ Het belangrijkste onderdeel van deze nieuwe website is het thuis kunnen laten be
 
 ---
 
-## Projectstructuur {#projectstructuur}
+## Projectstructuur
 
 Hier volgt een overzicht van de belangrijkste bestanden en mappen binnen het project, inclusief een korte beschrijving van hun functies:
 
-## Frontend {#frontend-1}
+## Frontend
 
-### Components {#componenten-resourcesjscomponents}
+### Components
 
 #### resources/js/Components
 - [**NavBar.vue**](resources/js/Components/NavBar.vue)  
@@ -112,6 +111,7 @@ Hier volgt een overzicht van de belangrijkste bestanden en mappen binnen het pro
 
 - [**Footer.vue**](resources/js/Components/Footer.vue)  
   De voettekst die op elke pagina verschijnt, samengesteld uit de volgende componenten:
+  - [**SocialLinks.vue**](resources/js/Components/SocialLinks.vue): Toont sociale media links naar Facebook, X en Instagram met FontAwesome iconen en hover-effecten.
   - [**NewsLetterSignup.vue**](resources/js/Components/NewsLetterSignup.vue): Een compact inschrijfformulier voor de nieuwsbrief van Commodium Copia.
   - [**CustomerService.vue**](resources/js/Components/CustomerService.vue): Bevat de contactgegevens van de klantenservice, inclusief telefoonnummer, openingstijden en e-mailadres. Deze sectie biedt klanten een gemakkelijke manier om contact op te nemen met de klantenservice en om te weten wanneer ze bereikbaar zijn.
 
@@ -121,7 +121,7 @@ Hier volgt een overzicht van de belangrijkste bestanden en mappen binnen het pro
 - [**ShoppingCart.vue**](resources/js/Components/ShoppingCart.vue)  
   Een responsieve, slide-in winkelwagen die opent vanaf de rechterzijde van het scherm. Maakt gebruik van ```Headless UI``` transitions en ```Pinia``` store (```useCartStore```) voor dynamisch laden, sorteren en beheren van winkelwagenitems. Ondersteunt mobiele optimalisatie, live voorraadcontrole, sorteeropties, en interactieve besturingsknoppen zoals quantity up/down, verwijderen, en een duidelijke checkout-flow. Volledig mobielvriendelijk en visueel afgestemd op TailwindCSS.
 
-#### Admin/Layout {#adminlayout}
+#### Admin/Layout
 
 - [**Navbar.vue**](resources/js/Components/Admin/Layout/Navbar.vue)   
   Navigatiebalk voor het admin dashboard, geoptimaliseerd voor mobiel en desktop. Bevat een hamburgermenu, een logo/titel, een knop om het publieke gedeelte te bekijken en een uitlogknop. Gebruikt ```Headless UI``` voor de Disclosure wrapper en ```Heroicons``` voor visuele iconen. De logout() methode post naar de backend via ```Inertia.js```.
@@ -129,7 +129,7 @@ Hier volgt een overzicht van de belangrijkste bestanden en mappen binnen het pro
 - [**Sidebar.vue**](resources/js/Components/Admin/Layout/Sidebar.vue)  
   Zijbalknavigatie voor het admin dashboard. Ondersteunt zowel statische weergave op desktop als een slide-in versie op mobiel via ```Headless UI```. Bevat links naar dashboard, gebruikersbeheer, catalogusstructuur en instellingen. Routes worden opgezet via Inertia.js, en actieve links worden visueel gemarkeerd.
 
-#### Checkout {#checkout}
+#### Checkout
 
 - [**DeliverySlotSelector.vue**](resources/js/Components/Checkout/DeliverySlotSelector.vue)   
   Interactieve component om bezorgdagen en tijdslots te selecteren tijdens het afrekenen. Toont beschikbaarheid per dag, laat gebruikers een bezorgmoment kiezen en verwerkt fouten en bevestigingen. Integreert real-time feedback, automatische verversing en fallback-states bij netwerkproblemen. Stuur functionaliteit via props en emits door naar de checkoutpagina.
@@ -137,7 +137,7 @@ Hier volgt een overzicht van de belangrijkste bestanden en mappen binnen het pro
 - [**OrderSummary.vue**](resources/js/Components/Checkout/OrderSummary.vue)   
   Toont een samenvatting van de bestelling tijdens het afrekenproces. Inclusief productinformatie, subtotaal, bezorgkosten, kortingen en totaalbedrag. Integreert dynamisch de geselecteerde bezorgslot en het afleveradres. Bevat foutmeldingen bij voorraadproblemen, optionele opmerkingenvelden en actieknoppen om door te gaan of terug te keren naar de winkelwagen.
 
-#### Editor/Layout {#editorlayout}
+#### Editor/Layout
 
 - [**Navbar.vue**](resources/js/Components/Editor/Layout/Navbar.vue)    
   Navigatiebalk voor het editor dashboard, geoptimaliseerd voor zowel mobiel als desktop. Bevat een hamburgermenu, dashboardtitel, knop om de publieke site te openen en een uitlogknop. Gebruikt ```Headless UI``` en ```Heroicons``` voor interactieve en visuele elementen. Logout verloopt via Inertia.js.
@@ -145,12 +145,12 @@ Hier volgt een overzicht van de belangrijkste bestanden en mappen binnen het pro
 - [**Sidebar.vue**](resources/js/Components/Editor/Layout/Sidebar.vue)    
   Zijbalknavigatie voor het editor dashboard. Ondersteunt zowel een vaste weergave op desktop als een slide-in paneel op mobiel via ```Headless UI```. Bevat links naar homepagebeheer (aanbiedingen, nieuws), catalogusbeheer (producten, banners) en instellingen. Actieve routes worden dynamisch gemarkeerd via Inertia.js.
 
-### Composables {#composables-resourcesjscomposables}
+### Composables
 
 - [**useSearch.js**](resources/js/Composables/useSearch.js)   
   Een herbruikbare Vue composable voor het beheren van zoekfunctionaliteit, inclusief debounce-zoekopdrachten, suggesties ophalen via ```axios```, localStorage voor recente zoekopdrachten, en caching van populaire resultaten. Werkt met Inertia.js voor navigatie en biedt fallback bij netwerkfouten.
 
-### Layouts {#layouts-resourcesjslayouts}
+### Layouts
 
 - [***AuthenticatedLayout.vue***](resources/js/Layouts/AuthenticatedLayout.vue)   
     Layout voor ingelogde gebruikers. Bevat een responsieve navigatiebalk met dropdownmenu's en profielacties. Ondersteunt mobiel en desktop, en toont gebruikersinformatie via Inertia props.
@@ -173,7 +173,7 @@ Hier volgt een overzicht van de belangrijkste bestanden en mappen binnen het pro
 - [***EditorLayout.vue***](resources/js/Layouts/Editor/EditorLayout.vue)    
   Layoutcomponent voor de Editor-omgeving. Bevat een dynamisch responsieve ```Sidebar.vue``` (mobiel vs desktop) en integreert een aangepaste ```Navbar.vue```. Ondersteunt het sloten van sidebar via props en emits.
 
-### Pages {#pages-resourcesjspages}
+### Pages
 
 - [**HomePage.vue**](resources/js/Pages/Homepage.vue)  
   De layout van de startpagina van Commodium Copia, samengesteld uit:
@@ -192,7 +192,7 @@ Hier volgt een overzicht van de belangrijkste bestanden en mappen binnen het pro
 - [**SearchPage.vue**](resources/js/Pages/SearchPage.vue)   
   Resultatenpagina voor zoekopdrachten. Toont dynamisch de producten op basis van een zoekterm, inclusief toast-notificatie bij toevoegen aan de winkelwagen en diverse UI-states (geen input, geen resultaten, wel resultaten).
 
-#### Admin Pages {#admin-pages}
+#### Admin Pages
 
 ##### resources/js/Pages/Admin/Categories
 - [**Create.vue**](resources/js/Pages/Admin/Categories/Create.vue)    
@@ -236,7 +236,7 @@ Hier volgt een overzicht van de belangrijkste bestanden en mappen binnen het pro
 - [**Index.vue**](resources/js/Pages/Admin/Users/Index.vue)   
   Beheerpagina voor gebruikersaccounts. Ondersteunt zoeken, toevoegen, bewerken, blokkeren/activeren en verwijderen van accounts via modale vensters. Responsief ontworpen met aparte weergaves voor mobiel (kaarten) en desktop (tabel). Accounts met de rol 'admin' zijn beschermd tegen wijzigingen.
 
-#### Checkout Pages {#checkout-pages}
+#### Checkout Pages
 
 - [**OrderSuccess.vue**](resources/js/Pages/Checkout/OrderSuccess.vue)    
   Toont een visuele bevestiging van de bestelling na afronden van het bestelproces. Bevat details zoals bestelnummer, afleveradres, gekozen tijdslot, betaalmethode en status. De gebruiker kan acties uitvoeren zoals bestelling volgen, printen, delen of een bevestigingsmail opnieuw verzenden.
@@ -250,7 +250,7 @@ Hier volgt een overzicht van de belangrijkste bestanden en mappen binnen het pro
 - [**Step3Confirm.vue**](resources/js/Pages/Checkout/Step3Confirm.vue)    
   Laatste stap in het bestelproces. De gebruiker bevestigt de bestelling, kiest een betaalmethode, kan opmerkingen toevoegen en moet akkoord gaan met de voorwaarden. Toont validatieproblemen en verstuurt de bestelling naar de backend via een axios-request. Bevat fallback redirect en foutafhandeling bij mislukte bestellingen.
 
-#### Editor Pages {#editor-pages}
+#### Editor Pages
 
 ##### resources/js/Pages/Editor/Banners
 
@@ -302,7 +302,7 @@ Hier volgt een overzicht van de belangrijkste bestanden en mappen binnen het pro
 - [**Index.vue**](resources/js/Pages/Editor/Settings/Index.vue)    
     Instellingenpagina voor editors om veilig hun wachtwoord te wijzigen. Inclusief formulier met validatie, toggle voor zichtbaarheid van wachtwoorden en een flashbericht bij succes.
 
-##### resources/js/Pages/Editor/Orders
+#### Orders Pages
 
 - [**Index.vue**](resources/js/Pages/Orders/Index.vue)    
     Klantoverzicht van bestellingen met statusfilters, zoekfunctie en mogelijkheid om bestellingen te volgen, annuleren of details te bekijken. Mobiel geoptimaliseerde paginatie inbegrepen.
@@ -313,21 +313,23 @@ Hier volgt een overzicht van de belangrijkste bestanden en mappen binnen het pro
 - [**Track.vue**](resources/js/Pages/Orders/Track.vue)    
     Toonpagina om een bestelling in real-time te volgen met statusbanner, voortgangsbalk, trackingstappen en bezorginformatie. Inclusief actieknoppen om te vernieuwen of terug te keren.
 
-### Stores {#stores-resourcesjsstores}
+### Stores
 
 - [**Cart.js**](resources/js/Stores/cart.js)    
     Beheer van winkelwagenlogica met Pinia: bevat producttoevoeging, validatie, voorraadcontrole, sortering, orderstatussen en geavanceerde debounce/queue-mechanismen voor realtime updates en foutafhandeling.
 
-### Blade Templates {#blade-templates-resourcesviews}
+### Blade Templates
 
 - [**app.blade.php**](resources/views/app.blade.php)  
   Hoofdsjabloon voor de Laravel-app met Inertia.js. Bevat de CSRF-token, fonts, dynamische paginatitel, routes via Ziggy (```@routes```), en Vue-component via Vite (```@vite```). Dit bestand zorgt ervoor dat de frontend correct wordt ingeladen als een single-page application (SPA).
 
-## Backend {#backend}
+↑ [Terug naar Inhoudsopgave](#inhoudsopgave)
 
-### Controllers {#controllers-apphttpcontrollers}
+## Backend
 
-#### Admin Controllers {#admin-controllers}
+### Controllers
+
+#### Admin Controllers
 
 - [**CategoryStructureController.php**](App/Http/Controllers/Admin/CategoryStructureController.php)   
   Controller voor het beheren van categorieën in het admin dashboard. Verwerkt CRUD-acties met validatie en afbeeldingsbewerking (croppen en optimaliseren via Spatie Image). Verbindt met de frontend via Inertia.js.
@@ -338,7 +340,7 @@ Hier volgt een overzicht van de belangrijkste bestanden en mappen binnen het pro
 - [**UsersController.php**](App/Http/Controllers/Admin/UsersController.php)   
   Deze controller beheert alle gebruikersfunctionaliteiten voor de admin: gebruikers aanmaken, bewerken, verwijderen, blokkeren en zoeken. Rollenbeheer wordt afgehandeld via Spatie Permission. Beveiliging is ingebouwd tegen wijzigingen aan systeembeheerders. Gebruikt Inertia.js voor frontend-koppeling.
 
-#### Editor Controllers {#editor-controllers}
+#### Editor Controllers
 
 - [**BannerController.php**](App/Http/Controllers/Editor/BannerController.php)    
   Deze controller laat de editor banners beheren voor categorieën. Via een overzichtspagina kan een editor een categorie selecteren, een banner uploaden en deze vervangen. De oude banner wordt veilig verwijderd uit de opslag en de nieuwe afbeelding wordt opgeslagen en gekoppeld aan de categorie. Werkt met Inertia en gebruikt bestandsvalidatie.
@@ -358,17 +360,17 @@ Hier volgt een overzicht van de belangrijkste bestanden en mappen binnen het pro
 - [**SubcategoryController.php**](App/Http/Controllers/Editor/SubcategoryController.php)    
   Deze controller stelt editors in staat om subcategorieën te beheren die gekoppeld zijn aan hoofd-categorieën. Het bevat functies om subcategorieën te tonen (samen met bijbehorende producten en categorieën), aan te maken, bij te werken en te verwijderen. Validatie garandeert dat elke subcategorie een geldige naam en een bestaande `category_id` heeft. De subcategorieën worden weergegeven in de `Editor/Subcategories/Index` view via Inertia.
 
-#### Checkout Controllers {#checkout-controllers}
+#### Checkout Controllers
 
 - [**CheckoutController.php**](App/Http/Controllers/CheckoutController.php)   
   Deze controller regelt het volledige afrekenproces in drie stappen (bezorgmoment, controle, bevestiging) en maakt gebruik van `CartService`. Het beheert validatie van sessiegegevens, bezorgslots en gebruikersinformatie. Daarnaast verwerkt het bestellingen, vermindert voorraden, genereert unieke ordernummers en toont een orderbevestigingspagina. Inclusief API-routes voor sessiechecks, winkelwageninfo en real-time bezorgslotbeschikbaarheid.
 
-#### Customer Controllers {#customer-controllers}
+#### Customer Controllers
 
 - [**CustomerDashboardController.php**](App/Http/Controllers/CustomerDashboardController.php)   
   Deze controller beheert het dashboard voor klanten. Het haalt actieve bestellingen (met status 'pending' of 'processing') en afgeronde bestellingen ('completed') op voor de ingelogde gebruiker. Alle relevante relaties zoals `items.product` en `deliverySlot` worden meegegeven. De resultaten worden gerenderd via Inertia in de `Dashboard.vue` view.
 
-#### Overig Controllers {#overig-controllers}
+#### Overig Controllers
 
 - [**AdminController.php**](App/Http/Controllers/AdminController.php)   
   Deze controller beheert het hoofddashboard voor beheerders (admins). De `dashboard()`-methode haalt statistieken op zoals het totaal aantal gebruikers en stuurt deze via Inertia door naar de `Admin/Dashboard/Index`-view. Deze data wordt gebruikt om een overzichtelijk adminpaneel te tonen.
@@ -394,7 +396,12 @@ Hier volgt een overzicht van de belangrijkste bestanden en mappen binnen het pro
 - [**SettingsController.php**](App/Http/Controllers/SettingsController.php)   
   Controller voor het tonen van instellingenpagina's voor admins en editors, en het wijzigen van het wachtwoord via validatie van het huidige wachtwoord.
 
-### Models {#models-appmodels}
+### Listeners
+
+- [**MigrateSessionCartToDatabase.php**](App/Listeners/MigrateSessionCartToDatabase.php)    
+  Listener die luistert naar het `Login` event. Wanneer een gebruiker inlogt, migreert deze automatisch alle winkelwagenitems uit de sessie naar de database, zodat gastwinkelwagenitems behouden blijven na authenticatie.
+
+### Models
 
 - [**CartItem.php**](App/Models/CartItem.php)   
   Model dat individuele winkelwagenitems vertegenwoordigt. Het bevat relaties naar `User` en `Product`, cast de prijs en hoeveelheid correct, en voegt een dynamisch `total` attribuut toe dat de totale prijs per item berekent.
@@ -490,7 +497,7 @@ Hier volgt een overzicht van de belangrijkste bestanden en mappen binnen het pro
 
   Geschikt voor weergave in frontend of e-mails.
 
-### Services {#services-appservices}
+### Services
 
 - [**CartService.php**](App/Services/CartService.php)   
   Beheert winkelwagenitems voor gastgebruikers (sessie) en ingelogde gebruikers (database).  
@@ -503,7 +510,7 @@ Hier volgt een overzicht van de belangrijkste bestanden en mappen binnen het pro
 
   - Logt belangrijke acties en fouten voor monitoring en debugging.
 
-### Routes {#routes}
+### Routes
 
 - [**auth.php**](routes/auth.php)   
   
@@ -512,9 +519,11 @@ Hier volgt een overzicht van de belangrijkste bestanden en mappen binnen het pro
 - [**web.php**](routes/web.php)   
   Bevat alle aangepaste routes voor frontendpagina's, klantfunctionaliteit en dashboards voor admin en editors. Dit omvat onder andere de routing voor categorieën, subcategorieën, producten, bestellingen, checkout, winkelwagen en sessiebeheer. Ook bevat dit bestand middleware voor toegangscontrole per gebruikersrol.
 
-## Database {#database}
+↑ [Terug naar Inhoudsopgave](#inhoudsopgave)
 
-### Migrations {#migrations-databasemigrations}
+## Database
+
+### Migrations
 
 - [**0001_01_01_000000_create_users_table.php**](database/migrations/0001_01_01_000000_create_users_table.php)    
   Creëert de volgende tabellen:  
@@ -714,9 +723,11 @@ Hier volgt een overzicht van de belangrijkste bestanden en mappen binnen het pro
 
   De `down`-methode herstelt de oude ENUM-waarden en verwijdert de index.
 
-## Installatie en Setup {#installatie-en-setup}
+↑ [Terug naar Inhoudsopgave](#inhoudsopgave)
 
-### Vereisten {#vereisten}
+## Installatie en Setup
+
+### Vereisten
 Voor het draaien van dit project zijn de volgende vereisten nodig:
 
 - [**PHP**](https://www.php.net) (v8.3.13 of hoger)
@@ -736,7 +747,7 @@ mariadb --version # of mysql --version
 
 ---
 
-### Installatiestappen {#installatiestappen}
+### Installatiestappen
 
 1. **Pak het project uit**
    - Download en pak het projectbestand uit in de gewenste map.
@@ -747,66 +758,68 @@ mariadb --version # of mysql --version
       composer install
       ```
 
-3. **Environment Configuratie {#environment-configuratie}**
-    - Kopieer environment template:
-      ```bash
-      cp .env.example .env
-      ```
-    - Genereer applicatie sleutel:
-      ```bash
-      php artisan key:generate
-      ```
+### Environment Configuratie
+- Kopieer environment template:
+  ```bash
+  cp .env.example .env
+  ```
+- Genereer applicatie sleutel:
+  ```bash
+  php artisan key:generate
+  ```
 
-      **BELANGRIJK**: Pas de database instellingen aan in .env:
-      ```bash
-      DB_CONNECTION=mariadb
-      DB_HOST=127.0.0.1
-      DB_PORT=3306
-      DB_DATABASE=commodium_copia
-      DB_USER=root
-      DB_PASSWORD=your_password # Pas dit aan naar uw eigen wachtwoord
-      ```
+  **BELANGRIJK**: Pas de database instellingen aan in .env:
+  ```bash
+  DB_CONNECTION=mariadb
+  DB_HOST=127.0.0.1
+  DB_PORT=3306
+  DB_DATABASE=commodium_copia
+  DB_USER=root
+  DB_PASSWORD=your_password # Pas dit aan naar uw eigen wachtwoord
+  ```
 
-4. **Database Setup met Testdata {#database-setup-met-testdata}**
-    - Maak eerst de database aan:
-    ```bash
-    mariadb -u root -p -e "CREATE DATABASE commodium_copia;"
+### Database Setup met Testdata
+- Maak eerst de database aan:
+```bash
+mariadb -u root -p -e "CREATE DATABASE commodium_copia;"
 
-    # Of gebruik: mysql -u root -p -e "CREATE DATABASE commodium_copia;"
-    ```
+# Of gebruik: mysql -u root -p -e "CREATE DATABASE commodium_copia;"
+```
 
-    - Importeer complete database inclusief testdata:
-    ```bash
-    mariadb -u root -p -D commodium_copia < database/commodium_copia_export.sql
+- Importeer complete database inclusief testdata:
+```bash
+mariadb -u root -p -D commodium_copia < database/commodium_copia_export.sql
 
-    # Of gebruik: mysql -u root -p -D commodium_copia < database/commodium_copia_export.sql
-    ```
+# Of gebruik: mysql -u root -p -D commodium_copia < database/commodium_copia_export.sql
+```
 
-    - Maak storage symlink voor afbeeldingen:
-    ```bash
-    php artisan storage:link
-    ```
+- Maak storage symlink voor afbeeldingen:
+```bash
+php artisan storage:link
+```
 
-5. **Frontend dependencies (Vue.js) {#frontend-dependencies-vuejs}**
-   - Open een terminal in de root-directory van het project en voer het volgende commando uit:
-     ```bash
-     npm install
-     ```
-   - Dit installeert alle noodzakelijke afhankelijkheden die zijn vermeld in het `package.json`-bestand.  
-   - TinyMCE assets worden automatisch gekopieerd.
+### Frontend Dependencies (Vue.js)
+- Open een terminal in de root-directory van het project en voer het volgende commando uit:
+  ```bash
+  npm install
+  ```
+- Dit installeert alle noodzakelijke afhankelijkheden die zijn vermeld in het `package.json`-bestand.  
+- TinyMCE assets worden automatisch gekopieerd.
 
-6. **Start Development Servers {#start-development-servers}**
-   - Om de ontwikkelserver te starten:
-     ```bash
-     # Terminal 1: Frontend build
-     npm run dev
+### Start Development Servers
+- Om de ontwikkelserver te starten:
+  ```bash
+  # Terminal 1: Frontend build
+  npm run dev
 
-     # Terminal 2: Laravel backend
-     php artisan serve
-     ```
-   - De server zal starten op `http://localhost:8000`. Open deze URL in je webbrowser.
+  # Terminal 2: Laravel backend
+  php artisan serve
+  ```
+- De server zal starten op `http://localhost:8000`. Open deze URL in je webbrowser.
 
-## Gebruikersaccounts {#gebruikersaccounts}
+↑ [Terug naar Inhoudsopgave](#inhoudsopgave)
+
+## Gebruikersaccounts
 De database bevat de volgende gebruikersaccounts
 
 | Rol | Email | Wachtwoord | Beschrijving |
@@ -815,12 +828,16 @@ De database bevat de volgende gebruikersaccounts
 | **Editor** | editor@cc.nl | password | Content beheer en product management |
 | **Klant** | Registreer nieuwe account | - | Klanten kunnen zich zelf registreren en inloggen op hun eigen account |
 
-## Ingebouwde data {#ingebouwde-data}
-  - 3 Categorieën: Groenten & Fruit, Bakkerij & Brood, Zuivel & Eieren
-  - 27 Producten met afbeeldingen, realistische prijzen, beschrijving en producttitels
-  - Gebruikersrollen en permissies volledig geconfigureerd
+↑ [Terug naar Inhoudsopgave](#inhoudsopgave)
 
-## Gerealiseerde backend {#gerealiseerde-backend}
+## Ingebouwde data
+- 3 Categorieën: Groenten & Fruit, Bakkerij & Brood, Zuivel & Eieren
+- 27 Producten met afbeeldingen, realistische prijzen, beschrijving en producttitels
+- Gebruikersrollen en permissies volledig geconfigureerd
+
+↑ [Terug naar Inhoudsopgave](#inhoudsopgave)
+
+## Gerealiseerde backend
 
 - Laravel-integratie
 - Authenticatie (Breeze)
@@ -828,7 +845,9 @@ De database bevat de volgende gebruikersaccounts
 - Inertia API-koppeling
 - CMS & Winkelwagensysteem
 
-## Troubleshooting {#troubleshooting}
+↑ [Terug naar Inhoudsopgave](#inhoudsopgave)
+
+## Troubleshooting
 
 | Probleem | Oplossing |
 |----------|-----------|
@@ -839,9 +858,13 @@ De database bevat de volgende gebruikersaccounts
 | TinyMCE assets ontbreken | Voer ```npm run postinstall``` handmatig uit |
 | Storage/afbeeldingen laden niet | Voer ```php artisan storage:link``` uit |
 
-## Feedback {#feedback}
+↑ [Terug naar Inhoudsopgave](#inhoudsopgave)
+
+## Feedback
 De feedback van de docent heeft geleid tot de volgende aanpassingen:
 - **Headers en Commentaar**: Toegevoegd in alle componenten voor betere documentatie en leesbaarheid.
 - **Bestandsgrootte**: Gecontroleerd en beperkt tot een maximale grootte van 200 MB.
 - **Projectstructuur**: De front-end is gestructureerd met 4 views: een homepage en drie productgerelateerde pagina's.
 - **Leesmijbestand**: Beschrijving van alle gebruikte bestanden, installatie-instructies, en projectstructuur toegevoegd.
+
+↑ [Terug naar Inhoudsopgave](#inhoudsopgave)

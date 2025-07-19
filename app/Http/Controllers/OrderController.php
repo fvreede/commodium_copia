@@ -1,5 +1,14 @@
 <?php
 
+/**
+ * Bestandsnaam: OrderController.php
+ * Auteur: Fabio Vreede
+ * Versie: v1.0.0
+ * Datum: 2025-07-01
+ * Tijd: 01:25:04
+ * Doel: Controller voor bestellingsbeheer vanuit klantperspectief. Behandelt order geschiedenis, gedetailleerde order weergave, annulering, tracking en bevestigingsmails voor ingelogde klanten.
+ */
+
 namespace App\Http\Controllers;
 
 use App\Models\Order;
@@ -10,38 +19,43 @@ use Inertia\Inertia;
 class OrderController extends Controller
 {
     /**
-     * Display the user's order history
+     * Toon de bestelgeschiedenis van de gebruiker met filtering opties
+     * 
+     * @param \Illuminate\Http\Request $request
+     * @return \Inertia\Response
      */
     public function index(Request $request)
     {
         $user = Auth::user();
-        
-        // Get query parameters for filtering
+
+        // Haal query parameters op voor filtering
         $status = $request->get('status');
         $search = $request->get('search');
-        
-        // Build query
+
+        // Bouw basis query voor gebruiker's bestellingen
         $query = $user->orders()
-            ->with(['items.product', 'deliverySlot'])
-            ->latest();
-        
-        // Apply filters
+            ->with(['items.product', 'deliverySlot']) // Laad gerelateerde data
+            ->latest(); // Nieuwste bestellingen eerst
+
+        // Pas status filter toe
         if ($status && $status !== 'all') {
             $query->where('status', $status);
         }
-        
+
+        // Pas zoekfilter toe (bestelnummer of productnaam)
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('order_number', 'like', "%{$search}%")
-                  ->orWhereHas('items', function ($itemQuery) use ($search) {
-                      $itemQuery->where('product_name', 'like', "%{$search}%");
-                  });
+                    ->orWhereHas('items', function ($itemQuery) use ($search) {
+                        $itemQuery->where('product_name', 'like', "%{$search}%");
+                    });
             });
         }
-        
+
+        // Pagineer resultaten en behoud query parameters
         $orders = $query->paginate(10)->withQueryString();
-        
-        // Transform orders for frontend
+
+        // Transformeer bestellingen voor frontend weergave
         $transformedOrders = $orders->through(function ($order) {
             return [
                 'id' => $order->id,
@@ -78,15 +92,19 @@ class OrderController extends Controller
     }
 
     /**
-     * Show detailed order information
+     * Toon gedetailleerde bestellingsinformatie
+     * 
+     * @param \App\Models\Order $order
+     * @return \Inertia\Response
      */
     public function show(Order $order)
     {
-        // Ensure user can only view their own orders
+        // Zorg ervoor dat gebruiker alleen eigen bestellingen kan bekijken
         if ($order->user_id !== Auth::id()) {
             abort(403, 'Je hebt geen toegang tot deze bestelling.');
         }
 
+        // Laad alle benodigde relaties
         $order->load(['items.product', 'deliverySlot', 'user']);
 
         return Inertia::render('Orders/Show', [
@@ -135,54 +153,62 @@ class OrderController extends Controller
     }
 
     /**
-     * Cancel an order
+     * Annuleer een bestelling
+     * 
+     * @param \App\Models\Order $order
+     * @return \Illuminate\Http\RedirectResponse
      */
     public function cancel(Order $order)
     {
-        // Ensure user can only cancel their own orders
+        // Zorg ervoor dat gebruiker alleen eigen bestellingen kan annuleren
         if ($order->user_id !== Auth::id()) {
             abort(403, 'Je hebt geen toegang tot deze bestelling.');
         }
 
+        // Controleer of bestelling geannuleerd kan worden
         if (!$this->canCancelOrder($order)) {
             return back()->with('error', 'Deze bestelling kan niet meer geannuleerd worden.');
         }
 
         try {
-            // Update order status
+            // Werk bestelling status bij
             $order->update(['status' => 'cancelled']);
 
-            // Restore product stock
+            // Herstel product voorraad voor geannuleerde items
             foreach ($order->items as $item) {
                 if ($item->product && $item->product->is_active) {
                     $item->product->increment('stock_quantity', $item->quantity);
                 }
             }
 
-            // Restore delivery slot availability
+            // Herstel bezorgslot beschikbaarheid
             if ($order->deliverySlot) {
                 $order->deliverySlot->increment('available_slots', 1);
             }
 
             return back()->with('success', 'Je bestelling is succesvol geannuleerd.');
-            
+
         } catch (\Exception $e) {
             return back()->with('error', 'Er is een fout opgetreden bij het annuleren van je bestelling.');
         }
     }
 
     /**
-     * Track order status
+     * Volg bestelling status (tracking pagina)
+     * 
+     * @param \App\Models\Order $order
+     * @return \Inertia\Response
      */
     public function track(Order $order)
     {
-        // Ensure user can only track their own orders
+        // Zorg ervoor dat gebruiker alleen eigen bestellingen kan volgen
         if ($order->user_id !== Auth::id()) {
             abort(403, 'Je hebt geen toegang tot deze bestelling.');
         }
 
         $order->load(['deliverySlot']);
 
+        // Genereer tracking stappen voor deze bestelling
         $trackingSteps = $this->getTrackingSteps($order);
 
         return Inertia::render('Orders/Track', [
@@ -207,25 +233,28 @@ class OrderController extends Controller
     }
 
     /**
-     * Send order confirmation email
+     * Verstuur bestelling bevestigingsmail opnieuw
+     * 
+     * @param \App\Models\Order $order
+     * @return \Illuminate\Http\JsonResponse
      */
     public function sendConfirmation(Order $order)
     {
-        // Ensure user can only request confirmation for their own orders
+        // Zorg ervoor dat gebruiker alleen voor eigen bestellingen bevestiging kan aanvragen
         if ($order->user_id !== Auth::id()) {
             abort(403, 'Je hebt geen toegang tot deze bestelling.');
         }
 
         try {
-            // Here you would implement email sending
-            // For now, we'll just return success
+            // Hier zou je email verzending implementeren
+            // Voor nu retourneren we alleen success
             // Mail::to($order->user->email)->send(new OrderConfirmation($order));
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'Bevestigingsmail is opnieuw verzonden.'
             ]);
-            
+
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -235,7 +264,10 @@ class OrderController extends Controller
     }
 
     /**
-     * Get status display text
+     * Krijg Nederlandse weergave tekst voor bestelling status
+     * 
+     * @param string $status
+     * @return string
      */
     private function getStatusDisplay($status): string
     {
@@ -252,7 +284,9 @@ class OrderController extends Controller
     }
 
     /**
-     * Get available status options for filtering
+     * Krijg beschikbare status opties voor filtering
+     * 
+     * @return array
      */
     private function getStatusOptions(): array
     {
@@ -267,25 +301,37 @@ class OrderController extends Controller
     }
 
     /**
-     * Check if order can be cancelled
+     * Controleer of bestelling geannuleerd kan worden
+     * 
+     * @param \App\Models\Order $order
+     * @return bool
      */
     private function canCancelOrder(Order $order): bool
     {
-        return in_array($order->status, ['confirmed', 'pending']) && 
-               $order->deliverySlot && 
-               $order->deliverySlot->date > now()->addDay(); // Can cancel until 1 day before delivery
+        // Kan alleen annuleren als status nog pending/confirmed is
+        // en bezorging nog meer dan 1 dag weg is
+        return in_array($order->status, ['confirmed', 'pending']) &&
+            $order->deliverySlot &&
+            $order->deliverySlot->date > now()->addDay(); // Annuleren tot 1 dag voor bezorging
     }
 
     /**
-     * Check if order can be tracked
+     * Controleer of bestelling gevolgd kan worden
+     * 
+     * @param \App\Models\Order $order
+     * @return bool
      */
     private function canTrackOrder(Order $order): bool
     {
+        // Alle bestellingen behalve geannuleerde kunnen gevolgd worden
         return !in_array($order->status, ['cancelled']);
     }
 
     /**
-     * Get estimated delivery time
+     * Krijg geschatte bezorgtijd als leesbare tekst
+     * 
+     * @param \App\Models\Order $order
+     * @return string|null
      */
     private function getEstimatedDelivery(Order $order): ?string
     {
@@ -293,15 +339,18 @@ class OrderController extends Controller
             return null;
         }
 
-        return $order->deliverySlot->date->format('l, j F Y') . 
-               ' tussen ' . 
-               $order->deliverySlot->start_time . 
-               ' en ' . 
-               $order->deliverySlot->end_time;
+        return $order->deliverySlot->date->format('l, j F Y') .
+            ' tussen ' .
+            $order->deliverySlot->start_time .
+            ' en ' .
+            $order->deliverySlot->end_time;
     }
 
     /**
-     * Get tracking steps for order
+     * Genereer tracking stappen voor een bestelling
+     * 
+     * @param \App\Models\Order $order
+     * @return array
      */
     private function getTrackingSteps(Order $order): array
     {
@@ -323,30 +372,30 @@ class OrderController extends Controller
             [
                 'title' => 'Wordt voorbereid',
                 'description' => 'Je bestelling wordt ingepakt en klaargezet voor bezorging',
-                'status' => in_array($order->status, ['processing', 'out_for_delivery', 'delivered']) ? 'completed' : 
-                           ($order->status === 'confirmed' ? 'current' : 'pending'),
+                'status' => in_array($order->status, ['processing', 'out_for_delivery', 'delivered']) ? 'completed' :
+                    ($order->status === 'confirmed' ? 'current' : 'pending'),
                 'icon' => 'cog',
                 'date' => in_array($order->status, ['processing', 'out_for_delivery', 'delivered']) ? $order->updated_at : null,
             ],
             [
                 'title' => 'Onderweg',
                 'description' => 'Je bestelling is onderweg naar je adres',
-                'status' => in_array($order->status, ['out_for_delivery', 'delivered']) ? 'completed' : 
-                           ($order->status === 'processing' ? 'current' : 'pending'),
+                'status' => in_array($order->status, ['out_for_delivery', 'delivered']) ? 'completed' :
+                    ($order->status === 'processing' ? 'current' : 'pending'),
                 'icon' => 'truck',
                 'date' => in_array($order->status, ['out_for_delivery', 'delivered']) ? $order->updated_at : null,
             ],
             [
                 'title' => 'Bezorgd',
                 'description' => 'Je bestelling is succesvol bezorgd',
-                'status' => $order->status === 'delivered' ? 'completed' : 
-                           ($order->status === 'out_for_delivery' ? 'current' : 'pending'),
+                'status' => $order->status === 'delivered' ? 'completed' :
+                    ($order->status === 'out_for_delivery' ? 'current' : 'pending'),
                 'icon' => 'home',
                 'date' => $order->status === 'delivered' ? $order->updated_at : null,
             ],
         ];
 
-        // If order is cancelled, mark all future steps as cancelled
+        // Als bestelling geannuleerd is, markeer alle toekomstige stappen als geannuleerd
         if ($order->status === 'cancelled') {
             foreach ($steps as &$step) {
                 if ($step['status'] === 'pending' || $step['status'] === 'current') {
@@ -359,7 +408,10 @@ class OrderController extends Controller
     }
 
     /**
-     * Get current tracking step index
+     * Krijg huidige tracking stap index voor frontend weergave
+     * 
+     * @param string $status
+     * @return int
      */
     private function getCurrentTrackingStep(string $status): int
     {
@@ -369,7 +421,7 @@ class OrderController extends Controller
             'processing' => 2,
             'out_for_delivery' => 3,
             'delivered' => 4,
-            'cancelled' => -1, // Special case
+            'cancelled' => -1, // Speciale behandeling voor geannuleerde bestellingen
         ];
 
         return $stepMap[$status] ?? 0;

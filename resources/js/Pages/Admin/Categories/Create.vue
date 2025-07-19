@@ -1,65 +1,122 @@
+/**
+ * Bestandsnaam: Create.vue (Pages/Admin/Categories)
+ * Auteur: Fabio Vreede
+ * Versie: v1.0.4
+ * Datum: 2025-07-04
+ * Tijd: 16:58:38
+ * Doel: Dit component biedt een administratieve interface voor het aanmaken van nieuwe categorieën
+ *       met geavanceerde afbeelding editor functionaliteiten inclusief drag & drop, zoom, en 
+ *       auto-align features voor optimale afbeelding positionering.
+ */
+
 <script setup>
-import { Head, useForm, router } from '@inertiajs/vue3';
+// Vue compositie API en Inertia.js imports
+import { Head, useForm } from '@inertiajs/vue3';
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue';
+
+// Layout en component imports
 import AdminLayout from '@/Layouts/Admin/AdminLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
-import { FolderPlusIcon, PhotoIcon, ArrowLeftIcon, MagnifyingGlassMinusIcon, MagnifyingGlassPlusIcon, ArrowPathIcon } from '@heroicons/vue/24/outline';
 
-const imagePreview = ref(null);
-const imagePosition = reactive({ x: 0, y: 0});
-const imageZoom = ref(1);
-const isDragging = ref(false);
-const startPosition = reactive({ x: 0, y: 0});
-const imageRef = ref(null);
-const containerRef = ref(null);
+// Heroicons imports voor UI iconen
+import { 
+    FolderPlusIcon, 
+    PhotoIcon, 
+    ArrowLeftIcon, 
+    MagnifyingGlassMinusIcon, 
+    MagnifyingGlassPlusIcon, 
+    ArrowPathIcon 
+} from '@heroicons/vue/24/outline';
 
-// Zoom constraints
-const minZoom = 0.5;
-const maxZoom = 3;
-const zoomStep = 0.1;
+// ========== AFBEELDING EDITOR STATE MANAGEMENT ==========
 
-// Auto-align settings
-const alignThreshold = 10; // pixels
-const alignAnimationDuration = 200; // ms
+// Afbeelding preview en positionering state
+const imagePreview = ref(null);                    // Base64 string van geüploade afbeelding
+const imagePosition = reactive({ x: 0, y: 0});     // Huidige afbeelding positie (px)
+const imageZoom = ref(1);                          // Huidige zoom level (1 = 100%)
 
+// Drag en drop state
+const isDragging = ref(false);                     // Of gebruiker momenteel sleept
+const startPosition = reactive({ x: 0, y: 0});     // Start positie van drag operatie
+
+// DOM referenties voor afbeelding manipulatie
+const imageRef = ref(null);                        // Referentie naar img element
+const containerRef = ref(null);                    // Referentie naar container element
+
+// ========== ZOOM EN ALIGNMENT CONFIGURATIE ==========
+
+// Zoom beperkingen en stappen
+const minZoom = 0.5;                               // Minimale zoom (50%)
+const maxZoom = 3;                                 // Maximale zoom (300%)
+const zoomStep = 0.1;                              // Zoom stap grootte (10%)
+
+// Auto-align instellingen voor magnetische snapping
+const alignThreshold = 10;                         // Snap afstand in pixels
+const alignAnimationDuration = 200;                // Animatie duur in milliseconden
+
+// ========== DRAG & DROP EVENT HANDLERS ==========
+
+/**
+ * Start drag operatie - ondersteunt zowel mouse als touch events
+ * @param {Event} e - Mouse of touch event
+ */
 const startDrag = (e) => {
     isDragging.value = true;
+    
+    // Bepaal start positie gebaseerd op event type
     startPosition.x = e.type === 'mousedown' ? e.clientX : e.touches[0].clientX;
     startPosition.y = e.type === 'mousedown' ? e.clientY : e.touches[0].clientY;
+    
+    // Sla huidige afbeelding positie op
     startPosition.initialX = imagePosition.x;
     startPosition.initialY = imagePosition.y;
     
-    // Prevent default to avoid image selection/drag behavior
+    // Voorkom standaard browser gedrag (selectie, drag)
     e.preventDefault();
 };
 
+/**
+ * Voer drag operatie uit - update afbeelding positie tijdens slepen
+ * @param {Event} e - Mouse move of touch move event
+ */
 const doDrag = (e) => {
     if (!isDragging.value) return;
 
     e.preventDefault();
     
+    // Bereken huidige cursor/finger positie
     const currentX = e.type === 'mousemove' ? e.clientX : e.touches[0].clientX;
     const currentY = e.type === 'mousemove' ? e.clientY : e.touches[0].clientY;
     
+    // Bereken verschil ten opzichte van start positie
     const deltaX = currentX - startPosition.x;
     const deltaY = currentY - startPosition.y;
 
+    // Update afbeelding positie
     imagePosition.x = startPosition.initialX + deltaX;
     imagePosition.y = startPosition.initialY + deltaY;
 };
 
+/**
+ * Stop drag operatie en trigger auto-align
+ */
 const stopDrag = () => {
     if (isDragging.value) {
         isDragging.value = false;
-        autoAlign();
+        autoAlign(); // Automatisch uitlijnen na slepen
     }
 };
 
-// Auto-align function with magnetic border snapping
+// ========== AUTO-ALIGN FUNCTIONALITEIT ==========
+
+/**
+ * Intelligente auto-align functie met magnetische border snapping
+ * Houdt afbeelding binnen grenzen en snapt naar edges/center
+ */
 const autoAlign = () => {
     if (!containerRef.value || !imageRef.value) return;
 
@@ -67,142 +124,142 @@ const autoAlign = () => {
     const containerWidth = container.clientWidth;
     const containerHeight = container.clientHeight;
 
-    // Calculate the actual scaled image dimensions
+    // Bereken werkelijke geschaalde afbeelding dimensies
     const imageNaturalWidth = imageRef.value.naturalWidth;
     const imageNaturalHeight = imageRef.value.naturalHeight;
     
-    // Calculate how the image fits in the container (object-cover behavior)
+    // Bereken hoe afbeelding in container past (object-cover gedrag)
     const containerAspect = containerWidth / containerHeight;
     const imageAspect = imageNaturalWidth / imageNaturalHeight;
     
     let scaledImageWidth, scaledImageHeight;
     
     if (imageAspect > containerAspect) {
-        // Image is wider - height fills container
+        // Afbeelding is breder - hoogte vult container
         scaledImageHeight = containerHeight;
         scaledImageWidth = scaledImageHeight * imageAspect;
     } else {
-        // Image is taller - width fills container
+        // Afbeelding is hoger - breedte vult container
         scaledImageWidth = containerWidth;
         scaledImageHeight = scaledImageWidth / imageAspect;
     }
     
-    // Apply zoom to the scaled dimensions
+    // Pas zoom toe op geschaalde dimensies
     scaledImageWidth *= imageZoom.value;
     scaledImageHeight *= imageZoom.value;
 
     let targetX = imagePosition.x;
     let targetY = imagePosition.y;
 
-    // Horizontal alignment and boundary constraints
+    // ========== HORIZONTALE UITLIJNING EN GRENZEN ==========
     if (scaledImageWidth > containerWidth) {
-        // Image is larger than container - constrain within bounds
+        // Afbeelding is groter dan container - beperk binnen grenzen
         const maxMoveRight = (scaledImageWidth - containerWidth) / 2;
         const maxMoveLeft = -maxMoveRight;
         
+        // Hard boundaries
         if (imagePosition.x > maxMoveRight) {
             targetX = maxMoveRight;
         } else if (imagePosition.x < maxMoveLeft) {
             targetX = maxMoveLeft;
         }
         
-        // Snap to center if close
+        // Magnetische snapping naar center en edges
         if (Math.abs(imagePosition.x) < alignThreshold) {
-            targetX = 0;
+            targetX = 0; // Snap naar center
         }
-        // Snap to edges if close
         if (Math.abs(imagePosition.x - maxMoveRight) < alignThreshold) {
-            targetX = maxMoveRight;
+            targetX = maxMoveRight; // Snap naar rechter edge
         }
         if (Math.abs(imagePosition.x - maxMoveLeft) < alignThreshold) {
-            targetX = maxMoveLeft;
+            targetX = maxMoveLeft; // Snap naar linker edge
         }
     } else {
-        // Image is smaller than container - snap to container edges or center
+        // Afbeelding is kleiner dan container - snap naar container edges
         const halfContainer = containerWidth / 2;
         const halfImage = scaledImageWidth / 2;
         
-        // Calculate edge positions (where image edge aligns with container edge)
+        // Bereken edge posities (waar afbeelding edge uitlijnt met container edge)
         const leftEdgePosition = -halfContainer + halfImage;
         const rightEdgePosition = halfContainer - halfImage;
         
-        // Snap to left edge
+        // Magnetische snapping naar verschillende posities
         if (Math.abs(imagePosition.x - leftEdgePosition) < alignThreshold) {
-            targetX = leftEdgePosition;
+            targetX = leftEdgePosition; // Snap naar linker edge
         }
-        // Snap to right edge  
         else if (Math.abs(imagePosition.x - rightEdgePosition) < alignThreshold) {
-            targetX = rightEdgePosition;
+            targetX = rightEdgePosition; // Snap naar rechter edge
         }
-        // Snap to center
         else if (Math.abs(imagePosition.x) < alignThreshold) {
-            targetX = 0;
+            targetX = 0; // Snap naar center
         }
         
-        // Constrain to not go beyond reasonable bounds
+        // Beperk tot redelijke grenzen
         const maxOffset = halfContainer + halfImage;
         if (imagePosition.x > maxOffset) targetX = maxOffset;
         if (imagePosition.x < -maxOffset) targetX = -maxOffset;
     }
 
-    // Vertical alignment and boundary constraints  
+    // ========== VERTICALE UITLIJNING EN GRENZEN ==========
     if (scaledImageHeight > containerHeight) {
-        // Image is larger than container - constrain within bounds
+        // Afbeelding is groter dan container - beperk binnen grenzen
         const maxMoveDown = (scaledImageHeight - containerHeight) / 2;
         const maxMoveUp = -maxMoveDown;
         
+        // Hard boundaries
         if (imagePosition.y > maxMoveDown) {
             targetY = maxMoveDown;
         } else if (imagePosition.y < maxMoveUp) {
             targetY = maxMoveUp;
         }
         
-        // Snap to center if close
+        // Magnetische snapping naar center en edges
         if (Math.abs(imagePosition.y) < alignThreshold) {
-            targetY = 0;
+            targetY = 0; // Snap naar center
         }
-        // Snap to edges if close
         if (Math.abs(imagePosition.y - maxMoveDown) < alignThreshold) {
-            targetY = maxMoveDown;
+            targetY = maxMoveDown; // Snap naar onder edge
         }
         if (Math.abs(imagePosition.y - maxMoveUp) < alignThreshold) {
-            targetY = maxMoveUp;
+            targetY = maxMoveUp; // Snap naar boven edge
         }
     } else {
-        // Image is smaller than container - snap to container edges or center
+        // Afbeelding is kleiner dan container - snap naar container edges
         const halfContainer = containerHeight / 2;
         const halfImage = scaledImageHeight / 2;
         
-        // Calculate edge positions (where image edge aligns with container edge)
+        // Bereken edge posities
         const topEdgePosition = -halfContainer + halfImage;
         const bottomEdgePosition = halfContainer - halfImage;
         
-        // Snap to top edge
+        // Magnetische snapping naar verschillende posities
         if (Math.abs(imagePosition.y - topEdgePosition) < alignThreshold) {
-            targetY = topEdgePosition;
+            targetY = topEdgePosition; // Snap naar boven edge
         }
-        // Snap to bottom edge
         else if (Math.abs(imagePosition.y - bottomEdgePosition) < alignThreshold) {
-            targetY = bottomEdgePosition;
+            targetY = bottomEdgePosition; // Snap naar onder edge
         }
-        // Snap to center
         else if (Math.abs(imagePosition.y) < alignThreshold) {
-            targetY = 0;
+            targetY = 0; // Snap naar center
         }
         
-        // Constrain to not go beyond reasonable bounds
+        // Beperk tot redelijke grenzen
         const maxOffset = halfContainer + halfImage;
         if (imagePosition.y > maxOffset) targetY = maxOffset;
         if (imagePosition.y < -maxOffset) targetY = -maxOffset;
     }
 
-    // Animate to target position if different from current
+    // Animeer naar doel positie als deze verschilt van huidige
     if (Math.abs(targetX - imagePosition.x) > 0.5 || Math.abs(targetY - imagePosition.y) > 0.5) {
         animateToPosition(targetX, targetY);
     }
 };
 
-// Smooth animation to target position
+/**
+ * Soepele animatie naar doel positie met ease-out curve
+ * @param {number} targetX - Doel X positie
+ * @param {number} targetY - Doel Y positie
+ */
 const animateToPosition = (targetX, targetY) => {
     const startX = imagePosition.x;
     const startY = imagePosition.y;
@@ -212,12 +269,14 @@ const animateToPosition = (targetX, targetY) => {
         const elapsed = currentTime - startTime;
         const progress = Math.min(elapsed / alignAnimationDuration, 1);
         
-        // Ease-out function
+        // Ease-out functie voor natuurlijke beweging
         const easeOut = 1 - Math.pow(1 - progress, 3);
         
+        // Interpoleer tussen start en doel positie
         imagePosition.x = startX + (targetX - startX) * easeOut;
         imagePosition.y = startY + (targetY - startY) * easeOut;
 
+        // Continue animatie of finaliseer
         if (progress < 1) {
             requestAnimationFrame(animate);
         } else {
@@ -229,14 +288,21 @@ const animateToPosition = (targetX, targetY) => {
     requestAnimationFrame(animate);
 };
 
-// Zoom functions
+// ========== ZOOM FUNCTIONALITEITEN ==========
+
+/**
+ * Zoom in functie met auto-align
+ */
 const zoomIn = () => {
     if (imageZoom.value < maxZoom) {
         imageZoom.value = Math.min(imageZoom.value + zoomStep, maxZoom);
-        setTimeout(() => autoAlign(), 50);
+        setTimeout(() => autoAlign(), 50); // Korte vertraging voor smooth UX
     }
 };
 
+/**
+ * Zoom out functie met auto-align
+ */
 const zoomOut = () => {
     if (imageZoom.value > minZoom) {
         imageZoom.value = Math.max(imageZoom.value - zoomStep, minZoom);
@@ -244,13 +310,19 @@ const zoomOut = () => {
     }
 };
 
+/**
+ * Reset zoom en positie naar standaard waarden
+ */
 const resetZoom = () => {
     imageZoom.value = 1;
     imagePosition.x = 0;
     imagePosition.y = 0;
 };
 
-// Handle wheel zoom with auto-align after zoom
+/**
+ * Behandel muiswiel zoom met auto-align na zoom
+ * @param {WheelEvent} e - Muiswiel event
+ */
 const handleWheel = (e) => {
     e.preventDefault();
     
@@ -259,26 +331,40 @@ const handleWheel = (e) => {
     
     if (newZoom !== imageZoom.value) {
         imageZoom.value = newZoom;
-        // Auto-align after zoom to ensure image stays within bounds
+        // Auto-align na zoom om afbeelding binnen grenzen te houden
         setTimeout(() => autoAlign(), 50);
     }
 };
 
-// Computed style for image transform
+/**
+ * Computed property voor afbeelding transform style
+ * Combineert translate en scale in één transform
+ */
 const imageTransform = computed(() => {
     return `translate(${imagePosition.x}px, ${imagePosition.y}px) scale(${imageZoom.value})`;
 });
 
+// ========== FORM MANAGEMENT ==========
+
+// Inertia.js form met alle benodigde velden
 const form = useForm({
     name: '',
     description: '',
     image: null,
 });
 
+/**
+ * Controleert of er onopgeslagen wijzigingen zijn
+ * @returns {boolean} True als er wijzigingen zijn
+ */
 const hasSavedChanges = () => {
     return form.name !== '' || form.description !== '' || form.image !== null;
 };
 
+/**
+ * Behandel browser beforeunload event voor onopgeslagen wijzigingen
+ * @param {BeforeUnloadEvent} e - Browser beforeunload event
+ */
 const handleBeforeUnload = (e) => {
     if (hasSavedChanges()) {
         e.preventDefault();
@@ -286,19 +372,27 @@ const handleBeforeUnload = (e) => {
     }
 };
 
+// ========== LIFECYCLE HOOKS ==========
+
+/**
+ * Component mounted - registreer event listeners
+ */
 onMounted(() => {
-    // Add event listeners for drag and drop functionality
+    // Event listeners voor drag en drop functionaliteit
     document.addEventListener('mousemove', doDrag, { passive: false });
     document.addEventListener('mouseup', stopDrag);
     document.addEventListener('touchmove', doDrag, { passive: false });
     document.addEventListener('touchend', stopDrag);
 
-    // Prevent page from unloading when there are unsaved changes
+    // Voorkom pagina verlaten bij onopgeslagen wijzigingen
     window.addEventListener('beforeunload', handleBeforeUnload);
 });
 
+/**
+ * Component unmounted - verwijder event listeners
+ */
 onUnmounted(() => {
-    // Remove event listeners when component is unmounted
+    // Opruimen van event listeners bij component vernietiging
     document.removeEventListener('mousemove', doDrag);
     document.removeEventListener('mouseup', stopDrag);
     document.removeEventListener('touchmove', doDrag);
@@ -306,6 +400,12 @@ onUnmounted(() => {
     window.removeEventListener('beforeunload', handleBeforeUnload);
 });
 
+// ========== EVENT HANDLERS ==========
+
+/**
+ * Behandel afbeelding upload en genereer preview
+ * @param {Event} e - File input change event
+ */
 const handleImageChange = (e) => {
     const file = e.target.files[0];
     form.image = file;
@@ -314,7 +414,7 @@ const handleImageChange = (e) => {
         const reader = new FileReader();
         reader.onload = (e) => {
             imagePreview.value = e.target.result;
-            // Reset image position and zoom when new image is loaded
+            // Reset afbeelding positie en zoom bij nieuwe afbeelding
             imagePosition.x = 0;
             imagePosition.y = 0;
             imageZoom.value = 1;
@@ -323,17 +423,23 @@ const handleImageChange = (e) => {
     }
 };
 
+/**
+ * Behandel terug navigatie met onopgeslagen wijzigingen check
+ */
 const handleBack = () => {
     if (hasSavedChanges()) {
         if (!confirm('You have unsaved changes. Are you sure you want to leave this page?')) {
             return;
         }
     }
-    // Remove the beforeunload listener to prevent double warning
+    // Verwijder beforeunload listener om dubbele waarschuwing te voorkomen
     window.removeEventListener('beforeunload', handleBeforeUnload);
     window.location = route('admin.categories.index');
 };
 
+/**
+ * Submit form inclusief afbeelding positionering data
+ */
 const submit = () => {
     form.transform((data) => ({
         ...data,
@@ -351,12 +457,15 @@ const submit = () => {
         <div class="py-4 sm:py-6 lg:py-8">
             <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="bg-white overflow-hidden shadow-sm rounded-lg">
-                    <!-- Header -->
+                    
+                    <!-- Page Header Sectie -->
                     <div class="px-4 py-4 sm:px-6 border-b border-gray-200">
                         <div class="flex items-center space-x-3">
+                            <!-- Header Icoon -->
                             <div class="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-lg">
                                 <FolderPlusIcon class="w-5 h-5 text-blue-600" />
                             </div>
+                            <!-- Header Tekst -->
                             <div>
                                 <h2 class="text-lg sm:text-xl font-semibold text-gray-900">Create Category</h2>
                                 <p class="text-sm text-gray-600">Add a new category to organize products</p>
@@ -364,10 +473,11 @@ const submit = () => {
                         </div>
                     </div>
 
-                    <!-- Form -->
+                    <!-- Formulier Sectie -->
                     <div class="p-4 sm:p-6">
                         <form @submit.prevent="submit" class="space-y-6">
-                            <!-- Category Name -->
+                            
+                            <!-- Categorie Naam Veld -->
                             <div>
                                 <InputLabel for="name" value="Category Name" class="text-sm font-medium text-gray-700" />
                                 <TextInput
@@ -383,7 +493,7 @@ const submit = () => {
                                 <InputError :message="form.errors.name" class="mt-2" />
                             </div>
 
-                            <!-- Description -->
+                            <!-- Beschrijving Veld -->
                             <div>
                                 <InputLabel for="description" value="Description" class="text-sm font-medium text-gray-700" />
                                 <textarea 
@@ -398,10 +508,11 @@ const submit = () => {
                                 <InputError :message="form.errors.description" class="mt-2" />
                             </div>
 
-                            <!-- Image Upload -->
+                            <!-- Afbeelding Upload Sectie -->
                             <div>
                                 <InputLabel for="image" value="Category Image" class="text-sm font-medium text-gray-700" />
                                 <div class="mt-2">
+                                    <!-- File Input -->
                                     <input 
                                         type="file"
                                         id="image"
@@ -416,13 +527,16 @@ const submit = () => {
                                     <InputError :message="form.errors.image" class="mt-2" />
                                 </div>
 
-                                <!-- Image Preview with Editor -->
+                                <!-- Afbeelding Preview met Geavanceerde Editor -->
                                 <div v-if="imagePreview" class="mt-6">
-                                    <!-- Mobile-Friendly Zoom Controls -->
+                                    
+                                    <!-- Mobiel-Vriendelijke Zoom Controls -->
                                     <div class="mb-4 p-3 bg-gray-50 rounded-lg">
                                         <h4 class="text-sm font-medium text-gray-700 mb-3">Image Editor</h4>
                                         <div class="flex items-center justify-between gap-3">
+                                            <!-- Zoom Controls -->
                                             <div class="flex items-center gap-2">
+                                                <!-- Zoom Out Knop -->
                                                 <button
                                                     type="button"
                                                     @click="zoomOut"
@@ -431,9 +545,11 @@ const submit = () => {
                                                 >
                                                     <MagnifyingGlassMinusIcon class="w-4 h-4" />
                                                 </button>
+                                                <!-- Zoom Percentage Display -->
                                                 <span class="text-sm text-gray-600 min-w-[3.5rem] text-center font-medium">
                                                     {{ Math.round(imageZoom * 100) }}%
                                                 </span>
+                                                <!-- Zoom In Knop -->
                                                 <button
                                                     type="button"
                                                     @click="zoomIn"
@@ -443,6 +559,7 @@ const submit = () => {
                                                     <MagnifyingGlassPlusIcon class="w-4 h-4" />
                                                 </button>
                                             </div>
+                                            <!-- Reset Knop -->
                                             <button
                                                 type="button"
                                                 @click="resetZoom"
@@ -454,18 +571,21 @@ const submit = () => {
                                         </div>
                                     </div>
 
-                                    <!-- Image Preview Container -->
+                                    <!-- Afbeelding Preview Container met Editor -->
                                     <div class="group relative bg-gray-100 rounded-lg overflow-hidden">
+                                        <!-- Vierkante Afbeelding Container -->
                                         <div 
                                             ref="containerRef"
                                             class="aspect-square w-full overflow-hidden relative bg-gray-200"
                                             @wheel="handleWheel"
                                         >
+                                            <!-- Draggable Afbeelding Container -->
                                             <div 
                                                 class="absolute inset-0 cursor-move overflow-hidden"
                                                 @mousedown="startDrag" 
                                                 @touchstart="startDrag"
                                             >
+                                                <!-- Hoofdafbeelding Element -->
                                                 <img 
                                                     ref="imageRef"
                                                     :src="imagePreview" 
@@ -479,17 +599,20 @@ const submit = () => {
                                                     draggable="false"
                                                 />
                                             </div>
+                                            
+                                            <!-- Hover Overlay Effect -->
                                             <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300 pointer-events-none"></div>
                                             
-                                            <!-- Alignment guides -->
+                                            <!-- Uitlijning Hulplijnen -->
                                             <div class="absolute inset-0 pointer-events-none">
-                                                <!-- Center lines -->
+                                                <!-- Verticale Center Lijn -->
                                                 <div class="absolute left-1/2 top-0 bottom-0 w-px bg-blue-300 opacity-0 group-hover:opacity-30 transition-opacity transform -translate-x-px"></div>
+                                                <!-- Horizontale Center Lijn -->
                                                 <div class="absolute top-1/2 left-0 right-0 h-px bg-blue-300 opacity-0 group-hover:opacity-30 transition-opacity transform -translate-y-px"></div>
                                             </div>
                                         </div>
 
-                                        <!-- Category Preview Info -->
+                                        <!-- Categorie Preview Info Sectie -->
                                         <div class="p-4 bg-white border-t border-gray-200">
                                             <h3 class="text-sm font-medium text-gray-900 truncate">
                                                 {{ form.name || 'Category Name' }}
@@ -500,7 +623,7 @@ const submit = () => {
                                         </div>
                                     </div>
 
-                                    <!-- Instructions -->
+                                    <!-- Gebruikers Instructies -->
                                     <div class="mt-3 p-3 bg-blue-50 rounded-lg">
                                         <div class="flex items-start space-x-2">
                                             <PhotoIcon class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
@@ -515,34 +638,39 @@ const submit = () => {
                                         </div>
                                     </div>
 
-                                    <!-- Debug Info (hidden on mobile) -->
+                                    <!-- Debug Informatie (verborgen op mobiel) -->
                                     <div class="hidden sm:block mt-2 text-xs text-gray-400">
                                         Position: {{ Math.round(imagePosition.x) }}, {{ Math.round(imagePosition.y) }} • 
                                         Zoom: {{ Math.round(imageZoom * 100) }}%
                                     </div>
 
-                                    <!-- Image Error Messages -->
+                                    <!-- Afbeelding Error Berichten -->
                                     <InputError :message="form.errors['imagePosition.x']" class="mt-2" />
                                     <InputError :message="form.errors['imagePosition.y']" class="mt-2" />
                                     <InputError :message="form.errors['imageZoom']" class="mt-2" />
                                 </div>
                             </div>
 
-                            <!-- Form Actions -->
+                            <!-- Formulier Actie Knoppen -->
                             <div class="pt-6 border-t border-gray-200">
                                 <div class="flex flex-col sm:flex-row gap-3 sm:justify-end">
+                                    <!-- Create Category Knop -->
                                     <PrimaryButton 
                                         type="submit"
                                         :disabled="form.processing"
                                         class="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 text-sm font-medium transition-colors"
                                     >
+                                        <!-- Loading Spinner -->
                                         <svg v-if="form.processing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
+                                        <!-- Normaal Icoon -->
                                         <FolderPlusIcon v-else class="w-4 h-4 mr-2" />
                                         {{ form.processing ? 'Creating...' : 'Create Category' }}
                                     </PrimaryButton>
+                                    
+                                    <!-- Cancel Knop -->
                                     <SecondaryButton
                                         type="button"
                                         @click="handleBack"
@@ -562,11 +690,13 @@ const submit = () => {
 </template>
 
 <style scoped>
+/* Cursor stijlen voor drag functionaliteit */
 .cursor-move {
     cursor: move;
     cursor: grab;
 }
 
+/* Selectie preventie voor afbeeldingen */
 .select-none {
     user-select: none;
     -webkit-user-select: none;
@@ -576,17 +706,18 @@ const submit = () => {
     -ms-user-select: none;
 }
 
+/* Extra selectie preventie voor img elementen */
 img {
     user-select: none;
     -webkit-user-drag: none;
 }
 
-/* Square aspect ratio container */
+/* Vierkante aspect ratio container utility */
 .aspect-square {
     aspect-ratio: 1 / 1;
 }
 
-/* Line clamp utility */
+/* Text truncatie utility voor lange teksten */
 .line-clamp-2 {
     display: -webkit-box;
     line-clamp: 2;

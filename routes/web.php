@@ -1,7 +1,15 @@
 <?php
 
-// web.php - Updated with Order Management Routes
+/**
+ * Bestandsnaam: web.php
+ * Auteur: Fabio Vreede
+ * Versie: v1.0.24
+ * Datum: 2025-07-01
+ * Tijd: 01:25:04
+ * Doel: Hoofdroute definitie bestand voor de webshop applicatie. Bevat alle web routes voor publieke content, admin/editor dashboards, e-commerce functionaliteit, checkout proces, order management en API endpoints.
+ */
 
+// web.php - Bijgewerkt met Order Management Routes
 use App\Models\Category;
 use App\Models\Subcategory;
 use App\Models\Product;
@@ -20,7 +28,7 @@ use App\Http\Controllers\Editor\BannerController;
 use App\Http\Controllers\EditorController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\CheckoutController;
-use App\Http\Controllers\OrderController; // NEW
+use App\Http\Controllers\OrderController; // NIEUW voor order management
 use App\Http\Controllers\SessionExpiredController;
 use App\Http\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
@@ -28,11 +36,23 @@ use Inertia\Inertia;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * ================================================================================
+ * PUBLIEKE ROUTES - Toegankelijk voor alle bezoekers (gasten en ingelogde gebruikers)
+ * ================================================================================
+ */
+
+/**
+ * HOMEPAGE ROUTE
+ * Toont featured producten en categorieën op de startpagina
+ */
 Route::get('/', function () {
+    // Haal specifieke featured producten op voor homepage weergave
     $products = Product::with(['subcategory.category'])
         ->whereIn('name', ['Biologische pompoen', 'Espresso Brownies', 'Red Velvet Muffins'])
         ->get()
         ->map(function ($product) {
+            // Transformeer product data voor frontend weergave
             return [
                 'id' => $product->id,
                 'name' => $product->name,
@@ -58,14 +78,24 @@ Route::get('/', function () {
     ]);
 });
 
+/**
+ * CATEGORIEËN OVERZICHT ROUTE
+ * Toont alle hoofdcategorieën voor product browsing
+ */
 Route::get('/categories', function () {
     $categories = Category::all();
+    
     return Inertia::render('CategoryPage', [
         'categories' => $categories
     ]);
 })->name('AllCategories');
 
+/**
+ * SUBCATEGORIEËN BINNEN CATEGORIE ROUTE
+ * Toont alle subcategorieën en producten binnen een specifieke hoofdcategorie
+ */
 Route::get('/subcategories/{categoryId}', function ($categoryId) {
+    // Haal categorie op met alle subcategorieën en bijbehorende producten
     $category = Category::with('subcategories.products')->findOrFail($categoryId);
     
     return Inertia::render('SubcategoryPage', [
@@ -90,63 +120,105 @@ Route::get('/subcategories/{categoryId}', function ($categoryId) {
     ]);
 })->name('subcategories.show');
 
+/**
+ * PRODUCT DETAIL ROUTE
+ * Toont gedetailleerde productpagina met volledige informatie
+ */
 Route::get('/product/{product}', [ProductController::class, 'show'])->name('product.show');
 
-// Admin routes
+/**
+ * ================================================================================
+ * ADMIN ROUTES - Alleen toegankelijk voor gebruikers met admin rol
+ * ================================================================================
+ */
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
+    
+    // Admin dashboard - statistieken en overzichten
     Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
     
-    // User management routes
+    /**
+     * GEBRUIKERSBEHEER ROUTES
+     * CRUD operaties voor gebruikersaccounts en rol management
+     */
     Route::resource('users', UsersController::class)->except(['show', 'create', 'edit']);
     Route::patch('users/{user}/update-role', [UsersController::class, 'updateRole'])->name('users.update-role');
     Route::patch('users/{user}/toggle-status', [UsersController::class, 'toggleStatus'])->name('users.toggle-status');
-
-    // Category structure management
+    
+    /**
+     * CATEGORIESTRUCTUUR BEHEER ROUTES
+     * Admin niveau category en subcategory management
+     */
     Route::resource('categories', CategoryStructureController::class);
     Route::resource('subcategories', SubcategoryStructureController::class);
-
-    // Search users API endpoint for Admin dashboard
-    Route::get('/api/users/search', [UsersController::class, 'search'])->name('api.users.search')->middleware('auth');
-
-    // Admin settings routes
+    
+    /**
+     * API ENDPOINTS VOOR ADMIN FUNCTIONALITEIT
+     */
+    // Zoek gebruikers API endpoint voor Admin dashboard
+    Route::get('/api/users/search', [UsersController::class, 'search'])
+        ->name('api.users.search')
+        ->middleware('auth');
+    
+    /**
+     * ADMIN INSTELLINGEN ROUTES
+     */
     Route::get('settings', [SettingsController::class, 'index'])->name('settings');
     Route::post('settings/password', [SettingsController::class, 'updatePassword'])->name('settings.password');
 });
 
-// Editor routes
+/**
+ * ================================================================================
+ * EDITOR ROUTES - Alleen toegankelijk voor gebruikers met editor rol
+ * ================================================================================
+ */
 Route::middleware(['auth', 'role:editor'])->prefix('editor')->name('editor.')->group(function () {
+    
+    // Editor dashboard - content management overzicht
     Route::get('/', [EditorController::class, 'dashboard'])->name('dashboard');
-
-    // Add more editor routes here
-    // Categories
-    Route::resource('categories', CategoryController::class);
-    Route::resource('subcategories', SubcategoryController::class);
-    Route::resource('products', ProductController::class);
-    Route::resource('promotions', PromotionController::class);
-    Route::resource('news', NewsController::class);
-    Route::resource('banners', BannerController::class)->only(['index', 'edit', 'update' ]);
-
-    // XML API endpoints
+    
+    /**
+     * CONTENT MANAGEMENT ROUTES
+     * CRUD operaties voor alle webshop content
+     */
+    Route::resource('categories', CategoryController::class);      // Categorieën beheer
+    Route::resource('subcategories', SubcategoryController::class); // Subcategorieën beheer
+    Route::resource('products', ProductController::class);         // Producten beheer
+    Route::resource('promotions', PromotionController::class);     // Promoties beheer
+    Route::resource('news', NewsController::class);               // Nieuws artikelen beheer
+    Route::resource('banners', BannerController::class)->only(['index', 'edit', 'update']); // Banner beheer (beperkt)
+    
+    /**
+     * XML API ENDPOINTS VOOR EXTERNE INTEGRATIES
+     * Export functionaliteit voor externe systemen
+     */
     Route::prefix('api')->group(function() {
         Route::get('products.xml', [EditorController::class, 'productsXml'])->name('api.products');
         Route::get('categories.xml', [EditorController::class, 'categoriesXml'])->name('api.categories');
         Route::get('promotions.xml', [EditorController::class, 'promotionsXml'])->name('api.promotions');
     });
-
-    // Editor settings routes
+    
+    /**
+     * EDITOR INSTELLINGEN ROUTES
+     */
     Route::get('settings', [SettingsController::class, 'index'])->name('settings');
     Route::post('settings/password', [SettingsController::class, 'updatePassword'])->name('settings.password');
 });
 
+/**
+ * ================================================================================
+ * DASHBOARD ROUTE - Rol-gebaseerde dashboard redirect
+ * ================================================================================
+ */
 Route::get('/dashboard', function () {
     $user = auth()->user();
-
+    
+    // Redirect naar juiste dashboard op basis van gebruikersrol
     if ($user->isSystemAdmin()) {
         return redirect()->route('admin.dashboard');
     } else if ($user->isEditor()) {
         return redirect()->route('editor.dashboard');
-    } 
-    // For customers, use the default dashboard with order data
+    }
+    // Voor klanten: toon standaard dashboard met order data
     else if ($user->isCustomer()) {
         return Inertia::render('Dashboard', [
             'activeOrders' => $user->orders()
@@ -161,64 +233,99 @@ Route::get('/dashboard', function () {
                 ->paginate(10)
         ]);
     }
+    
     abort(403, 'Je hebt geen toegang tot dit dashboard.');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-// 3-Step Checkout routes - accessible only to authenticated users
+/**
+ * ================================================================================
+ * CHECKOUT ROUTES - 3-staps checkout proces voor geauthenticeerde gebruikers
+ * ================================================================================
+ */
 Route::middleware(['auth'])->group(function () {
-    // Step 1: Delivery slot selection
+    
+    /**
+     * CHECKOUT STAPPEN - Gestructureerd checkout proces
+     */
+    // Stap 1: Bezorgslot selectie
     Route::get('/checkout/delivery', [CheckoutController::class, 'delivery'])->name('checkout.delivery');
+    
+    // Legacy checkout redirect naar stap 1
     Route::get('/checkout', function() {
         return redirect()->route('checkout.delivery');
-    })->name('checkout.index'); // Redirect old checkout to step 1
+    })->name('checkout.index');
     
-    // Step 2: Review order
+    // Stap 2: Bestelling overzicht en controle
     Route::get('/checkout/review', [CheckoutController::class, 'review'])->name('checkout.review');
     
-    // Step 3: Confirm and place order
+    // Stap 3: Finale bevestiging en bestelling plaatsen
     Route::get('/checkout/confirm', [CheckoutController::class, 'confirm'])->name('checkout.confirm');
     
-    // Order success page - NEW
+    // Bestelling succes pagina - NIEUW
     Route::get('/checkout/success/{order}', [CheckoutController::class, 'success'])->name('checkout.success');
     
-    // API endpoints for checkout functionality
+    /**
+     * CHECKOUT API ENDPOINTS
+     * AJAX endpoints voor checkout functionaliteit
+     */
     Route::post('/checkout/select-slot', [CheckoutController::class, 'selectDeliverySlot'])->name('checkout.select-slot');
     Route::post('/checkout/store-selected-slot', [CheckoutController::class, 'storeSelectedSlot'])->name('checkout.store-slot');
     Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
     
-    // Cart and session API endpoints
+    /**
+     * WINKELWAGEN EN SESSIE API ENDPOINTS
+     */
     Route::get('/api/checkout/cart-data', [CheckoutController::class, 'getCartData'])->name('checkout.cart-data');
     Route::get('/api/session-check', [CheckoutController::class, 'checkSession'])->name('session.check');
-
-    // Address Management API endpoints
+    
+    /**
+     * ADRESBEHEER API ENDPOINTS
+     * CRUD operaties voor gebruiker bezorgadressen
+     */
     Route::post('/api/user/address', [ProfileController::class, 'storeAddress'])->name('api.address.store');
     Route::put('/api/user/address', [ProfileController::class, 'updateAddress'])->name('api.address.update');
     Route::get('/api/user/address', [ProfileController::class, 'getAddress'])->name('api.address.show');
     
-    // ORDER MANAGEMENT ROUTES - NEW
+    /**
+     * ================================================================================
+     * ORDER MANAGEMENT ROUTES - NIEUW - Bestelling beheer voor klanten
+     * ================================================================================
+     */
     Route::prefix('orders')->name('orders.')->group(function () {
-        // Order history and listing
+        // Bestelling geschiedenis en overzicht
         Route::get('/', [OrderController::class, 'index'])->name('index');
         
-        // View specific order
+        // Specifieke bestelling bekijken
         Route::get('/{order}', [OrderController::class, 'show'])->name('show');
         
-        // Track order
+        // Bestelling tracking/volgen
         Route::get('/{order}/track', [OrderController::class, 'track'])->name('track');
         
-        // Cancel order
+        // Bestelling annuleren
         Route::patch('/{order}/cancel', [OrderController::class, 'cancel'])->name('cancel');
         
-        // Send confirmation email
+        // Bevestigingsmail opnieuw versturen
         Route::post('/{order}/send-confirmation', [OrderController::class, 'sendConfirmation'])->name('send-confirmation');
     });
 });
 
-// Session expired routes
+/**
+ * ================================================================================
+ * SESSIE MANAGEMENT ROUTES - Sessie verloop afhandeling
+ * ================================================================================
+ */
+
+/**
+ * SESSIE VERLOPEN ROUTES
+ * Afhandeling van verlopen sessies en gebruiker opties
+ */
 Route::get('/session-expired', [SessionExpiredController::class, 'show'])->name('session.expired');
 Route::post('/session-expired', [SessionExpiredController::class, 'handle'])->name('session.expiry.handle');
 
-// Additional session management routes (accessible to all)
+/**
+ * AANVULLENDE SESSIE MANAGEMENT ROUTES
+ * API endpoints voor sessie status en vernieuwing (toegankelijk voor iedereen)
+ */
 Route::get('/api/session-check', function(Request $request) {
     return response()->json([
         'authenticated' => Auth::check(),
@@ -234,33 +341,83 @@ Route::post('/refresh-session', function(Request $request) {
     }
     return response()->json(['success' => false], 401);
 })->middleware(['auth'])->name('session.refresh');
- 
-// Cart routes - accessible to both guests and authenticated users
-// These routes return JSON responses for API calls
+
+/**
+ * ================================================================================
+ * WINKELWAGEN ROUTES - Toegankelijk voor zowel gasten als geauthenticeerde gebruikers
+ * ================================================================================
+ */
 Route::prefix('cart')->name('cart.')->group(function () {
-    // For displaying cart page (returns Inertia view)
+    
+    // Winkelwagen pagina weergave (Inertia view)
     Route::get('/', function() {
         return Inertia::render('CartPage');
     })->name('index');
     
-    // API endpoints (return JSON)
-    Route::post('/add', [CartController::class, 'add'])->name('add');
-    Route::patch('/{product}', [CartController::class, 'update'])->name('update');
-    Route::delete('/{product}', [CartController::class, 'remove'])->name('remove');
-    Route::delete('/', [CartController::class, 'clear'])->name('clear');
+    /**
+     * WINKELWAGEN API ENDPOINTS (retourneren JSON responses)
+     */
+    Route::post('/add', [CartController::class, 'add'])->name('add');                    // Product toevoegen
+    Route::patch('/{product}', [CartController::class, 'update'])->name('update');       // Hoeveelheid bijwerken
+    Route::delete('/{product}', [CartController::class, 'remove'])->name('remove');      // Product verwijderen
+    Route::delete('/', [CartController::class, 'clear'])->name('clear');                 // Winkelwagen legen
 });
 
-// Additional cart API route for getting cart data (returns JSON)
+/**
+ * AANVULLENDE WINKELWAGEN API ROUTE
+ * Voor het ophalen van winkelwagen data (retourneert JSON)
+ */
 Route::get('/cart', [CartController::class, 'index']);
 
+/**
+ * ================================================================================
+ * PROFIEL MANAGEMENT ROUTES - Voor geauthenticeerde gebruikers
+ * ================================================================================
+ */
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-// Search routes
+/**
+ * ================================================================================
+ * ZOEK ROUTES - Product zoeken en suggesties
+ * ================================================================================
+ */
 Route::get('/search', [SearchController::class, 'index'])->name('search.index');
 Route::get('/search/suggestions', [SearchController::class, 'suggestions'])->name('search.suggestions');
 
+/**
+ * ================================================================================
+ * AUTHENTICATIE ROUTES IMPORT
+ * ================================================================================
+ */
 require __DIR__.'/auth.php';
+
+/**
+ * ROUTE ORGANISATIE UITLEG:
+ * 
+ * Dit bestand is georganiseerd in logische secties:
+ * 1. Publieke routes (homepage, categorieën, producten)
+ * 2. Admin routes (gebruikersbeheer, systeem configuratie)
+ * 3. Editor routes (content management, XML exports)
+ * 4. Dashboard route (rol-gebaseerde redirect)
+ * 5. Checkout routes (3-staps proces + API endpoints)
+ * 6. Order management routes (klant order tracking)
+ * 7. Sessie management (verloop afhandeling)
+ * 8. Winkelwagen routes (gasten + geauthenticeerd)
+ * 9. Profiel management (account instellingen)
+ * 10. Zoek functionaliteit
+ * 
+ * MIDDLEWARE STRATEGIE:
+ * - 'auth': Vereist ingelogde gebruiker
+ * - 'role:admin/editor': Spatie Permission rol controle
+ * - 'verified': Email verificatie vereist
+ * - Geen middleware: Publiek toegankelijk
+ * 
+ * API vs WEB ROUTES:
+ * - /api/ prefix routes retourneren JSON voor AJAX calls
+ * - Normale routes retourneren Inertia.js views
+ * - Duidelijke scheiding voor frontend/backend communicatie
+ */

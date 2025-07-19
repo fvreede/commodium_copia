@@ -1,13 +1,24 @@
+/**
+ * Bestandsnaam: DeliverySlotSelector.vue
+ * Auteur: Fabio Vreede
+ * Versie: v1.0.4
+ * Datum: 2025-06-29
+ * Tijd: 15:34:53
+ * Doel: Geavanceerde bezorgslot selector component voor checkout proces. Biedt responsive dag- en tijdselectie met real-time beschikbaarheid, automatische verversing, foutafhandeling en mobile-first design voor optimale gebruikerservaring tijdens het afrekenen.
+ */
+
 <!-- resources/js/Components/Checkout/DeliverySlotSelector.vue -->
 <template>
     <div class="space-y-6">
-        <!-- Loading state -->
+        <!-- Laadstatus -->
+        <!-- Toont loading spinner terwijl bezorgslots worden opgehaald -->
         <div v-if="isLoading" class="text-center py-12">
             <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
             <p class="mt-4 text-gray-600 font-medium">Bezorgmomenten laden...</p>
         </div>
 
-        <!-- Date Selection -->
+        <!-- Datum Selectie Interface -->
+        <!-- Horizontaal scrollbare dag selector met beschikbaarheid indicatoren -->
         <div v-else-if="deliverySlots.length > 0">
             <h4 class="text-lg font-semibold text-gray-800 mb-6 flex items-center">
                 <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center mr-3">
@@ -18,6 +29,8 @@
                 Selecteer een dag
             </h4>
             
+            <!-- Dag Selector Grid -->
+            <!-- Responsive grid met dag knoppen en beschikbaarheid status -->
             <div class="flex flex-wrap gap-8 justify-center sm:justify-start mb-8">
                 <button 
                     v-for="day in deliverySlots" 
@@ -45,7 +58,8 @@
                         {{ day.formatted_date }}
                     </div>
                     
-                    <!-- Availability indicator -->
+                    <!-- Beschikbaarheid Indicator -->
+                    <!-- Kleurcoded bolletje toont slot beschikbaarheid -->
                     <div class="absolute top-3 right-3">
                         <div :class="[
                             'w-3 h-3 rounded-full',
@@ -59,7 +73,8 @@
                 </button>
             </div>
 
-            <!-- Time Slots for Selected Day -->
+            <!-- Tijdslot Selectie voor Gekozen Dag -->
+            <!-- Dynamische tijdslot lijst met real-time beschikbaarheid en prijzen -->
             <div v-if="selectedDay" class="space-y-4">
                 <h4 class="text-lg font-semibold text-gray-800 flex items-center">
                     <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
@@ -70,6 +85,8 @@
                     Beschikbare tijden voor {{ getSelectedDayName() }}
                 </h4>
                 
+                <!-- Tijdslot Grid -->
+                <!-- Responsive grid met mobile/desktop verschillende layouts -->
                 <div class="grid gap-4">
                     <div 
                         v-for="slot in getSlotsForDay(selectedDay)" 
@@ -81,7 +98,8 @@
                                 : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-md'
                         ]"
                     >
-                        <!-- Mobile Layout (stack vertically) -->
+                        <!-- Mobile Layout (Verticaal Gestapeld) -->
+                        <!-- Mobiel-geoptimaliseerde layout met volledige breedte elementen -->
                         <div class="block sm:hidden space-y-4">
                             <div class="flex items-center justify-between">
                                 <span class="text-lg font-bold text-gray-900">
@@ -92,7 +110,8 @@
                                 </span>
                             </div>
                             
-                            <!-- Availability status -->
+                            <!-- Beschikbaarheid Status Badge -->
+                            <!-- Kleurcoded status indicator voor slot beschikbaarheid -->
                             <div class="flex justify-center">
                                 <span :class="[
                                     'text-xs px-3 py-1 rounded-full font-medium',
@@ -110,14 +129,16 @@
                                 </span>
                             </div>
 
-                            <!-- Show last updated time for real-time data -->
+                            <!-- Real-time Update Indicator -->
+                            <!-- Toont wanneer data voor het laatst is bijgewerkt voor transparantie -->
                             <div v-if="slot.current_available !== slot.available_slots" class="text-center">
                                 <span class="text-xs text-gray-500">
                                     ⏱️ Bijgewerkt {{ getTimeAgo(slot.last_updated) }}
                                 </span>
                             </div>
                             
-                            <!-- Full width button on mobile -->
+                            <!-- Volledige Breedte Selectie Knop (Mobile) -->
+                            <!-- Touch-vriendelijke knop met loading en geselecteerde staten -->
                             <button 
                                 @click="selectSlot(slot)"
                                 :disabled="isSelectingSlot || slot.current_available === 0"
@@ -131,6 +152,7 @@
                                     isSelectingSlot && selectedSlotId === slot.id ? 'opacity-25 cursor-not-allowed' : ''
                                 ]"
                             >
+                                <!-- Loading Status (Selecteren...) -->
                                 <span v-if="isSelectingSlot && selectedSlotId === slot.id" class="flex items-center justify-center">
                                     <svg class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -138,22 +160,26 @@
                                     </svg>
                                     Selecteren...
                                 </span>
+                                <!-- Geselecteerd Status met Checkmark -->
                                 <span v-else-if="selectedSlotId === slot.id" class="flex items-center justify-center">
                                     <svg class="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
                                     </svg>
                                     Geselecteerd
                                 </span>
+                                <!-- Vol Status (Niet Beschikbaar) -->
                                 <span v-else-if="slot.current_available === 0">
                                     Vol
                                 </span>
+                                <!-- Standaard Selectie Status -->
                                 <span v-else>
                                     Selecteren
                                 </span>
                             </button>
                         </div>
 
-                        <!-- Desktop Layout (side by side) -->
+                        <!-- Desktop Layout (Horizontaal Naast Elkaar) -->
+                        <!-- Desktop geoptimaliseerde layout met compacte weergave -->
                         <div class="hidden sm:flex items-center justify-between">
                             <div class="flex-1">
                                 <div class="flex items-center space-x-4 mb-2">
@@ -161,7 +187,7 @@
                                         {{ slot.time_display }}
                                     </span>
                                     
-                                    <!-- Availability status -->
+                                    <!-- Beschikbaarheid Status Badge (Desktop) -->
                                     <span :class="[
                                         'text-xs px-3 py-1 rounded-full font-medium',
                                         slot.current_available === 0 
@@ -178,7 +204,7 @@
                                     </span>
                                 </div>
 
-                                <!-- Show last updated time for real-time data -->
+                                <!-- Real-time Update Indicator (Desktop) -->
                                 <div v-if="slot.current_available !== slot.available_slots" class="mb-2">
                                     <span class="text-xs text-gray-500">
                                         ⏱️ Bijgewerkt {{ getTimeAgo(slot.last_updated) }}
@@ -186,11 +212,14 @@
                                 </div>
                             </div>
                             
+                            <!-- Prijs en Selectie Actie (Desktop) -->
+                            <!-- Compacte prijs weergave met selectie knop -->
                             <div class="flex items-center space-x-4">
                                 <span class="text-xl font-bold text-gray-900">
                                     €{{ slot.price.toFixed(2) }}
                                 </span>
                                 
+                                <!-- Compacte Selectie Knop (Desktop) -->
                                 <button 
                                     @click="selectSlot(slot)"
                                     :disabled="isSelectingSlot || slot.current_available === 0"
@@ -204,6 +233,7 @@
                                         isSelectingSlot && selectedSlotId === slot.id ? 'opacity-25 cursor-not-allowed' : ''
                                     ]"
                                 >
+                                    <!-- Dezelfde loading/geselecteerd/vol/selecteren staten als mobile -->
                                     <span v-if="isSelectingSlot && selectedSlotId === slot.id" class="flex items-center justify-center">
                                         <svg class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
                                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -229,7 +259,8 @@
                     </div>
                 </div>
 
-                <!-- Refresh slots button -->
+                <!-- Handmatige Ververs Knop -->
+                <!-- Geeft gebruikers controle over data verversing naast automatische updates -->
                 <div class="flex justify-center mt-6">
                     <button 
                         @click="refreshSlots"
@@ -247,6 +278,8 @@
                 </div>
             </div>
 
+            <!-- Geen Dag Geselecteerd Boodschap -->
+            <!-- Begeleidt gebruiker naar het selecteren van een dag -->
             <div v-else class="text-center py-12 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-dashed border-gray-300">
                 <div class="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -258,7 +291,8 @@
             </div>
         </div>
 
-        <!-- No slots available -->
+        <!-- Geen Slots Beschikbaar -->
+        <!-- Foutafhandeling wanneer er geen bezorgslots beschikbaar zijn -->
         <div v-else class="text-center py-12 bg-gradient-to-br from-red-50 to-rose-100 rounded-xl border-2 border-red-200">
             <div class="w-16 h-16 bg-red-200 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -275,7 +309,8 @@
             </button>
         </div>
 
-        <!-- Selected Slot Confirmation -->
+        <!-- Geselecteerd Slot Bevestiging -->
+        <!-- Duidelijke visuele bevestiging van de gemaakte keuze -->
         <div v-if="selectedSlotDetails" class="p-6 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl shadow-green-100">
             <div class="flex items-start">
                 <div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mr-4 flex-shrink-0">
@@ -300,7 +335,8 @@
             </div>
         </div>
 
-        <!-- Error message -->
+        <!-- Foutmelding Interface -->
+        <!-- Robuuste foutafhandeling met retry opties -->
         <div v-if="errorMessage" class="p-4 bg-gradient-to-r from-red-50 to-rose-50 border-2 border-red-200 rounded-xl">
             <div class="flex">
                 <div class="flex-shrink-0">
@@ -329,31 +365,48 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import axios from 'axios'
 
-// Props
+/**
+ * COMPONENT EIGENSCHAPPEN
+ * Configuratie data van parent component voor slot weergave en selectie
+ */
 const props = defineProps({
     deliverySlots: {
         type: Array,
         default: () => []
+        // Array van bezorgslot dagen met bijbehorende tijdslots en beschikbaarheid
     },
     selectedSlotId: {
         type: Number,
         default: null
+        // ID van het momenteel geselecteerde tijdslot (null = geen selectie)
     }
 })
 
-// Emits
+/**
+ * COMPONENT EVENTS
+ * Events die worden uitgezonden naar parent component voor state synchronisatie
+ */
 const emit = defineEmits(['slot-selected', 'delivery-fee-updated', 'refresh-slots'])
+// slot-selected: Wanneer gebruiker een slot selecteert
+// delivery-fee-updated: Voor real-time bezorgkosten updates
+// refresh-slots: Voor handmatige data verversing
 
-// Reactive state
-const selectedDay = ref(null) // No default day - user must choose
-const isSelectingSlot = ref(false)
-const isLoading = ref(false)
-const isRefreshing = ref(false)
-const errorMessage = ref(null)
-const showRetryButton = ref(false)
-const lastAction = ref(null)
+/**
+ * REACTIEVE COMPONENT STATE
+ * Lokale state management voor gebruikersinteractie en UI feedback
+ */
+const selectedDay = ref(null) // Geen standaard dag - gebruiker moet kiezen
+const isSelectingSlot = ref(false) // Loading state voor slot selectie proces
+const isLoading = ref(false) // Loading state voor initiële data ophalen
+const isRefreshing = ref(false) // Loading state voor data verversing
+const errorMessage = ref(null) // Actuele foutmelding voor gebruiker
+const showRetryButton = ref(false) // Of retry knop getoond moet worden
+const lastAction = ref(null) // Laatste actie voor retry functionaliteit
 
-// Methods
+/**
+ * BESCHIKBAARHEID CONTROLE METHODEN
+ * Utility functies voor slot beschikbaarheid validatie
+ */
 const hasAvailableSlots = (day) => {
     return day.slots && day.slots.some(slot => slot.current_available > 0)
 }
@@ -369,7 +422,10 @@ const getSelectedDayName = () => {
     return day ? `${day.day_name} ${day.formatted_date}` : ''
 }
 
-// Auto-select first available day for convenient supermarket experience
+/**
+ * AUTOMATISCHE DAG SELECTIE
+ * Auto-selecteert eerste beschikbare dag voor vlotte winkel ervaring
+ */
 onMounted(() => {
     if (props.deliverySlots.length > 0) {
         const firstAvailableDay = props.deliverySlots.find(day => hasAvailableSlots(day))
@@ -377,11 +433,19 @@ onMounted(() => {
     }
 })
 
+/**
+ * DAG SELECTIE HANDLER
+ * Behandelt gebruiker dag selectie en reset error state
+ */
 const selectDay = (date) => {
     selectedDay.value = date
     errorMessage.value = null
 }
 
+/**
+ * GESELECTEERD SLOT DETAILS OPHALEN
+ * Vindt volledige slot informatie inclusief dag data voor bevestiging weergave
+ */
 const getSelectedSlotDetails = () => {
     if (!props.selectedSlotId) return null
     
@@ -398,10 +462,16 @@ const getSelectedSlotDetails = () => {
     return null
 }
 
-// Computed properties
+/**
+ * COMPUTED EIGENSCHAPPEN
+ * Reactive computed properties voor template gebruik
+ */
 const selectedSlotDetails = computed(() => getSelectedSlotDetails())
 
-// Select delivery slot with enhanced error handling
+/**
+ * SLOT SELECTIE HANDLER
+ * Hoofdfunctie voor bezorgslot selectie met uitgebreide foutafhandeling
+ */
 const selectSlot = async (slot) => {
     if (isSelectingSlot.value || slot.current_available === 0) return
     
@@ -416,7 +486,7 @@ const selectSlot = async (slot) => {
         })
         
         if (response.data.success) {
-            // Emit events to parent component
+            // Emit events naar parent component voor state updates
             emit('slot-selected', {
                 slotId: slot.id,
                 deliveryFee: slot.price,
@@ -439,6 +509,7 @@ const selectSlot = async (slot) => {
     } catch (error) {
         console.error('Error selecting slot:', error)
         
+        // Specifieke foutafhandeling gebaseerd op HTTP status codes
         if (error.response?.status === 422) {
             errorMessage.value = error.response.data.message || 'Dit bezorgmoment is niet meer beschikbaar.'
         } else if (error.response?.status === 500) {
@@ -453,7 +524,10 @@ const selectSlot = async (slot) => {
     }
 }
 
-// Refresh delivery slots
+/**
+ * SLOT VERVERSING HANDLER
+ * Handmatige verversing van beschikbaarheid data
+ */
 const refreshSlots = async () => {
     if (isRefreshing.value) return
     
@@ -471,7 +545,10 @@ const refreshSlots = async () => {
     }
 }
 
-// Retry last failed action
+/**
+ * RETRY FUNCTIONALITEIT
+ * Herprobeert laatste gefaalde actie voor betere gebruikerservaring
+ */
 const retryLastAction = () => {
     if (!lastAction.value) return
     
@@ -485,7 +562,10 @@ const retryLastAction = () => {
     }
 }
 
-// Get time ago helper
+/**
+ * TIJD GELEDEN HELPER
+ * Formatteert timestamps naar gebruiksvriendelijke relatieve tijd
+ */
 const getTimeAgo = (timestamp) => {
     if (!timestamp) return ''
     
@@ -499,21 +579,27 @@ const getTimeAgo = (timestamp) => {
     return time.toLocaleDateString()
 }
 
-// Watch for changes in selected slot and emit delivery fee updates
+/**
+ * SLOT DETAILS WATCHER
+ * Observeert wijzigingen in geselecteerd slot en emit bezorgkosten updates
+ */
 watch(() => selectedSlotDetails.value, (newSlot) => {
     if (newSlot) {
         emit('delivery-fee-updated', newSlot.price)
     }
 }, { immediate: true })
 
-// Auto-refresh slot availability every 2 minutes
+/**
+ * AUTOMATISCHE VERVERSING SYSTEEM
+ * Auto-ververst slot beschikbaarheid elke 2 minuten voor real-time data
+ */
 let refreshInterval
 onMounted(() => {
     refreshInterval = setInterval(() => {
         if (!isRefreshing.value && !isSelectingSlot.value) {
             refreshSlots()
         }
-    }, 120000) // 2 minutes
+    }, 120000) // 2 minuten interval
 })
 
 onUnmounted(() => {
@@ -524,12 +610,17 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* Enhanced animations and transitions */
+/**
+ * AANGEPASTE STYLING EN ANIMATIES
+ * Verbeterde visuele effecten en responsive design ondersteuning
+ */
+
+/* Verbeterde animaties en overgangen */
 .transition-all {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Custom shadow utilities */
+/* Aangepaste schaduw utilities voor groene en blauwe theming */
 .shadow-green-200 {
     box-shadow: 0 10px 15px -3px rgba(34, 197, 94, 0.3), 0 4px 6px -2px rgba(34, 197, 94, 0.2);
 }
@@ -542,7 +633,7 @@ onUnmounted(() => {
     box-shadow: 0 4px 6px -1px rgba(34, 197, 94, 0.1), 0 2px 4px -1px rgba(34, 197, 94, 0.06);
 }
 
-/* Responsive grid for mobile */
+/* Responsive grid voor mobile optimalisatie */
 @media (max-width: 640px) {
     .grid-cols-2 {
         grid-template-columns: repeat(2, 1fr);
@@ -555,12 +646,12 @@ onUnmounted(() => {
     }
 }
 
-/* Enhanced button states */
+/* Verbeterde button focus staten voor toegankelijkheid */
 button:focus-visible {
     outline: none;
 }
 
-/* Loading animations */
+/* Loading animatie definities */
 @keyframes spin {
     to { 
         transform: rotate(360deg); 
@@ -571,7 +662,7 @@ button:focus-visible {
     animation: spin 1s linear infinite;
 }
 
-/* Smooth scale transitions */
+/* Vloeiende schaal overgangen voor hover effecten */
 .hover\:scale-105:hover {
     transform: scale(1.05);
 }
@@ -580,7 +671,7 @@ button:focus-visible {
     transform: scale(1.02);
 }
 
-/* Gradient border animations */
+/* Gradient border animaties voor premium effecten */
 @keyframes gradient-border {
     0%, 100% {
         background-position: 0% 50%;
@@ -590,7 +681,7 @@ button:focus-visible {
     }
 }
 
-/* Availability indicator animations */
+/* Beschikbaarheid indicator animaties */
 .bg-green-400, .bg-red-400 {
     animation: fadeIn 0.3s ease-in-out;
 }

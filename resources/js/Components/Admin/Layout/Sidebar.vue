@@ -1,3 +1,12 @@
+/**
+ * Bestandsnaam: Sidebar.vue
+ * Auteur: Fabio Vreede
+ * Versie: v1.0.9
+ * Datum: 2025-07-03
+ * Tijd: 00:09:21
+ * Doel: Admin dashboard sidebar component met responsive design. Bevat mobile sliding panel en desktop static sidebar met georganiseerde navigatie voor dashboard, gebruikersbeheer, catalogusstructuur en instellingen. Gebruikt HeadlessUI voor smooth transitions.
+ */
+
 <!-- resources/js/Components/Admin/Layout/Sidebar.vue -->
 <script setup>
 import { Link, router } from '@inertiajs/vue3';
@@ -16,49 +25,69 @@ import {
   XMarkIcon
 } from '@heroicons/vue/24/outline';
 
-// Props
+/**
+ * COMPONENT EIGENSCHAPPEN
+ * Configuratie-opties voor responsive sidebar gedrag
+ */
 const props = defineProps({
   isOpen: {
     type: Boolean,
     default: false
+    // Bepaalt of de mobile sidebar geopend is (sliding panel staat)
   },
   isMobile: {
     type: Boolean,
     default: false
+    // Schakelt tussen mobile sliding panel en desktop statische sidebar
   }
 });
 
-// Emits
+/**
+ * COMPONENT EVENTS
+ * Events die dit component kan uitzenden naar parent components
+ */
 const emit = defineEmits(['close']);
+// close: Wordt uitgezonden om de mobile sidebar te sluiten
 
-// Handle navigation - simple approach
+/**
+ * NAVIGATIE BEHANDELING
+ * Behandelt navigatie met speciaal mobile gedrag (sluit sidebar na navigatie)
+ */
 const handleNavigation = (routeName) => {
   if (props.isMobile) {
-    // Close sidebar and navigate (like shopping cart pattern)
+    // Sluit sidebar en navigeer (zoals shopping cart patroon)
     emit('close');
     router.visit(route(routeName));
   }
+  // Desktop navigatie wordt automatisch behandeld door Inertia Link
 };
 
-// Navigation items
+/**
+ * NAVIGATIE ITEMS CONFIGURATIE
+ * Georganiseerd in logische groepen voor admin functionaliteit
+ */
+
+// Hoofddashboard navigatie
 const navigationItems = [
   {
     name: 'Dashboard',
     href: 'admin.dashboard',
     icon: HomeIcon,
-    current: 'admin.dashboard'
+    current: 'admin.dashboard'  // Route patroon voor actieve staat detectie
   }
 ];
 
+// Gebruikersbeheer sectie
 const userManagement = [
   {
     name: 'Gebruikers',
     href: 'admin.users.index',
     icon: UsersIcon,
-    current: 'admin.users.*'
+    current: 'admin.users.*'  // Wildcard voor alle gebruikersbeheer routes
   }
 ];
 
+// Catalogusstructuur sectie (categorieën en subcategorieën)
 const catalogStructure = [
   {
     name: 'Categorieën',
@@ -74,6 +103,7 @@ const catalogStructure = [
   }
 ];
 
+// Overige items (instellingen, configuratie)
 const otherItems = [
   {
     name: 'Instellingen',
@@ -85,10 +115,15 @@ const otherItems = [
 </script>
 
 <template>
-  <!-- Mobile Sidebar (Sliding Panel) -->
+  <!-- 
+    MOBILE SIDEBAR (Sliding Panel)
+    Overlay sidebar die van links inschuift op mobiele apparaten
+  -->
   <TransitionRoot v-if="isMobile" as="template" :show="isOpen">
     <Dialog as="div" class="relative z-50" @close="$emit('close')">
-      <!-- Backdrop -->
+      
+      <!-- Achtergrond/Overlay -->
+      <!-- Semi-transparante achtergrond die het sidebar overlay effect creëert -->
       <TransitionChild 
         as="template" 
         enter="ease-in-out duration-500" 
@@ -101,10 +136,12 @@ const otherItems = [
         <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" />
       </TransitionChild>
 
-      <!-- Sidebar panel -->
+      <!-- Sidebar Panel Container -->
       <div class="fixed inset-0 overflow-hidden">
         <div class="absolute inset-0 overflow-hidden">
           <div class="pointer-events-none fixed inset-y-0 left-0 flex max-w-full">
+            
+            <!-- Schuivend Panel met Vloeiende Overgangen -->
             <TransitionChild 
               as="template" 
               enter="transform transition ease-in-out duration-500" 
@@ -116,7 +153,9 @@ const otherItems = [
             >
               <DialogPanel class="pointer-events-auto w-screen" data-sidebar>
                 <div class="flex h-full flex-col bg-white shadow-xl">
-                  <!-- Header -->
+                  
+                  <!-- Mobile Sidebar Header -->
+                  <!-- Bevat titel en sluitknop voor mobiele gebruikerservaring -->
                   <div class="flex items-center justify-between px-4 py-4 border-b border-gray-200">
                     <h2 class="text-lg font-semibold text-gray-900">Menu</h2>
                     <button
@@ -129,9 +168,11 @@ const otherItems = [
                     </button>
                   </div>
 
-                  <!-- Navigation Content -->
+                  <!-- Mobile Navigatie Inhoud -->
+                  <!-- Scrollbare navigatie-inhoud met georganiseerde secties -->
                   <nav class="flex-1 overflow-y-auto px-4 py-4">
-                    <!-- Dashboard -->
+                    
+                    <!-- Dashboard Sectie -->
                     <div class="space-y-1">
                       <Link 
                         v-for="item in navigationItems"
@@ -148,7 +189,7 @@ const otherItems = [
                       </Link>
                     </div>
 
-                    <!-- User Management -->
+                    <!-- Gebruikersbeheer Sectie -->
                     <div class="mt-8">
                       <div class="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
                         Gebruikersbeheer
@@ -170,7 +211,7 @@ const otherItems = [
                       </div>
                     </div>
 
-                    <!-- Catalog Structure -->
+                    <!-- Catalogusstructuur Sectie -->
                     <div class="mt-8">
                       <div class="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
                         Catalogusstructuur
@@ -192,7 +233,7 @@ const otherItems = [
                       </div>
                     </div>
 
-                    <!-- Other Items -->
+                    <!-- Overige Items Sectie -->
                     <div class="mt-8">
                       <div class="space-y-1">
                         <Link 
@@ -220,10 +261,14 @@ const otherItems = [
     </Dialog>
   </TransitionRoot>
 
-  <!-- Desktop Sidebar (Static) -->
+  <!-- 
+    DESKTOP SIDEBAR (Statisch)
+    Permanente sidebar voor desktop layout - altijd zichtbaar
+  -->
   <aside v-else class="w-64 bg-white shadow-lg h-screen flex-shrink-0">
     <nav class="mt-5 px-2">
-      <!-- Dashboard -->
+      
+      <!-- Desktop Dashboard Sectie -->
       <Link 
         v-for="item in navigationItems"
         :key="item.name"
@@ -235,7 +280,7 @@ const otherItems = [
         {{ item.name }}
       </Link>
 
-      <!-- User Management -->
+      <!-- Desktop Gebruikersbeheer Sectie -->
       <div class="pt-4">
         <div class="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
           Gebruikersbeheer
@@ -252,7 +297,7 @@ const otherItems = [
         </Link>
       </div>
 
-      <!-- Catalog Structure -->
+      <!-- Desktop Catalogusstructuur Sectie -->
       <div class="pt-4">
         <div class="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
           Catalogusstructuur
@@ -269,7 +314,7 @@ const otherItems = [
         </Link>
       </div>
 
-      <!-- Other Items -->
+      <!-- Desktop Overige Items Sectie -->
       <div class="pt-4">
         <Link 
           v-for="item in otherItems"

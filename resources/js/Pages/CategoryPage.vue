@@ -1,7 +1,7 @@
 /**
  * Bestandsnaam: CategoryPage.vue
  * Auteur: Fabio Vreede
- * Versie: v1.4 .0
+ * Versie: v1.4.0
  * Datum: 2024-10-22
  * Tijd: 16:42:58
  * Doel: Deze view toont een overzicht van beschikbare categorieën. 

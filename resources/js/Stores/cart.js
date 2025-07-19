@@ -1,43 +1,88 @@
-// @/Stores/cart.js - Enhanced version with order integration
+/**
+ * Bestandsnaam: cart.js)
+ * Auteur: Fabio Vreede
+ * Versie: v2.0.8
+ * Datum: 2025-07-01
+ * Tijd: 01:25:04
+ * Doel: Geavanceerde Pinia store voor winkelwagen management met optimistic updates, anti-spam beveiliging,
+ *       order integratie, en real-time synchronisatie. Bevat debouncing voor rapid clicks, queue systeem
+ *       voor pending updates, stock validatie, image URL processing, sorting functionaliteit, en complete
+ *       checkout flow integratie. Enhanced versie met robuuste error handling en performance optimalisaties
+ *       voor seamless e-commerce user experience.
+ */
+
+// Pinia store definition import
 import { defineStore } from 'pinia'
+// Axios voor API communicatie
 import axios from 'axios'
 
 export const useCartStore = defineStore('cart', {
+    // ========== STATE DEFINITIE ==========
     state: () => ({
-        items: [],
-        totals: {
-            subtotal: 0,
-            total: 0,
-            total_items: 0,
-            items_count: 0
+        // Cart items en totalen
+        items: [],                            // Array van cart items met product informatie
+        totals: {                             // Cart totalen object
+            subtotal: 0,                      // Subtotaal voor belasting
+            total: 0,                         // Eindtotaal inclusief kosten
+            total_items: 0,                   // Totaal aantal items (quantity sum)
+            items_count: 0                    // Aantal unieke items in cart
         },
-        sortBy: 'name',
-        sortDirection: 'asc',
-        isLoading: false,
-        lastError: null,
-        lastUpdated: null,
-        pendingUpdates: new Set(), // Track pending API calls
-        updateQueue: new Map(), // Queue voor pending updates
-        lastUpdateTime: new Map(), // Track laatste update tijd per product
-        // NEW: Order integration state
-        orderProcessing: false,
-        orderSuccess: false,
-        lastOrderId: null,
+
+        // Sorting en filtering state
+        sortBy: 'name',                       // Sorteer veld: 'name', 'price', 'quantity'
+        sortDirection: 'asc',                 // Sorteer richting: 'asc' of 'desc'
+
+        // Loading en error states
+        isLoading: false,                     // Global loading indicator voor cart operaties
+        lastError: null,                      // Laatste error message voor user feedback
+        lastUpdated: null,                    // Timestamp van laatste cart update
+
+        // Anti-spam en performance optimization
+        pendingUpdates: new Set(),            // Track pending API calls per product ID
+        updateQueue: new Map(),               // Queue voor pending updates tijdens debouncing
+        lastUpdateTime: new Map(),            // Track laatste update tijd per product voor debouncing
+
+        // Order integratie state
+        orderProcessing: false,               // Indicator dat order wordt verwerkt
+        orderSuccess: false,                  // Indicator voor succesvolle order placement
+        lastOrderId: null,                    // ID van laatste geplaatste order
     }),
 
+    // ========== GETTERS ==========
     getters: {
+        /**
+         * Totaal aantal items in cart (sum van alle quantities)
+         * @param {Object} state - Store state
+         * @returns {number} Totaal aantal items
+         */
         totalItems: (state) => state.totals.total_items || 0,
-        
+
+        /**
+         * Cart subtotaal bedrag
+         * @param {Object} state - Store state
+         * @returns {number} Subtotaal in euros
+         */
         subtotal: (state) => state.totals.subtotal || 0,
 
+        /**
+         * Cart totaal bedrag inclusief kosten
+         * @param {Object} state - Store state
+         * @returns {number} Totaal bedrag in euros
+         */
         total: (state) => state.totals.total || 0,
 
+        /**
+         * Gesorteerde cart items gebaseerd op sortBy en sortDirection
+         * @param {Object} state - Store state
+         * @returns {Array} Gesorteerde array van cart items
+         */
         sortedItems: (state) => {
             if (!state.items || state.items.length === 0) return [];
             
             return [...state.items].sort((a, b) => {
                 let compareA, compareB;
                 
+                // Bepaal vergelijking waarden gebaseerd op sort criteria
                 switch (state.sortBy) {
                     case 'name':
                         compareA = a.name?.toLowerCase() || '';
@@ -56,34 +101,62 @@ export const useCartStore = defineStore('cart', {
                         compareB = b.name?.toLowerCase() || '';
                 }
 
+                // Pas sort direction toe
                 if (compareA < compareB) return state.sortDirection === 'asc' ? -1 : 1;
                 if (compareA > compareB) return state.sortDirection === 'asc' ? 1 : -1;
                 return 0;
             });
         },
 
+        /**
+         * Controleert of cart items bevat
+         * @param {Object} state - Store state
+         * @returns {boolean} True als cart niet leeg is
+         */
         hasItems: (state) => state.items && state.items.length > 0,
-        
+
+        /**
+         * Aantal unieke items in cart
+         * @param {Object} state - Store state
+         * @returns {number} Aantal verschillende producten
+         */
         itemsCount: (state) => state.items ? state.items.length : 0,
 
-        // Helper to check if cart data is stale (older than 30 seconds)
+        /**
+         * Controleert of cart data stale is (ouder dan 30 seconden)
+         * Gebruikt voor performance optimization om onnodige API calls te voorkomen
+         * @param {Object} state - Store state
+         * @returns {boolean} True als data refresh nodig is
+         */
         isStale: (state) => {
             if (!state.lastUpdated) return true;
             return (Date.now() - state.lastUpdated) > 30000;
         },
 
-        // NEW: Check if ready for checkout
+        /**
+         * Controleert of cart klaar is voor checkout proces
+         * Valideert items, loading states, en stock availability
+         * @param {Object} state - Store state
+         * @returns {boolean} True als checkout mogelijk is
+         */
         isReadyForCheckout: (state) => {
-            return state.hasItems && 
-                   !state.isLoading && 
+            return state.hasItems &&
+                   !state.isLoading &&
                    !state.orderProcessing &&
                    state.items.every(item => item.stock_quantity >= item.quantity);
         }
     },
 
+    // ========== ACTIONS ==========
     actions: {
+        // ========== CART LOADING EN SYNCHRONISATIE ==========
+
+        /**
+         * Laadt cart data van server met caching optimisatie
+         * @param {boolean} force - Force refresh ook als data nog fresh is
+         */
         async loadCart(force = false) {
-            // Don't reload if data is fresh unless forced
+            // Voorkom onnodige reloads als data nog fresh is
             if (!force && !this.isStale && this.items.length > 0) {
                 return;
             }
@@ -91,10 +164,10 @@ export const useCartStore = defineStore('cart', {
             try {
                 this.isLoading = true;
                 this.lastError = null;
-                
+
                 const response = await axios.get('/cart');
-                
-                // Process items to ensure proper image URLs
+
+                // Process items voor consistent data format en image URLs
                 this.items = this.processCartItems(response.data.cartItems || []);
                 this.totals = response.data.totals || {
                     subtotal: 0,
@@ -102,21 +175,20 @@ export const useCartStore = defineStore('cart', {
                     total_items: 0,
                     items_count: 0
                 };
-                
+
                 this.lastUpdated = Date.now();
-                
+
                 console.log('Cart loaded successfully:', {
                     itemsCount: this.items.length,
                     totalItems: this.totals.total_items,
                     subtotal: this.totals.subtotal,
                     timestamp: new Date().toISOString()
                 });
-                
             } catch (error) {
                 console.error('Error loading cart:', error);
                 this.lastError = error.response?.data?.message || 'Failed to load cart';
                 
-                // Reset to empty state on error
+                // Reset naar lege state bij error
                 this.items = [];
                 this.totals = {
                     subtotal: 0,
@@ -129,7 +201,12 @@ export const useCartStore = defineStore('cart', {
             }
         },
 
-        // Process cart items to ensure proper image URLs and data consistency
+        /**
+         * Verwerkt cart items voor consistente data format
+         * Zorgt voor proper image URLs en data type conversies
+         * @param {Array} items - Raw cart items van server
+         * @returns {Array} Processed cart items
+         */
         processCartItems(items) {
             return items.map(item => ({
                 ...item,
@@ -141,26 +218,37 @@ export const useCartStore = defineStore('cart', {
             }));
         },
 
-        // Get proper image URL with fallback handling
+        /**
+         * Genereert proper image URL met fallback handling
+         * @param {string} imagePath - Raw image path van database
+         * @returns {string|null} Volledige image URL of null
+         */
         getImageUrl(imagePath) {
             if (!imagePath) {
-                return null; // Return null instead of placeholder to avoid 404s
+                return null; // Return null in plaats van placeholder om 404s te voorkomen
             }
 
-            // If it's already a full URL, return as is
+            // Als het al een volledige URL is, return as-is
             if (imagePath.startsWith('http') || imagePath.startsWith('/storage/') || imagePath.startsWith('/images/')) {
                 return imagePath;
             }
 
-            // Assume it's a storage path
+            // Assume het is een storage path
             return `/storage/${imagePath}`;
         },
 
-        // OPTIMISTIC UPDATE with anti-spam protection
+        // ========== OPTIMISTIC UPDATES MET ANTI-SPAM ==========
+
+        /**
+         * Optimistic quantity update met debouncing en anti-spam beveiliging
+         * @param {Object} product - Product object met product_id
+         * @param {number} newQuantity - Nieuwe quantity waarde
+         * @returns {Object} Success/error response object
+         */
         async updateQuantityOptimistic(product, newQuantity) {
             try {
                 this.lastError = null;
-                
+
                 if (!product || !product.product_id) {
                     throw new Error('Invalid product data for update');
                 }
@@ -172,56 +260,53 @@ export const useCartStore = defineStore('cart', {
 
                 // Check stock limits
                 if (product.stock_quantity !== undefined && quantity > product.stock_quantity) {
-                    return { 
-                        success: false, 
-                        message: `Maximaal ${product.stock_quantity} stuks beschikbaar` 
+                    return {
+                        success: false,
+                        message: `Maximaal ${product.stock_quantity} stuks beschikbaar`
                     };
                 }
 
-                // Remove item if quantity is 0
+                // Remove item als quantity 0 is
                 if (quantity === 0) {
                     return await this.removeFromCartOptimistic(product);
                 }
 
                 const productId = product.product_id;
                 const now = Date.now();
-                
-                // DEBOUNCE: Prevent spam clicking
+
+                // DEBOUNCE: Voorkom spam clicking
                 const lastUpdate = this.lastUpdateTime.get(productId) || 0;
                 if (now - lastUpdate < 200) { // 200ms debounce
                     console.log('Debouncing rapid clicks for product:', productId);
                     
-                    // Queue the update instead of ignoring it
+                    // Queue de update in plaats van negeren
                     this.updateQueue.set(productId, {
                         product,
                         quantity,
                         timestamp: now
                     });
-                    
-                    // Process queue after delay
+
+                    // Process queue na delay
                     setTimeout(() => this.processQueuedUpdate(productId), 250);
-                    
                     return { success: true, message: 'Update in behandeling...' };
                 }
-                
+
                 this.lastUpdateTime.set(productId, now);
-                
-                // Check if there's already a pending update for this product
+
+                // Check of er al een pending update is voor dit product
                 if (this.pendingUpdates.has(productId)) {
                     console.log('Update already pending for product:', productId);
                     
-                    // Update the queued request
+                    // Update de queued request
                     this.updateQueue.set(productId, {
                         product,
                         quantity,
                         timestamp: now
                     });
-                    
                     return { success: true, message: 'Update wordt verwerkt...' };
                 }
 
                 return await this.executeQuantityUpdate(product, quantity);
-                
             } catch (error) {
                 console.error('Error in updateQuantityOptimistic:', error);
                 this.lastError = error.response?.data?.message || 'Failed to update quantity';
@@ -229,26 +314,34 @@ export const useCartStore = defineStore('cart', {
             }
         },
 
-        // Process queued updates
+        /**
+         * Verwerkt queued updates na debounce periode
+         * @param {number} productId - Product ID om te updaten
+         */
         async processQueuedUpdate(productId) {
             const queuedUpdate = this.updateQueue.get(productId);
             if (!queuedUpdate) return;
-            
-            // Remove from queue
+
+            // Remove van queue
             this.updateQueue.delete(productId);
-            
-            // Only process if not currently updating
+
+            // Alleen process als niet currently updating
             if (!this.pendingUpdates.has(productId)) {
                 await this.executeQuantityUpdate(queuedUpdate.product, queuedUpdate.quantity);
             }
         },
 
-        // Actual update execution
+        /**
+         * Voert daadwerkelijke quantity update uit (optimistic + API sync)
+         * @param {Object} product - Product object
+         * @param {number} quantity - Nieuwe quantity
+         * @returns {Object} Success/error response
+         */
         async executeQuantityUpdate(product, quantity) {
             const productId = product.product_id;
-            
+
             try {
-                // Mark as pending
+                // Mark als pending
                 this.pendingUpdates.add(productId);
 
                 // 1. Update UI immediately (optimistic)
@@ -256,55 +349,59 @@ export const useCartStore = defineStore('cart', {
                 if (itemIndex !== -1) {
                     const oldQuantity = this.items[itemIndex].quantity;
                     const priceDiff = (quantity - oldQuantity) * this.items[itemIndex].price;
-                    
+
                     // Update item
                     this.items[itemIndex].quantity = quantity;
                     this.items[itemIndex].line_total = quantity * this.items[itemIndex].price;
-                    
+
                     // Update totals
                     this.totals.total_items = this.totals.total_items - oldQuantity + quantity;
                     this.totals.subtotal = Math.max(0, (this.totals.subtotal || 0) + priceDiff);
                     this.totals.total = Math.max(0, (this.totals.total || 0) + priceDiff);
                 }
 
-                // 2. Sync with server
+                // 2. Sync met server
                 const response = await axios.patch(`/cart/${productId}`, {
                     quantity: quantity
                 });
-                
-                // Update with server totals (more accurate)
+
+                // Update met server totals (meer accuraat)
                 if (response.data.totals) {
                     this.totals = response.data.totals;
                 }
-                
-                // Optional: Refresh cart data occasionally for integrity
-                if (Math.random() < 0.05) { // 5% chance
+
+                // Optional: Refresh cart data af en toe voor integrity
+                if (Math.random() < 0.05) { // 5% kans
                     setTimeout(() => this.loadCart(true), 1000);
                 }
-                
-                return { 
-                    success: true, 
-                    message: response.data.message || 'Aantal bijgewerkt' 
+
+                return {
+                    success: true,
+                    message: response.data.message || 'Aantal bijgewerkt'
                 };
-                
             } catch (error) {
                 console.error('API error during update:', error);
                 
                 // Revert optimistic changes
                 await this.loadCart(true);
-                
                 throw error;
-                
             } finally {
                 this.pendingUpdates.delete(productId);
                 this.lastUpdateTime.set(productId, Date.now());
             }
         },
 
+        // ========== ITEM REMOVAL MET OPTIMISTIC UPDATES ==========
+
+        /**
+         * Verwijdert item uit cart met optimistic update
+         * @param {Object} product - Product object om te verwijderen
+         * @returns {Object} Success/error response
+         */
         async removeFromCartOptimistic(product) {
             try {
                 this.lastError = null;
-                
+
                 if (!product || !product.product_id) {
                     throw new Error('Invalid product data for removal');
                 }
@@ -312,14 +409,14 @@ export const useCartStore = defineStore('cart', {
                 const productId = product.product_id;
                 this.pendingUpdates.add(productId);
 
-                // 1. FIRST: Remove from UI optimistically
+                // 1. EERST: Remove van UI optimistically
                 const itemIndex = this.items.findIndex(item => item.product_id === productId);
                 if (itemIndex !== -1) {
                     const removedItem = this.items[itemIndex];
-                    
-                    // Remove item from array
+
+                    // Remove item van array
                     this.items.splice(itemIndex, 1);
-                    
+
                     // Update totals
                     this.totals.total_items -= removedItem.quantity;
                     this.totals.subtotal -= (removedItem.price * removedItem.quantity);
@@ -327,40 +424,42 @@ export const useCartStore = defineStore('cart', {
                     this.totals.items_count = this.items.length;
                 }
 
-                // 2. THEN: Sync with server
+                // 2. DAN: Sync met server
                 try {
                     const response = await axios.delete(`/cart/${productId}`);
                     
                     if (response.data.totals) {
                         this.totals = response.data.totals;
                     }
-                    
-                    return { 
-                        success: true, 
-                        message: response.data.message || 'Product verwijderd uit winkelwagen' 
+
+                    return {
+                        success: true,
+                        message: response.data.message || 'Product verwijderd uit winkelwagen'
                     };
-                    
                 } catch (apiError) {
                     console.error('API error, reverting removal:', apiError);
                     
-                    // Revert by reloading cart
+                    // Revert door cart te herladen
                     await this.loadCart(true);
                     throw apiError;
                 }
-                
             } catch (error) {
                 console.error('Error removing from cart:', error);
                 this.lastError = error.response?.data?.message || 'Failed to remove item from cart';
-                
                 const message = error.response?.data?.message || 'Kon product niet verwijderen uit winkelwagen';
                 return { success: false, message };
-                
             } finally {
                 this.pendingUpdates.delete(product.product_id);
             }
         },
 
-        // Improved increment with anti-spam
+        // ========== QUANTITY INCREMENT/DECREMENT MET ANTI-SPAM ==========
+
+        /**
+         * Verhoogt quantity met 1 (met anti-spam beveiliging)
+         * @param {Object} product - Product object om te verhogen
+         * @returns {Object} Success/error response
+         */
         async incrementQuantity(product) {
             if (!product) {
                 return { success: false, message: 'Invalid product' };
@@ -368,67 +467,78 @@ export const useCartStore = defineStore('cart', {
 
             const currentQuantity = parseInt(product.quantity) || 0;
             const stockQuantity = parseInt(product.stock_quantity) || 999;
-            
+
             if (currentQuantity >= stockQuantity) {
-                return { 
-                    success: false, 
-                    message: `Maximaal ${stockQuantity} stuks beschikbaar` 
+                return {
+                    success: false,
+                    message: `Maximaal ${stockQuantity} stuks beschikbaar`
                 };
             }
 
-            // Prevent rapid fire clicks
+            // Voorkom rapid fire clicks
             const productId = product.product_id;
             const now = Date.now();
             const lastClick = this.lastUpdateTime.get(`click_${productId}`) || 0;
-            
+
             if (now - lastClick < 100) { // 100ms anti-spam
                 console.log('Too fast clicking detected, ignoring');
                 return { success: true, message: 'Te snel geklikt, even wachten...' };
             }
-            
+
             this.lastUpdateTime.set(`click_${productId}`, now);
-            
             return await this.updateQuantityOptimistic(product, currentQuantity + 1);
         },
 
+        /**
+         * Verlaagt quantity met 1 (met anti-spam beveiliging)
+         * @param {Object} product - Product object om te verlagen
+         * @returns {Object} Success/error response
+         */
         async decrementQuantity(product) {
             if (!product) {
                 return { success: false, message: 'Invalid product' };
             }
 
             const currentQuantity = parseInt(product.quantity) || 0;
-            
-            // Prevent rapid fire clicks
+
+            // Voorkom rapid fire clicks
             const productId = product.product_id;
             const now = Date.now();
             const lastClick = this.lastUpdateTime.get(`click_${productId}`) || 0;
-            
+
             if (now - lastClick < 100) { // 100ms anti-spam
                 console.log('Too fast clicking detected, ignoring');
                 return { success: true, message: 'Te snel geklikt, even wachten...' };
             }
-            
+
             this.lastUpdateTime.set(`click_${productId}`, now);
-            
+
             if (currentQuantity <= 1) {
                 return await this.removeFromCartOptimistic(product);
             }
-            
+
             return await this.updateQuantityOptimistic(product, currentQuantity - 1);
         },
 
+        // ========== PRODUCT TOEVOEGEN ==========
+
+        /**
+         * Voegt nieuw product toe aan cart
+         * @param {Object} product - Product object om toe te voegen
+         * @returns {Object} Success/error response
+         */
         async addToCart(product) {
             try {
                 this.lastError = null;
-                
+
                 if (!product || !product.id) {
                     throw new Error('Invalid product data');
                 }
 
                 if (product.stock_quantity !== undefined && product.stock_quantity <= 0) {
-                    return { 
-                        success: false, 
-                        message: 'Dit product is niet op voorraad' 
+                    return {
+                        success: false,
+                        message: 'Dit product is niet op voorraad'
                     };
                 }
 
@@ -436,36 +546,40 @@ export const useCartStore = defineStore('cart', {
 
                 const response = await axios.post('/cart/add', {
                     product_id: parseInt(product.id),
-                    quantity:  requestedQuantity
+                    quantity: requestedQuantity
                 });
-                
+
                 if (response.data.totals) {
                     this.totals = response.data.totals;
                 }
-                
-                // Only refresh cart for add operations to ensure consistency
+
+                // Alleen refresh cart voor add operations om consistency te waarborgen
                 await this.loadCart(true);
-                
-                return { 
-                    success: true, 
-                    message: response.data.message || 'Product toegevoegd aan winkelwagen' 
+
+                return {
+                    success: true,
+                    message: response.data.message || 'Product toegevoegd aan winkelwagen'
                 };
-                
             } catch (error) {
                 console.error('Error adding to cart:', error);
                 this.lastError = error.response?.data?.message || 'Failed to add item to cart';
-                
                 const message = error.response?.data?.message || error.message || 'Kon product niet toevoegen aan winkelwagen';
                 return { success: false, message };
             }
         },
 
+        // ========== CART CLEARING ==========
+
+        /**
+         * Leegt volledige winkelwagen
+         * @returns {Object} Success/error response
+         */
         async clearCart() {
             try {
                 this.lastError = null;
-                
+
                 const response = await axios.delete('/cart');
-                
+
                 this.items = [];
                 this.totals = {
                     subtotal: 0,
@@ -474,36 +588,39 @@ export const useCartStore = defineStore('cart', {
                     items_count: 0
                 };
                 this.lastUpdated = Date.now();
-                
-                return { 
-                    success: true, 
-                    message: response.data.message || 'Winkelwagen geleegd' 
+
+                return {
+                    success: true,
+                    message: response.data.message || 'Winkelwagen geleegd'
                 };
-                
             } catch (error) {
                 console.error('Error clearing cart:', error);
                 this.lastError = error.response?.data?.message || 'Failed to clear cart';
-                
-                return { 
-                    success: false, 
-                    message: 'Kon winkelwagen niet legen' 
+                return {
+                    success: false,
+                    message: 'Kon winkelwagen niet legen'
                 };
             }
         },
 
-        // NEW: Order-related methods
+        // ========== ORDER INTEGRATIE METHODEN ==========
+
+        /**
+         * Bereidt cart voor op checkout proces met validatie
+         * @returns {Object} Success/error response
+         */
         async prepareForCheckout() {
             try {
-                // Validate cart before checkout
+                // Valideer cart voor checkout
                 await this.validateCart();
-                
+
                 if (!this.hasItems) {
                     throw new Error('Winkelwagen is leeg');
                 }
 
-                // Check stock for all items
-                const stockIssues = this.items.filter(item => 
-                    item.stock_quantity !== undefined && 
+                // Check stock voor alle items
+                const stockIssues = this.items.filter(item =>
+                    item.stock_quantity !== undefined &&
                     item.quantity > item.stock_quantity
                 );
 
@@ -512,34 +629,48 @@ export const useCartStore = defineStore('cart', {
                 }
 
                 return { success: true };
-                
             } catch (error) {
                 this.lastError = error.message;
                 return { success: false, message: error.message };
             }
         },
 
+        /**
+         * Markeert order als in verwerking
+         * @param {number|null} orderId - Optional order ID
+         */
         async markOrderProcessing(orderId = null) {
             this.orderProcessing = true;
             this.lastOrderId = orderId;
             this.orderSuccess = false;
         },
 
+        /**
+         * Markeert order als succesvol voltooid
+         * @param {number} orderId - ID van succesvolle order
+         */
         async markOrderSuccess(orderId) {
             this.orderProcessing = false;
             this.orderSuccess = true;
             this.lastOrderId = orderId;
-            
-            // Clear cart after successful order
+
+            // Clear cart na succesvolle order
             await this.clearCartAfterOrder();
         },
 
+        /**
+         * Markeert order als gefaald
+         */
         async markOrderFailed() {
             this.orderProcessing = false;
             this.orderSuccess = false;
-            // Don't clear cart on failure so user can retry
+            // Geen cart clearing bij failure zodat user kan retry
         },
 
+        /**
+         * Leegt cart na succesvolle order placement
+         * @returns {Object} Success/error response
+         */
         async clearCartAfterOrder() {
             try {
                 // Clear local state immediately
@@ -550,30 +681,36 @@ export const useCartStore = defineStore('cart', {
                     total_items: 0,
                     items_count: 0
                 };
-                
-                // Clear any pending updates
+
+                // Clear alle pending updates
                 this.pendingUpdates.clear();
                 this.updateQueue.clear();
                 this.lastUpdateTime.clear();
-                
                 this.lastUpdated = Date.now();
-                
+
                 console.log('Cart cleared after successful order');
-                
                 return { success: true };
-                
             } catch (error) {
                 console.error('Error clearing cart after order:', error);
                 return { success: false, message: 'Fout bij leegmaken winkelwagen' };
             }
         },
 
+        /**
+         * Reset order state naar default
+         */
         resetOrderState() {
             this.orderProcessing = false;
             this.orderSuccess = false;
             this.lastOrderId = null;
         },
 
+        // ========== SORTING FUNCTIONALITEIT ==========
+
+        /**
+         * Stelt sort criteria in met direction toggle
+         * @param {string} sortBy - Sort veld: 'name', 'price', 'quantity'
+         */
         setSorting(sortBy) {
             if (!['name', 'price', 'quantity'].includes(sortBy)) {
                 console.warn('Invalid sort option:', sortBy);
@@ -581,27 +718,40 @@ export const useCartStore = defineStore('cart', {
             }
 
             if (this.sortBy === sortBy) {
+                // Toggle direction als zelfde veld
                 this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
             } else {
+                // Nieuwe sort veld, start met asc
                 this.sortBy = sortBy;
                 this.sortDirection = 'asc';
             }
         },
 
+        /**
+         * Toggle sort direction
+         */
         toggleSortDirection() {
             this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
         },
 
-        // Enhanced method to refresh cart data from server
+        // ========== REFRESH EN VALIDATIE ==========
+
+        /**
+         * Enhanced methode om cart data te refreshen van server
+         * @returns {Promise} Promise van loadCart operatie
+         */
         async refreshCart() {
             return await this.loadCart(true);
         },
 
-        // Method to validate cart integrity (useful for checkout)
+        /**
+         * Valideert cart integrity (nuttig voor checkout)
+         * @returns {Object} Validatie resultaat met cart data
+         */
         async validateCart() {
             try {
                 const response = await axios.get('/api/checkout/cart-data');
-                
+
                 if (response.data.cartItems) {
                     this.items = this.processCartItems(response.data.cartItems);
                     this.totals = response.data.totals;
@@ -613,7 +763,6 @@ export const useCartStore = defineStore('cart', {
                     hasItems: response.data.hasItems,
                     items: this.items
                 };
-                
             } catch (error) {
                 console.error('Error validating cart:', error);
                 return {
@@ -623,7 +772,14 @@ export const useCartStore = defineStore('cart', {
             }
         },
 
-        // Utility methods
+        // ========== UTILITY METHODEN ==========
+
+        /**
+         * Controleert of product toegevoegd kan worden aan cart
+         * @param {Object} product - Product object om te controleren
+         * @param {number} requestedQuantity - Gewenste quantity (default: 1)
+         * @returns {Object} Object met canAdd boolean en reason
+         */
         canAddProduct(product, requestedQuantity = 1) {
             if (!product) return { canAdd: false, reason: 'Invalid product' };
             
@@ -634,24 +790,37 @@ export const useCartStore = defineStore('cart', {
             if (product.stock_quantity !== undefined && requestedQuantity > product.stock_quantity) {
                 return { canAdd: false, reason: `Only ${product.stock_quantity} available` };
             }
-
+            
             return { canAdd: true };
         },
 
+        /**
+         * Haalt quantity op voor specifiek product ID
+         * @param {number} productId - Product ID om te zoeken
+         * @returns {number} Quantity in cart of 0
+         */
         getProductQuantity(productId) {
-            const item = this.items.find(item => 
+            const item = this.items.find(item =>
                 item.product_id === parseInt(productId) || item.id === parseInt(productId)
             );
             return item ? parseInt(item.quantity) : 0;
         },
 
+        /**
+         * Controleert of product in cart aanwezig is
+         * @param {number} productId - Product ID om te controleren
+         * @returns {boolean} True als product in cart zit
+         */
         isProductInCart(productId) {
-            return this.items.some(item => 
+            return this.items.some(item =>
                 item.product_id === parseInt(productId) || item.id === parseInt(productId)
             );
         },
 
-        // Get cart summary for display
+        /**
+         * Haalt cart summary op voor display doeleinden
+         * @returns {Object} Cart summary object met alle relevante data
+         */
         getCartSummary() {
             return {
                 itemCount: this.itemsCount,

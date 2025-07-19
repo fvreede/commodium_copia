@@ -1,11 +1,27 @@
-<!-- Pages/Checkout/Step2Review.vue -->
+<!--Pages/Checkout/Step2Review.vue-->
+/**
+ * Bestandsnaam: Step2Review.vue (Pages/Checkout)
+ * Auteur: Fabio Vreede
+ * Versie: v1.0.3
+ * Datum: 2025-07-01
+ * Tijd: 01:25:04
+ * Doel: Dit component toont de tweede stap van het checkout proces waar gebruikers hun complete
+ *       bestelling kunnen controleren voordat ze naar de bevestiging gaan. Bevat delivery informatie,
+ *       order summary, validatie checks en navigatie naar de volgende stap.
+ */
+
 <script setup>
+// Layout en component imports
 import CheckoutLayout from '@/Layouts/Checkout/CheckoutLayout.vue'
 import OrderSummary from '@/Components/Checkout/OrderSummary.vue'
 import PrimaryButton from '@/Components/PrimaryButton.vue'
 import SecondaryButton from '@/Components/SecondaryButton.vue'
+
+// Vue en Inertia imports
 import { router } from '@inertiajs/vue3'
 import { ref, computed, onMounted } from 'vue'
+
+// Heroicons imports voor UI iconen
 import { 
     PencilIcon, 
     MapPinIcon, 
@@ -16,39 +32,52 @@ import {
     ArrowLeftIcon,
     ArrowRightIcon
 } from '@heroicons/vue/24/outline'
+
+// Store imports
 import { useCartStore } from '@/Stores/cart'
 
-// Props from Laravel
+// ========== PROPS DEFINITIE ==========
+
+// Props van Laravel server met checkout review data
 const props = defineProps({
-    deliverySlots: {
+    deliverySlots: {                           // Array van beschikbare bezorgtijdsloten
         type: Array,
         default: () => []
     },
-    deliveryAddress: {
+    deliveryAddress: {                         // Geselecteerd bezorgadres object
         type: Object,
         default: null
     },
-    selectedSlotId: {
+    selectedSlotId: {                         // ID van geselecteerd tijdslot
         type: Number,
         default: null
     },
-    deliveryFee: {
+    deliveryFee: {                            // Bezorgkosten voor geselecteerd slot
         type: Number,
         default: 0
     },
-    user: {
+    user: {                                   // Gebruiker informatie
         type: Object,
         default: null
     }
 })
 
-// Initialize cart store
+// ========== STORE INITIALISATIE ==========
+
+// Cart store voor winkelwagen functionaliteiten
 const cartStore = useCartStore()
 
-// Reactive state
-const isNavigating = ref(false)
+// ========== REACTIVE STATE ==========
 
-// Computed properties
+// Navigation loading state
+const isNavigating = ref(false)               // Loading state voor navigatie naar bevestiging
+
+// ========== COMPUTED PROPERTIES ==========
+
+/**
+ * Controleert of gebruiker een geldig bezorgadres heeft ingesteld
+ * @returns {boolean} True als alle vereiste adres velden aanwezig zijn
+ */
 const hasValidAddress = computed(() => {
     return props.deliveryAddress && 
            props.deliveryAddress.street && 
@@ -56,9 +85,14 @@ const hasValidAddress = computed(() => {
            props.deliveryAddress.city
 })
 
+/**
+ * Vindt details van geselecteerd tijdslot door alle beschikbare slots te doorzoeken
+ * @returns {Object|null} Slot details object of null als niet gevonden
+ */
 const selectedSlotDetails = computed(() => {
     if (!props.selectedSlotId) return null
     
+    // Zoek door alle dagen en slots om details te vinden
     for (const day of props.deliverySlots) {
         const slot = day.slots ? day.slots.find(s => s.id === props.selectedSlotId) : null
         if (slot) {
@@ -72,10 +106,18 @@ const selectedSlotDetails = computed(() => {
     return null
 })
 
+/**
+ * Berekent totaal order bedrag inclusief bezorgkosten
+ * @returns {number} Totaal order bedrag
+ */
 const orderTotal = computed(() => {
     return cartStore.subtotal + props.deliveryFee
 })
 
+/**
+ * Bepaalt of gebruiker door kan naar bevestiging stap
+ * @returns {boolean} True als alle vereisten vervuld zijn
+ */
 const canProceedToConfirm = computed(() => {
     return cartStore.hasItems && 
            hasValidAddress.value && 
@@ -83,6 +125,10 @@ const canProceedToConfirm = computed(() => {
            !hasStockIssues.value
 })
 
+/**
+ * Controleert op voorraadproblemen in winkelwagen items
+ * @returns {boolean} True als er voorraadproblemen zijn
+ */
 const hasStockIssues = computed(() => {
     return cartStore.sortedItems.some(item => 
         item.stock_quantity !== undefined && 
@@ -90,6 +136,10 @@ const hasStockIssues = computed(() => {
     )
 })
 
+/**
+ * Genereert lijst van validatie problemen voor bestelling
+ * @returns {Array} Array van probleem beschrijvingen
+ */
 const validationIssues = computed(() => {
     const issues = []
     
@@ -112,11 +162,17 @@ const validationIssues = computed(() => {
     return issues
 })
 
-// Methods
+// ========== UTILITY METHODS ==========
+
+/**
+ * Formatteert bezorgadres naar array van display lijnen
+ * @returns {Array} Array van geformatteerde adres lijnen
+ */
 const formatAddress = () => {
     const addr = props.deliveryAddress
     let lines = []
 
+    // Combineer straat, huisnummer en toevoeging
     let streetLine = addr.street
     if (addr.house_number) streetLine += ` ${addr.house_number}`
     if (addr.addition) streetLine += `, ${addr.addition}`
@@ -127,21 +183,35 @@ const formatAddress = () => {
     return lines
 }
 
+/**
+ * Formatteert geselecteerd bezorgmoment naar leesbare string
+ * @returns {string} Geformatteerd bezorgmoment of fallback tekst
+ */
 const formatDeliverySlot = () => {
     if (!selectedSlotDetails.value) return 'Geen bezorgmoment geselecteerd'
     
     return `${selectedSlotDetails.value.day_name} ${selectedSlotDetails.value.formatted_date}`
 }
 
-// Navigation methods
+// ========== NAVIGATIE METHODS ==========
+
+/**
+ * Ga terug naar delivery stap voor wijzigingen
+ */
 const goBackToDelivery = () => {
     router.get('/checkout/delivery')
 }
 
+/**
+ * Ga terug naar product catalogus voor verder winkelen
+ */
 const goBackToProducts = () => {
     router.get('/categories')
 }
 
+/**
+ * Ga door naar bevestiging stap van checkout
+ */
 const proceedToConfirm = () => {
     if (!canProceedToConfirm.value || isNavigating.value) return
     
@@ -154,17 +224,21 @@ const proceedToConfirm = () => {
     })
 }
 
-// Load cart on mount
+// ========== LIFECYCLE HOOKS ==========
+
+/**
+ * Component mounted - laad cart en valideer checkout state
+ */
 onMounted(async () => {
     await cartStore.loadCart()
     
-    // Redirect if no items in cart
+    // Redirect naar cart als geen items
     if (!cartStore.hasItems) {
         router.get('/cart')
         return
     }
     
-    // Redirect to delivery step if essential data is missing
+    // Redirect naar delivery stap als essentiële data ontbreekt
     if (!hasValidAddress.value || !selectedSlotDetails.value) {
         router.get('/checkout/delivery')
         return
@@ -175,24 +249,30 @@ onMounted(async () => {
 <template>
     <CheckoutLayout :current-step="2" title="Bestelling controleren">
         <div class="max-w-4xl mx-auto space-y-6">
-            <!-- Progress Bar -->
+            
+            <!-- Progress Bar Sectie -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
                 <div class="flex items-center justify-between overflow-x-auto">
                     <div class="flex items-center space-x-3 sm:space-x-4 min-w-max">
+                        <!-- Bezorgmoment Stap (Voltooid) -->
                         <div class="flex items-center space-x-2">
                             <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
                                 <CheckCircleIcon class="w-5 h-5 text-white" />
                             </div>
                             <span class="text-sm font-medium text-gray-900 hidden sm:inline">Bezorgmoment</span>
                         </div>
+                        <!-- Progress Lijn -->
                         <div class="w-8 sm:w-12 h-px bg-green-300"></div>
+                        <!-- Controleren Stap (Actief) -->
                         <div class="flex items-center space-x-2">
                             <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
                                 <span class="text-sm font-bold text-white">3</span>
                             </div>
                             <span class="text-sm font-medium text-gray-900 hidden sm:inline">Controleren</span>
                         </div>
+                        <!-- Progress Lijn -->
                         <div class="w-8 sm:w-12 h-px bg-gray-200"></div>
+                        <!-- Bevestigen Stap (Toekomstig) -->
                         <div class="flex items-center space-x-2">
                             <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
                                 <span class="text-sm font-bold text-gray-600">4</span>
@@ -203,23 +283,27 @@ onMounted(async () => {
                 </div>
             </div>
 
-            <!-- Validation Issues Alert -->
+            <!-- Validatie Problemen Alert -->
             <div v-if="validationIssues.length > 0" class="bg-red-50 border-2 border-red-200 rounded-xl p-4 sm:p-6">
                 <div class="flex flex-col sm:flex-row sm:items-start">
+                    <!-- Alert Icoon -->
                     <div class="flex-shrink-0 mx-auto sm:mx-0 mb-4 sm:mb-0">
                         <div class="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center">
                             <ExclamationTriangleIcon class="h-5 w-5 text-white" />
                         </div>
                     </div>
+                    <!-- Alert Content -->
                     <div class="sm:ml-4 flex-1 text-center sm:text-left">
                         <h3 class="text-lg font-semibold text-red-900 mb-2">
                             Controleer je bestelling
                         </h3>
+                        <!-- Lijst van Problemen -->
                         <div class="text-red-800 mb-4">
                             <ul class="space-y-1">
                                 <li v-for="issue in validationIssues" :key="issue" class="text-sm">• {{ issue }}</li>
                             </ul>
                         </div>
+                        <!-- Terug Knop -->
                         <PrimaryButton @click="goBackToDelivery" class="w-full sm:w-auto">
                             Terug naar vorige stap
                         </PrimaryButton>
@@ -227,11 +311,13 @@ onMounted(async () => {
                 </div>
             </div>
 
-            <!-- Main Content -->
+            <!-- Hoofdinhoud Grid Layout -->
             <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                <!-- Left column: Order details -->
+                
+                <!-- Linker Kolom: Order Details -->
                 <div class="lg:col-span-3 space-y-6">
-                    <!-- Delivery Information Summary -->
+                    
+                    <!-- Bezorginformatie Samenvatting -->
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                         <div class="bg-blue-50 px-4 sm:px-6 py-4 border-b border-gray-200">
                             <h3 class="text-lg sm:text-xl font-semibold text-gray-900 flex items-center">
@@ -243,7 +329,8 @@ onMounted(async () => {
                         </div>
                         
                         <div class="p-4 sm:p-6 space-y-4">
-                            <!-- Delivery Address -->
+                            
+                            <!-- Bezorgadres Review -->
                             <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-3 sm:space-y-0">
                                 <div class="flex items-start flex-1">
                                     <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
@@ -259,13 +346,14 @@ onMounted(async () => {
                                         </p>
                                     </div>
                                 </div>
+                                <!-- Wijzig Adres Knop -->
                                 <SecondaryButton @click="goBackToDelivery" class="w-full sm:w-auto sm:ml-4">
                                     <PencilIcon class="w-4 h-4 mr-1.5" />
                                     Wijzigen
                                 </SecondaryButton>
                             </div>
 
-                            <!-- Delivery Time -->
+                            <!-- Bezorgmoment Review -->
                             <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-3 sm:space-y-0">
                                 <div class="flex items-start flex-1">
                                     <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
@@ -279,14 +367,17 @@ onMounted(async () => {
                                         ]">
                                             {{ formatDeliverySlot() }}
                                         </p>
+                                        <!-- Tijdslot Details -->
                                         <p v-if="selectedSlotDetails" class="text-sm font-medium text-gray-900">
                                             {{ selectedSlotDetails.time_display }}
                                         </p>
+                                        <!-- Bezorgkosten Info -->
                                         <p v-if="selectedSlotDetails" class="text-xs text-gray-500 mt-1">
                                             💰 Bezorgkosten: €{{ props.deliveryFee.toFixed(2) }}
                                         </p>
                                     </div>
                                 </div>
+                                <!-- Wijzig Tijdslot Knop -->
                                 <SecondaryButton @click="goBackToDelivery" class="w-full sm:w-auto sm:ml-4">
                                     <PencilIcon class="w-4 h-4 mr-1.5" />
                                     Wijzigen
@@ -304,9 +395,10 @@ onMounted(async () => {
                     />
                 </div>
 
-                <!-- Right column: Actions and summary -->
+                <!-- Rechter Kolom: Acties en Samenvatting -->
                 <div class="lg:col-span-2 space-y-6">
-                    <!-- Order Total Card -->
+                    
+                    <!-- Order Totaal Card -->
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                         <div class="bg-green-50 px-4 sm:px-6 py-4 border-b border-gray-200">
                             <h3 class="text-lg font-semibold text-gray-900 flex items-center">
@@ -318,6 +410,7 @@ onMounted(async () => {
                         </div>
                         
                         <div class="p-4 sm:p-6">
+                            <!-- Prijs Breakdown -->
                             <div class="space-y-3">
                                 <div class="flex justify-between text-sm">
                                     <span class="text-gray-600">
@@ -337,7 +430,7 @@ onMounted(async () => {
                                 </div>
                             </div>
 
-                            <!-- Delivery info recap -->
+                            <!-- Bezorgtijd Recap -->
                             <div v-if="selectedSlotDetails" class="mt-6 pt-4 border-t border-gray-200">
                                 <div class="text-center p-3 bg-blue-50 rounded-lg">
                                     <div class="text-lg font-bold text-blue-600">{{ selectedSlotDetails.time_display }}</div>
@@ -347,19 +440,21 @@ onMounted(async () => {
                         </div>
                     </div>
 
-                    <!-- Actions Card -->
+                    <!-- Acties Card -->
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                         <div class="bg-gray-50 px-4 sm:px-6 py-4 border-b border-gray-200">
                             <h3 class="text-lg font-semibold text-gray-900">Acties</h3>
                         </div>
                         
                         <div class="p-4 sm:p-6 space-y-4">
-                            <!-- Continue to Confirmation -->
+                            
+                            <!-- Verder naar Bevestiging Knop -->
                             <PrimaryButton 
                                 @click="proceedToConfirm"
                                 :disabled="!canProceedToConfirm || isNavigating"
                                 class="w-full justify-center text-base font-medium py-3 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
+                                <!-- Loading State -->
                                 <span v-if="isNavigating" class="inline-flex items-center">
                                     <svg class="animate-spin -ml-1 mr-3 h-4 w-4" fill="none" viewBox="0 0 24 24">
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -367,14 +462,16 @@ onMounted(async () => {
                                     </svg>
                                     Laden...
                                 </span>
+                                <!-- Normale State -->
                                 <span v-else class="flex items-center justify-center">
                                     Naar bevestiging
                                     <ArrowRightIcon class="ml-2 h-4 w-4" />
                                 </span>
                             </PrimaryButton>
 
-                            <!-- Navigation buttons -->
+                            <!-- Navigatie Knoppen Sectie -->
                             <div class="space-y-4 pt-4 border-t border-gray-200">
+                                <!-- Terug naar Bezorgmoment -->
                                 <SecondaryButton 
                                     @click="goBackToDelivery"
                                     class="w-full justify-center"
@@ -383,6 +480,7 @@ onMounted(async () => {
                                     Terug naar bezorgmoment
                                 </SecondaryButton>
                                 
+                                <!-- Verder Winkelen -->
                                 <SecondaryButton 
                                     @click="goBackToProducts"
                                     class="w-full justify-center"
@@ -394,7 +492,7 @@ onMounted(async () => {
                         </div>
                     </div>
 
-                    <!-- Help Card -->
+                    <!-- Hulp Card -->
                     <div class="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 sm:p-6">
                         <h4 class="text-sm font-semibold text-blue-900 mb-2 flex items-center">
                             <div class="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center mr-2">
@@ -405,6 +503,7 @@ onMounted(async () => {
                         <p class="text-sm text-blue-700 mb-3">
                             Controleer alle gegevens voordat je verder gaat.
                         </p>
+                        <!-- Contact Knop -->
                         <SecondaryButton class="text-sm">
                             Contact opnemen
                         </SecondaryButton>
@@ -416,6 +515,7 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+/* Loading spinner animatie */
 @keyframes spin {
     to { 
         transform: rotate(360deg); 
@@ -426,7 +526,7 @@ onMounted(async () => {
     animation: spin 1s linear infinite;
 }
 
-/* Remove focus rings */
+/* Focus ring styling */
 button:focus-visible {
     outline: none;
 }

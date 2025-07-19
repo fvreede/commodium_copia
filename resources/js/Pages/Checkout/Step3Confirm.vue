@@ -1,11 +1,26 @@
-<!-- Pages/Checkout/Step3Confirm.vue -->
+/**
+ * Bestandsnaam: Step3Confirm.vue (Pages/Checkout)
+ * Auteur: Fabio Vreede
+ * Versie: v1.0.3
+ * Datum: 2025-07-01
+ * Tijd: 01:25:04
+ * Doel: Dit component toont de finale stap van het checkout proces waar gebruikers hun bestelling
+ *       definitief bevestigen en plaatsen. Bevat payment method selectie, order notes, terms acceptance,
+ *       comprehensive validation, order processing met error handling en success redirection.
+ */
+
 <script setup>
+// Layout en component imports
 import CheckoutLayout from '@/Layouts/Checkout/CheckoutLayout.vue'
 import OrderSummary from '@/Components/Checkout/OrderSummary.vue'
 import PrimaryButton from '@/Components/PrimaryButton.vue'
 import SecondaryButton from '@/Components/SecondaryButton.vue'
+
+// Vue en Inertia imports
 import { router } from '@inertiajs/vue3'
 import { ref, computed, onMounted } from 'vue'
+
+// Heroicons imports voor UI iconen
 import { 
     CheckCircleIcon,
     ExclamationTriangleIcon,
@@ -17,45 +32,60 @@ import {
     ArrowLeftIcon,
     LockClosedIcon
 } from '@heroicons/vue/24/outline'
+
+// Store en API imports
 import { useCartStore } from '@/Stores/cart'
 import axios from 'axios'
 
-// Props from Laravel
+// ========== PROPS DEFINITIE ==========
+
+// Props van Laravel server met finale checkout data
 const props = defineProps({
-    deliverySlots: {
+    deliverySlots: {                           // Array van beschikbare bezorgtijdsloten
         type: Array,
         default: () => []
     },
-    deliveryAddress: {
+    deliveryAddress: {                         // Definitief bezorgadres object
         type: Object,
         default: null
     },
-    selectedSlotId: {
+    selectedSlotId: {                         // ID van definitief geselecteerd tijdslot
         type: Number,
         default: null
     },
-    deliveryFee: {
+    deliveryFee: {                            // Finale bezorgkosten
         type: Number,
         default: 0
     },
-    user: {
+    user: {                                   // Gebruiker informatie
         type: Object,
         default: null
     }
 })
 
-// Initialize cart store
+// ========== STORE INITIALISATIE ==========
+
+// Cart store voor winkelwagen functionaliteiten en order processing
 const cartStore = useCartStore()
 
-// Reactive state
-const orderNotes = ref('')
-const isProcessingOrder = ref(false)
-const acceptedTerms = ref(false)
-const selectedPaymentMethod = ref('ideal')
-const showConfirmModal = ref(false)
-const orderError = ref('')
+// ========== REACTIVE STATE ==========
 
-// Computed properties
+// Order form state
+const orderNotes = ref('')                    // Optionele opmerkingen van klant
+const isProcessingOrder = ref(false)          // Loading state voor order placement
+const acceptedTerms = ref(false)              // Terms & conditions acceptatie
+const selectedPaymentMethod = ref('ideal')    // Geselecteerde betaalmethode
+
+// UI state
+const showConfirmModal = ref(false)           // Finale bevestiging modal
+const orderError = ref('')                    // Error bericht voor order placement
+
+// ========== COMPUTED PROPERTIES ==========
+
+/**
+ * Controleert of gebruiker een geldig bezorgadres heeft ingesteld
+ * @returns {boolean} True als alle vereiste adres velden aanwezig zijn
+ */
 const hasValidAddress = computed(() => {
     return props.deliveryAddress && 
            props.deliveryAddress.street && 
@@ -63,9 +93,14 @@ const hasValidAddress = computed(() => {
            props.deliveryAddress.city
 })
 
+/**
+ * Vindt details van geselecteerd tijdslot door alle beschikbare slots te doorzoeken
+ * @returns {Object|null} Slot details object of null als niet gevonden
+ */
 const selectedSlotDetails = computed(() => {
     if (!props.selectedSlotId) return null
     
+    // Zoek door alle dagen en slots om details te vinden
     for (const day of props.deliverySlots) {
         const slot = day.slots ? day.slots.find(s => s.id === props.selectedSlotId) : null
         if (slot) {
@@ -79,10 +114,18 @@ const selectedSlotDetails = computed(() => {
     return null
 })
 
+/**
+ * Berekent totaal order bedrag inclusief bezorgkosten
+ * @returns {number} Totaal order bedrag
+ */
 const orderTotal = computed(() => {
     return cartStore.subtotal + props.deliveryFee
 })
 
+/**
+ * Bepaalt of gebruiker order kan plaatsen gebaseerd op alle validatie criteria
+ * @returns {boolean} True als alle vereisten vervuld zijn
+ */
 const canPlaceOrder = computed(() => {
     return cartStore.hasItems && 
            hasValidAddress.value && 
@@ -93,6 +136,10 @@ const canPlaceOrder = computed(() => {
            !isProcessingOrder.value
 })
 
+/**
+ * Controleert op voorraadproblemen in winkelwagen items
+ * @returns {boolean} True als er voorraadproblemen zijn
+ */
 const hasStockIssues = computed(() => {
     return cartStore.sortedItems.some(item => 
         item.stock_quantity !== undefined && 
@@ -100,6 +147,10 @@ const hasStockIssues = computed(() => {
     )
 })
 
+/**
+ * Genereert lijst van validatie problemen voor bestelling
+ * @returns {Array} Array van probleem beschrijvingen
+ */
 const validationIssues = computed(() => {
     const issues = []
     
@@ -122,17 +173,26 @@ const validationIssues = computed(() => {
     return issues
 })
 
+// ========== STATIC DATA ==========
+
+// Beschikbare betaalmethoden configuratie
 const paymentMethods = [
     { id: 'ideal', name: 'iDEAL', icon: '🏦', description: 'Betaal direct via je bank' },
     { id: 'card', name: 'Creditcard', icon: '💳', description: 'Visa, Mastercard, American Express' },
     { id: 'cash', name: 'Contant', icon: '💵', description: 'Betaal bij levering' }
 ]
 
-// Methods
+// ========== UTILITY METHODS ==========
+
+/**
+ * Formatteert bezorgadres naar array van display lijnen
+ * @returns {Array} Array van geformatteerde adres lijnen
+ */
 const formatAddress = () => {
     const addr = props.deliveryAddress
     let lines = []
 
+    // Combineer straat, huisnummer en toevoeging
     let streetLine = addr.street
     if (addr.house_number) streetLine += ` ${addr.house_number}`
     if (addr.addition) streetLine += `, ${addr.addition}`
@@ -143,18 +203,30 @@ const formatAddress = () => {
     return lines
 }
 
+/**
+ * Formatteert geselecteerd bezorgmoment naar volledig leesbare string
+ * @returns {string} Geformatteerd bezorgmoment met dag, datum en tijd
+ */
 const formatDeliverySlot = () => {
     if (!selectedSlotDetails.value) return 'Geen bezorgmoment geselecteerd'
     
     return `${selectedSlotDetails.value.day_name} ${selectedSlotDetails.value.formatted_date} om ${selectedSlotDetails.value.time_display}`
 }
 
-// Order processing
+// ========== ORDER PROCESSING METHODS ==========
+
+/**
+ * Toon finale bevestiging modal voordat order geplaatst wordt
+ */
 const showConfirmOrderModal = () => {
     if (!canPlaceOrder.value) return
     showConfirmModal.value = true
 }
 
+/**
+ * Verwerk finale order placement na bevestiging
+ * Handles alle server communicatie en error scenarios
+ */
 const confirmOrder = async () => {
     if (!canPlaceOrder.value) return
     
@@ -163,9 +235,10 @@ const confirmOrder = async () => {
     orderError.value = ''
     
     try {
-        // Mark cart as processing order
+        // Markeer cart als processing in store
         await cartStore.markOrderProcessing()
         
+        // Verstuur order naar server
         const response = await axios.post('/checkout', {
             delivery_slot_id: props.selectedSlotId,
             order_notes: orderNotes.value,
@@ -175,14 +248,14 @@ const confirmOrder = async () => {
         if (response.data.success) {
             console.log('Order placed successfully:', response.data)
             
-            // Mark order as successful in cart store
+            // Markeer order als succesvol in cart store
             await cartStore.markOrderSuccess(response.data.order_id)
             
-            // Redirect to order success page
+            // Redirect naar success pagina
             if (response.data.redirect) {
                 window.location.href = response.data.redirect
             } else {
-                // Fallback redirect
+                // Fallback redirect naar success pagina
                 router.get(`/checkout/success/${response.data.order_id}`)
             }
         } else {
@@ -192,9 +265,10 @@ const confirmOrder = async () => {
     } catch (error) {
         console.error('Error processing order:', error)
         
-        // Mark order as failed in cart store
+        // Markeer order als gefaald in cart store
         await cartStore.markOrderFailed()
         
+        // Behandel verschillende error types met specifieke berichten
         if (error.response?.status === 422) {
             orderError.value = error.response.data.message || 'Controleer je bestelling en probeer opnieuw.'
         } else if (error.response?.status === 500) {
@@ -207,30 +281,44 @@ const confirmOrder = async () => {
     }
 }
 
+/**
+ * Annuleer order bevestiging en sluit modal
+ */
 const cancelConfirmOrder = () => {
     showConfirmModal.value = false
 }
 
-// Navigation
+// ========== NAVIGATIE METHODS ==========
+
+/**
+ * Ga terug naar review stap voor laatste wijzigingen
+ */
 const goBackToReview = () => {
     router.get('/checkout/review')
 }
 
+/**
+ * Ga terug naar product catalogus voor verder winkelen
+ */
 const goBackToProducts = () => {
     router.get('/categories')
 }
 
-// Load cart and validate on mount
+// ========== LIFECYCLE HOOKS ==========
+
+/**
+ * Component mounted - laad cart en valideer finale checkout state
+ */
 onMounted(async () => {
     await cartStore.loadCart()
     
-    // Redirect if no items in cart
+    // Redirect naar cart als geen items
     if (!cartStore.hasItems) {
         router.get('/cart')
         return
     }
     
-    // Redirect to previous steps if essential data is missing
+    // Redirect naar eerdere stappen als essentiële data ontbreekt
     if (!hasValidAddress.value || !selectedSlotDetails.value) {
         router.get('/checkout/delivery')
         return
@@ -241,24 +329,30 @@ onMounted(async () => {
 <template>
     <CheckoutLayout :current-step="3" title="Bestelling bevestigen">
         <div class="max-w-4xl mx-auto space-y-6">
-            <!-- Progress Bar -->
+            
+            <!-- Progress Bar Sectie -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
                 <div class="flex items-center justify-between overflow-x-auto">
                     <div class="flex items-center space-x-3 sm:space-x-4 min-w-max">
+                        <!-- Bezorgmoment Stap (Voltooid) -->
                         <div class="flex items-center space-x-2">
                             <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
                                 <CheckCircleIcon class="w-5 h-5 text-white" />
                             </div>
                             <span class="text-sm font-medium text-gray-900 hidden sm:inline">Bezorgmoment</span>
                         </div>
+                        <!-- Progress Lijn -->
                         <div class="w-8 sm:w-12 h-px bg-green-300"></div>
+                        <!-- Controleren Stap (Voltooid) -->
                         <div class="flex items-center space-x-2">
                             <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
                                 <CheckCircleIcon class="w-5 h-5 text-white" />
                             </div>
                             <span class="text-sm font-medium text-gray-900 hidden sm:inline">Controleren</span>
                         </div>
+                        <!-- Progress Lijn -->
                         <div class="w-8 sm:w-12 h-px bg-green-300"></div>
+                        <!-- Bevestigen Stap (Actief) -->
                         <div class="flex items-center space-x-2">
                             <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
                                 <span class="text-sm font-bold text-white">4</span>
@@ -269,23 +363,27 @@ onMounted(async () => {
                 </div>
             </div>
 
-            <!-- Validation Issues Alert -->
+            <!-- Validatie Problemen Alert -->
             <div v-if="validationIssues.length > 0" class="bg-red-50 border-2 border-red-200 rounded-xl p-4 sm:p-6">
                 <div class="flex flex-col sm:flex-row sm:items-start">
+                    <!-- Alert Icoon -->
                     <div class="flex-shrink-0 mx-auto sm:mx-0 mb-4 sm:mb-0">
                         <div class="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center">
                             <ExclamationTriangleIcon class="h-5 w-5 text-white" />
                         </div>
                     </div>
+                    <!-- Alert Content -->
                     <div class="sm:ml-4 flex-1 text-center sm:text-left">
                         <h3 class="text-lg font-semibold text-red-900 mb-2">
                             Controleer je bestelling
                         </h3>
+                        <!-- Lijst van Problemen -->
                         <div class="text-red-800 mb-4">
                             <ul class="space-y-1">
                                 <li v-for="issue in validationIssues" :key="issue" class="text-sm">• {{ issue }}</li>
                             </ul>
                         </div>
+                        <!-- Terug Knop -->
                         <PrimaryButton @click="goBackToReview" class="w-full sm:w-auto">
                             Terug naar overzicht
                         </PrimaryButton>
@@ -296,14 +394,17 @@ onMounted(async () => {
             <!-- Order Error Alert -->
             <div v-if="orderError" class="bg-red-50 border-2 border-red-200 rounded-xl p-4 sm:p-6">
                 <div class="flex flex-col sm:flex-row sm:items-start">
+                    <!-- Error Icoon -->
                     <div class="flex-shrink-0 mx-auto sm:mx-0 mb-4 sm:mb-0">
                         <div class="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center">
                             <ExclamationTriangleIcon class="h-5 w-5 text-white" />
                         </div>
                     </div>
+                    <!-- Error Content -->
                     <div class="sm:ml-4 flex-1 text-center sm:text-left">
                         <h3 class="text-lg font-semibold text-red-900 mb-2">Fout bij bestelling</h3>
                         <p class="text-red-800 mb-4">{{ orderError }}</p>
+                        <!-- Sluiten Knop -->
                         <PrimaryButton @click="orderError = ''" class="w-full sm:w-auto">
                             Sluiten
                         </PrimaryButton>
@@ -311,11 +412,13 @@ onMounted(async () => {
                 </div>
             </div>
 
-            <!-- Main Content -->
+            <!-- Hoofdinhoud Grid Layout -->
             <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                <!-- Left column: Final review and options -->
+                
+                <!-- Linker Kolom: Finale Review en Opties -->
                 <div class="lg:col-span-3 space-y-6">
-                    <!-- Final Order Summary -->
+                    
+                    <!-- Finale Order Samenvatting -->
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                         <div class="bg-green-50 px-4 sm:px-6 py-4 border-b border-gray-200">
                             <h3 class="text-lg sm:text-xl font-semibold text-gray-900 flex items-center">
@@ -327,9 +430,11 @@ onMounted(async () => {
                         </div>
                         
                         <div class="p-4 sm:p-6">
-                            <!-- Key Information Summary -->
+                            
+                            <!-- Key Informatie Samenvatting -->
                             <div class="space-y-4 mb-8">
-                                <!-- Address -->
+                                
+                                <!-- Bezorgadres Review -->
                                 <div class="flex items-center p-4 bg-green-50 rounded-xl border border-green-200">
                                     <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
                                         <MapPinIcon class="w-4 h-4 text-white" />
@@ -345,7 +450,7 @@ onMounted(async () => {
                                     <CheckCircleIcon class="w-5 h-5 text-green-600 flex-shrink-0" />
                                 </div>
 
-                                <!-- Delivery Time -->
+                                <!-- Bezorgmoment Review -->
                                 <div class="flex items-center p-4 bg-blue-50 rounded-xl border border-blue-200">
                                     <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
                                         <ClockIcon class="w-4 h-4 text-white" />
@@ -359,7 +464,7 @@ onMounted(async () => {
                                 </div>
                             </div>
 
-                            <!-- Payment Method Selection -->
+                            <!-- Betaalmethode Selectie -->
                             <div class="mb-8">
                                 <h4 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                                     <div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-3">
@@ -367,6 +472,7 @@ onMounted(async () => {
                                     </div>
                                     Betaalmethode
                                 </h4>
+                                <!-- Payment Method Options -->
                                 <div class="grid gap-3">
                                     <div 
                                         v-for="method in paymentMethods" 
@@ -379,12 +485,14 @@ onMounted(async () => {
                                                 ? 'border-blue-300 bg-blue-50'
                                                 : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
                                         ]">
+                                            <!-- Radio Input -->
                                             <input
                                                 v-model="selectedPaymentMethod"
                                                 :value="method.id"
                                                 type="radio"
                                                 class="h-4 w-4 text-blue-600 border-gray-300"
                                             >
+                                            <!-- Payment Method Info -->
                                             <div class="ml-4 flex-1">
                                                 <div class="flex items-center">
                                                     <span class="text-xl mr-3">{{ method.icon }}</span>
@@ -397,7 +505,7 @@ onMounted(async () => {
                                 </div>
                             </div>
 
-                            <!-- Order Notes -->
+                            <!-- Order Opmerkingen -->
                             <div class="mb-8">
                                 <label for="order-notes" class="flex items-center text-lg font-semibold text-gray-900 mb-4">
                                     <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center mr-3">
@@ -405,6 +513,7 @@ onMounted(async () => {
                                     </div>
                                     Opmerkingen (optioneel)
                                 </label>
+                                <!-- Textarea voor Opmerkingen -->
                                 <textarea
                                     id="order-notes"
                                     v-model="orderNotes"
@@ -413,19 +522,22 @@ onMounted(async () => {
                                     placeholder="Bijv. bel aan bij de achterdeur, laat pakket bij de buren, etc."
                                     maxlength="500"
                                 ></textarea>
+                                <!-- Character Counter -->
                                 <p class="mt-2 text-xs text-gray-500 text-right">
                                     {{ orderNotes?.length || 0 }}/500 karakters
                                 </p>
                             </div>
 
-                            <!-- Terms and Conditions -->
+                            <!-- Terms and Conditions Acceptatie -->
                             <div class="p-4 bg-gray-50 rounded-xl border border-gray-200">
                                 <label class="flex items-start">
+                                    <!-- Checkbox -->
                                     <input
                                         v-model="acceptedTerms"
                                         type="checkbox"
                                         class="h-4 w-4 text-blue-600 border-gray-300 rounded mt-0.5"
                                     >
+                                    <!-- Terms Tekst -->
                                     <div class="ml-3">
                                         <span class="text-sm font-medium text-gray-900">
                                             Ik ga akkoord met de 
@@ -456,9 +568,10 @@ onMounted(async () => {
                     />
                 </div>
 
-                <!-- Right column: Final actions -->
+                <!-- Rechter Kolom: Finale Acties -->
                 <div class="lg:col-span-2 space-y-6">
-                    <!-- Final Total -->
+                    
+                    <!-- Finale Totaal Card -->
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                         <div class="bg-green-50 px-4 sm:px-6 py-4 border-b border-gray-200">
                             <h3 class="text-lg font-semibold text-gray-900 flex items-center">
@@ -470,6 +583,7 @@ onMounted(async () => {
                         </div>
                         
                         <div class="p-4 sm:p-6">
+                            <!-- Prijs Breakdown -->
                             <div class="space-y-3">
                                 <div class="flex justify-between text-sm">
                                     <span class="text-gray-600">Subtotaal:</span>
@@ -487,6 +601,7 @@ onMounted(async () => {
                                 </div>
                             </div>
 
+                            <!-- Beveiliging Badge -->
                             <div class="mt-6 p-4 bg-green-50 border border-green-200 rounded-xl">
                                 <div class="flex items-center text-sm text-green-800">
                                     <ShieldCheckIcon class="w-5 h-5 mr-2" />
@@ -496,13 +611,15 @@ onMounted(async () => {
                         </div>
                     </div>
 
-                    <!-- Place Order Button -->
+                    <!-- Bestelling Plaatsen Sectie -->
                     <div class="space-y-4">
+                        <!-- Hoofdknop voor Order Plaatsing -->
                         <PrimaryButton 
                             @click="showConfirmOrderModal"
                             :disabled="!canPlaceOrder"
                             class="w-full justify-center py-4 text-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                         >
+                            <!-- Loading State -->
                             <span v-if="isProcessingOrder" class="inline-flex items-center">
                                 <svg class="animate-spin -ml-1 mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -510,12 +627,14 @@ onMounted(async () => {
                                 </svg>
                                 Bestelling plaatsen...
                             </span>
+                            <!-- Normale State -->
                             <span v-else class="flex items-center justify-center">
                                 <LockClosedIcon class="w-5 h-5 mr-2" />
                                 Bestelling plaatsen
                             </span>
                         </PrimaryButton>
                         
+                        <!-- Validatie Foutberichten -->
                         <div v-if="!canPlaceOrder && !isProcessingOrder" class="text-center">
                             <div class="inline-flex items-center px-4 py-3 bg-yellow-50 border border-yellow-200 rounded-xl">
                                 <ExclamationTriangleIcon class="w-4 h-4 text-yellow-600 mr-2 flex-shrink-0" />
@@ -529,8 +648,9 @@ onMounted(async () => {
                         </div>
                     </div>
 
-                    <!-- Navigation -->
+                    <!-- Navigatie Knoppen -->
                     <div class="space-y-3">
+                        <!-- Terug naar Review -->
                         <SecondaryButton 
                             @click="goBackToReview"
                             :disabled="isProcessingOrder"
@@ -540,6 +660,7 @@ onMounted(async () => {
                             Terug naar overzicht
                         </SecondaryButton>
                         
+                        <!-- Verder Winkelen -->
                         <SecondaryButton 
                             @click="goBackToProducts"
                             :disabled="isProcessingOrder"
@@ -550,7 +671,7 @@ onMounted(async () => {
                         </SecondaryButton>
                     </div>
 
-                    <!-- Security Info -->
+                    <!-- Beveiliging & Privacy Info -->
                     <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 sm:p-6">
                         <h4 class="text-sm font-semibold text-blue-900 mb-3 flex items-center">
                             <div class="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center mr-2">
@@ -558,6 +679,7 @@ onMounted(async () => {
                             </div>
                             Beveiliging & Privacy
                         </h4>
+                        <!-- Trust Badges Lijst -->
                         <ul class="text-xs text-blue-700 space-y-2">
                             <li class="flex items-center">
                                 <span class="w-2 h-2 bg-blue-400 rounded-full mr-2 flex-shrink-0"></span>
@@ -581,11 +703,13 @@ onMounted(async () => {
             </div>
         </div>
 
-        <!-- Confirm Order Modal -->
+        <!-- Finale Bevestiging Modal -->
         <Teleport to="body">
             <div v-if="showConfirmModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
                 <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4 transform transition-all duration-300">
                     <div class="p-6">
+                        
+                        <!-- Modal Header -->
                         <div class="flex items-center mb-6">
                             <div class="flex-shrink-0">
                                 <div class="rounded-full bg-green-100 p-3">
@@ -600,6 +724,7 @@ onMounted(async () => {
                             </div>
                         </div>
 
+                        <!-- Order Samenvatting in Modal -->
                         <div class="mb-6 p-4 bg-gray-50 rounded-xl">
                             <div class="space-y-3 text-sm">
                                 <div class="flex justify-between items-center">
@@ -616,6 +741,7 @@ onMounted(async () => {
                                         {{ paymentMethods.find(m => m.id === selectedPaymentMethod)?.name }}
                                     </span>
                                 </div>
+                                <!-- Order Notes -->
                                 <div v-if="orderNotes" class="pt-3 border-t border-gray-200">
                                     <span class="text-gray-600 font-medium">Opmerkingen:</span>
                                     <p class="text-gray-900 mt-1 text-sm">{{ orderNotes }}</p>
@@ -623,7 +749,9 @@ onMounted(async () => {
                             </div>
                         </div>
 
+                        <!-- Modal Actie Knoppen -->
                         <div class="flex space-x-3">
+                            <!-- Annuleren Knop -->
                             <SecondaryButton 
                                 @click="cancelConfirmOrder"
                                 :disabled="isProcessingOrder"
@@ -631,6 +759,7 @@ onMounted(async () => {
                             >
                                 Annuleren
                             </SecondaryButton>
+                            <!-- Definitief Bestellen Knop -->
                             <PrimaryButton 
                                 @click="confirmOrder"
                                 :disabled="isProcessingOrder"
@@ -647,6 +776,7 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+/* Loading spinner animatie */
 @keyframes spin {
     to { 
         transform: rotate(360deg); 
@@ -657,14 +787,14 @@ onMounted(async () => {
     animation: spin 1s linear infinite;
 }
 
-/* Remove focus rings */
+/* Focus ring styling */
 button:focus-visible, 
 input:focus, 
 textarea:focus {
     outline: none;
 }
 
-/* Radio button and checkbox styling */
+/* Radio button en checkbox styling */
 input[type="radio"]:checked,
 input[type="checkbox"]:checked {
     background-color: #2563eb;

@@ -14,6 +14,7 @@
 import CheckoutLayout from '@/Layouts/Checkout/CheckoutLayout.vue'
 import DeliverySlotSelector from '@/Components/Checkout/DeliverySlotSelector.vue'
 import AddressFormModal from '@/Components/AddressFormModal.vue'
+import ConfirmModal from '@/Components/ConfirmModal.vue'
 import PrimaryButton from '@/Components/PrimaryButton.vue'
 import SecondaryButton from '@/Components/SecondaryButton.vue'
 
@@ -32,7 +33,8 @@ import {
     CreditCardIcon,
     ArrowRightIcon,
     ArrowLeftIcon,
-    PlusIcon
+    PlusIcon,
+    TrashIcon
 } from '@heroicons/vue/24/outline'
 
 // Store imports
@@ -76,6 +78,10 @@ const deliveryFee = ref(0)                                 // Bezorgkosten voor 
 const showAddressModal = ref(false)                        // Of address modal zichtbaar is
 const isNavigating = ref(false)                            // Loading state voor navigatie
 
+// Delete address state
+const showDeleteConfirmation = ref(false)                  // Of delete confirmation zichtbaar is
+const isDeletingAddress = ref(false)                       // Loading state voor delete operatie
+
 // ========== COMPUTED PROPERTIES ==========
 
 /**
@@ -106,6 +112,19 @@ const stepValidationMessage = computed(() => {
     if (!hasValidAddress.value) return 'Stel eerst een bezorgadres in'
     if (!selectedSlotId.value) return 'Selecteer een bezorgmoment'
     return ''
+})
+
+/**
+ * Genereert bericht voor delete confirmation modal
+ * Toont gebruiker welk adres verwijderd wordt en wat de gevolgen zijn
+ * 
+ * @returns {string} Geformatteerd bericht voor delete confirmation
+ */
+const deleteConfirmationMessage = computed(() => {
+    if (!hasValidAddress.value) return ''
+
+    const addressLines = formatAddress()
+    return `Weet je zeker dat je dit bezorgadres wilt verwijderen?\n\n${addressLines.join('\n')}\n\nJe kunt dan niet verder gaan met de bestelling totdat je een nieuw adres toevoegt.`
 })
 
 // ========== UTILITY METHODS ==========
@@ -152,6 +171,100 @@ const closeAddressModal = () => {
 const handleAddressSaved = (address) => {
     console.log('Address saved:', address)
     closeAddressModal()
+    // Pagina wordt automatisch ververst door AddressFormModal component
+}
+
+// ========== DELETE ADDRESS METHODS ==========
+
+/**
+ * Toon delete confirmation modal
+ * Start delete flow door confirmation modal te openen
+ */
+const confirmDeleteAddress = () => {
+    if (!hasValidAddress.value) return
+    showDeleteConfirmation.value = true
+}
+
+/**
+ * Behandel cancel van delete modal
+ * Gebruiker heeft delete geannuleerd, sluit modal zonder actie
+ */
+const handleDeleteCancel = () => {
+    showDeleteConfirmation.value = false
+}
+
+/**
+ * 0Behandel bevestiging van delete actie
+ * Voert daadwerkelijke API call uit om adres te verwijderen
+ */
+const handleDeleteConfirm = async () => {
+    isDeletingAddress.value = true
+
+    try {
+        // Haal CSRF token op voor beveiligde API call
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+        
+        if (!csrfToken) {
+            console.error('CSRF token not found')
+            alert('CSRF token ontbreekt. Ververs de pagina en probeer opnieuw.')
+            return
+        }
+
+        console.log('Initiating address deletion...')
+
+        // Voer DELETE API call uit naar backend
+        const response = await fetch('/api/user/address', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'  // Include cookies voor session auth
+        })
+        
+        const data = await response.json()
+        console.log('Delete API response:', { status: response.status, data })
+        
+        if (response.ok) {
+            console.log('Address deleted successfully')
+            showDeleteConfirmation.value = false
+            
+            // Refresh pagina om bijgewerkte adres data te krijgen
+            router.reload({
+                only: ['deliveryAddress'],          // Reload alleen deliveryAddress prop
+                preserveState: true,               // Behoud andere component state
+                onSuccess: () => {
+                    console.log('Page reloaded after successful address deletion')
+                },
+                onError: (errors) => {
+                    console.error('Error reloading page after deletion:', errors)
+                }
+            })
+            
+        } else {
+            // Behandel API errors met gebruiksvriendelijke berichten
+            console.error('Server error during delete:', response.status, data)
+            
+            if (response.status === 404) {
+                alert('Er is geen adres gevonden om te verwijderen.')
+            } else if (response.status === 401) {
+                alert('Je bent niet ingelogd. Log opnieuw in.')
+            } else {
+                alert(data.message || 'Er is een fout opgetreden bij het verwijderen van het adres.')
+            }
+        }
+        
+    } catch (error) {
+        // Behandel netwerk errors
+        console.error('Network error during address deletion:', error)
+        alert('Netwerkfout. Controleer je internetverbinding en probeer opnieuw.')
+        
+    } finally {
+        // Reset loading state ongeacht uitkomst
+        isDeletingAddress.value = false
+    }
 }
 
 // ========== DELIVERY SLOT EVENT HANDLERS ==========
@@ -334,7 +447,7 @@ const updateSelectedSlotDetails = () => {
                                     ? 'bg-green-50 border-green-200' 
                                     : 'bg-gray-50 border-gray-200 border-dashed'
                             ]">
-                                <!-- Bestaand Adres -->
+                                <!-- Bestaand Adres met Edit/Delete knoppen -->
                                 <div v-if="hasValidAddress" class="flex items-start justify-between">
                                     <div class="flex-1">
                                         <h3 class="font-semibold text-gray-900 mb-1">Bezorgadres</h3>
@@ -342,11 +455,20 @@ const updateSelectedSlotDetails = () => {
                                             <span v-for="line in formatAddress()" :key="line" class="block">{{ line }}</span>    
                                         </p>
                                     </div>
-                                    <!-- Wijzig Adres Knop -->
-                                    <SecondaryButton @click="openAddressModal" class="ml-4">
-                                        <PencilIcon class="w-4 h-4 mr-1.5" />
-                                        Wijzigen
-                                    </SecondaryButton>
+                                    <!-- Adres Actie knoppen -->
+                                    <div class="ml-4 flex flex-col space-y-2">
+                                        <!-- Wijzig Adres Knop -->
+                                        <SecondaryButton @click="openAddressModal" class="ml-4">
+                                            <PencilIcon class="w-4 h-4 mr-1.5" />
+                                            Wijzigen
+                                        </SecondaryButton>
+
+                                        <!-- Verwijder Adres Knop -->
+                                        <button @click="confirmDeleteAddress" class="inline-flex items-center justify-center px-3 py-2 border border-red-300 rounded-md text-sm font-medium text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors duration-200">
+                                            <TrashIcon class="w-4 h-4 mr-1.5" />
+                                            Verwijderen
+                                        </button>
+                                    </div>
                                 </div>
                                 <!-- Geen Adres - Call to Action -->
                                 <div v-else class="text-center py-8">
@@ -500,6 +622,27 @@ const updateSelectedSlotDetails = () => {
             @close="closeAddressModal"
             @saved="handleAddressSaved"
         />
+
+        <!-- Delete Confirmation Modal Component -->
+        <ConfirmModal
+            :visible="showDeleteConfirmation"
+            :loading="isDeletingAddress"
+            title="Adres verwijderen"
+            :message="deleteConfirmationMessage"
+            cancel-text="Annuleren"
+            confirm-text="Definitief verwijderen"
+            icon="danger"
+            @cancel="handleDeleteCancel"
+            @confirm="handleDeleteConfirm"
+        >
+            <!-- Custom slot content voor adres preview -->
+            <div v-if="hasValidAddress" class="mt-4 p-3 bg-gray-50 rounded-lg border">
+                <p class="text-sm text-gray-700 font-medium mb-1">Te verwijderen adres:</p>
+                <p class="text-sm text-gray-600">
+                    <span v-for="line in formatAddress()" :key="line" class="block">{{ line }}</span>
+                </p>
+            </div>
+        </ConfirmModal>
     </CheckoutLayout>
 </template>
 

@@ -285,6 +285,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/api/user/address', [ProfileController::class, 'storeAddress'])->name('api.address.store');
     Route::put('/api/user/address', [ProfileController::class, 'updateAddress'])->name('api.address.update');
     Route::get('/api/user/address', [ProfileController::class, 'getAddress'])->name('api.address.show');
+    Route::delete('/api/user/address', [ProfileController::class, 'deleteAddress'])->name('api.address.delete');
     
     /**
      * ================================================================================

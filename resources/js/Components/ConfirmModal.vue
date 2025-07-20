@@ -1,9 +1,9 @@
 <!-- 
 Bestandsnaam: ConfirmModal.vue
 Auteur: Fabio Vreede  
-Versie: v1.0.0
+Versie: v1.0.2
 Datum: 2025-07-20
-Tijd: 15:36
+Tijd: 21:55:27
 Doel: Herbruikbare bevestigingsmodal component voor gevaarlijke acties zoals verwijderen.
       Ondersteunt customizable titel, bericht, knop teksten en emit events voor cancel/confirm.
 -->

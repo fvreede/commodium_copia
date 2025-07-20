@@ -3,9 +3,9 @@
 /**
  * Bestandsnaam: web.php
  * Auteur: Fabio Vreede
- * Versie: v1.0.24
- * Datum: 2025-07-01
- * Tijd: 01:25:04
+ * Versie: v1.0.25
+ * Datum: 2025-07-20
+ * Tijd: 21:55:27
  * Doel: Hoofdroute definitie bestand voor de webshop applicatie. Bevat alle web routes voor publieke content, admin/editor dashboards, e-commerce functionaliteit, checkout proces, order management en API endpoints.
  */
 

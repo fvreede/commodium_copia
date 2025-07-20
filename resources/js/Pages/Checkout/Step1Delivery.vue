@@ -1,9 +1,9 @@
 /**
  * Bestandsnaam: Step1Delivery.vue (Pages/Checkout)
  * Auteur: Fabio Vreede
- * Versie: v1.0.3
- * Datum: 2025-07-01
- * Tijd: 01:25:04
+ * Versie: v1.0.4
+ * Datum: 2025-07-20
+ * Tijd: 21:55:27
  * Doel: Dit component toont de eerste stap van het checkout proces waar gebruikers hun bezorgadres
  *       instellen en een bezorgmoment kiezen. Bevat validatie, progress tracking, order samenvatting
  *       en integratie met cart store en address modal.

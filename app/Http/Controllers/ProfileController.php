@@ -3,9 +3,9 @@
 /**
  * Bestandsnaam: ProfileController.php
  * Auteur: Fabio Vreede
- * Versie: v1.0.4
+ * Versie: v1.0.5
  * Datum: 2025-07-20
- * Tijd: 15:10:57
+ * Tijd: 15:16:55
  * Doel: Controller voor gebruikersprofiel beheer. Behandelt profiel weergave, bijwerken van 
  *       gebruikersgegevens, account verwijdering en volledig adresbeheer (aanmaken, bijwerken, 
  *       ophalen) voor checkout en bezorgfunctionaliteit. Ondersteunt zowel web als API endpoints.

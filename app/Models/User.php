@@ -4,8 +4,8 @@
  * Bestandsnaam: User.php
  * Auteur: Fabio Vreede
  * Versie: v1.0.12
- * Datum: 2025-07-01
- * Tijd: 01:25:04
+ * Datum: 2025-07-21
+ * Tijd: 17:22:57
  * Doel: Eloquent User Model voor het authenticatie systeem. Beheert gebruikersaccounts met rol-gebaseerde toegang, adressen, bestellingen en account status. Gebruikt Spatie permissions voor uitgebreide role & permission management.
  */
 

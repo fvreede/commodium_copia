@@ -1,9 +1,9 @@
 /**
  * Bestandsnaam: DeliverySlotSelector.vue
  * Auteur: Fabio Vreede
- * Versie: v1.0.4
- * Datum: 2025-06-29
- * Tijd: 15:34:53
+ * Versie: v1.0.5
+ * Datum: 2025-07-21
+ * Tijd: 21:19
  * Doel: Geavanceerde bezorgslot selector component voor checkout proces. Biedt responsive dag- en tijdselectie met real-time beschikbaarheid, automatische verversing, foutafhandeling en mobile-first design voor optimale gebruikerservaring tijdens het afrekenen.
  */
 
@@ -31,46 +31,47 @@
             
             <!-- Dag Selector Grid -->
             <!-- Responsive grid met dag knoppen en beschikbaarheid status -->
-            <div class="flex flex-wrap gap-8 justify-center sm:justify-start mb-8">
-                <button 
-                    v-for="day in deliverySlots" 
-                    :key="day.date"
-                    @click="selectDay(day.date)"
-                    :disabled="!hasAvailableSlots(day)"
-                    :class="[
-                        'relative inline-flex flex-col items-center justify-center rounded-lg border text-sm font-semibold shadow-sm transition duration-150 ease-in-out focus:outline-none disabled:opacity-25 p-6 min-h-[100px] w-[110px] flex-shrink-0',
-                        selectedDay === day.date 
-                            ? 'border-green-500 bg-green-500 text-white hover:bg-green-600' 
-                            : hasAvailableSlots(day)
-                                ? 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-                                : 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed'
-                    ]"
-                >
-                    <div class="font-semibold">{{ day.day_name }}</div>
-                    <div :class="[
-                        'text-xs mt-1.5',
-                        selectedDay === day.date 
-                            ? 'text-green-100' 
-                            : hasAvailableSlots(day) 
-                                ? 'text-gray-500' 
-                                : 'text-gray-400'
-                    ]">
-                        {{ day.formatted_date }}
-                    </div>
-                    
-                    <!-- Beschikbaarheid Indicator -->
-                    <!-- Kleurcoded bolletje toont slot beschikbaarheid -->
-                    <div class="absolute top-3 right-3">
+            <div class="mb-8">
+                <div class="grid grid-cols-7 gap-2 max-w-4xl mx-auto">
+                    <button 
+                        v-for="day in deliverySlots" 
+                        :key="day.date"
+                        @click="selectDay(day.date)"
+                        :disabled="!hasAvailableSlots(day)"
+                        :class="[
+                            'relative flex flex-col items-center justify-center rounded-lg border text-sm font-semibold shadow-sm transition duration-150 ease-in-out focus:outline-none disabled:opacity-25 p-3 min-h-[80px] w-full',
+                            selectedDay === day.date 
+                                ? 'border-green-500 bg-green-500 text-white hover:bg-green-600' 
+                                : hasAvailableSlots(day)
+                                    ? 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                                    : 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed'
+                        ]"
+                    >
+                        <div class="font-semibold text-xs">{{ day.day_name }}</div>
                         <div :class="[
-                            'w-3 h-3 rounded-full',
-                            hasAvailableSlots(day) 
-                                ? selectedDay === day.date 
-                                    ? 'bg-white' 
-                                    : 'bg-green-400'
-                                : 'bg-red-400'
-                        ]"></div>
-                    </div>
-                </button>
+                            'text-xs mt-1',
+                            selectedDay === day.date 
+                                ? 'text-green-100' 
+                                : hasAvailableSlots(day) 
+                                    ? 'text-gray-500' 
+                                    : 'text-gray-400'
+                        ]">
+                            {{ day.formatted_date }}
+                        </div>
+                        
+                        <!-- Beschikbaarheid Indicator -->
+                        <div class="absolute top-1 right-1">
+                            <div :class="[
+                                'w-2 h-2 rounded-full',
+                                hasAvailableSlots(day) 
+                                    ? selectedDay === day.date 
+                                        ? 'bg-white' 
+                                        : 'bg-green-400'
+                                    : 'bg-red-400'
+                            ]"></div>
+                        </div>
+                    </button>
+                </div>
             </div>
 
             <!-- Tijdslot Selectie voor Gekozen Dag -->

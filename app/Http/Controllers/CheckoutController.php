@@ -574,14 +574,20 @@ class CheckoutController extends Controller
     }
 
     /**
-     * Formatteer bezorgslots voor frontend consumptie met juiste error handling
+     * Formatteer bezorgslots voor frontend consumptie met week limiet
+     * Toont alleen de komende 7 dagen voor betere gebruikerservaring
      * 
      * @return \Illuminate\Support\Collection
      */
     private function getFormattedDeliverySlots()
     {
         try {
-            $slots = DeliverySlot::available()->get();
+            // Haal alleen slots voor de komende 7 dagen
+            $oneWeekFromNow = now()->addDays(7)->endOfDay();
+            
+            $slots = DeliverySlot::available()
+                ->where('date', '<=', $oneWeekFromNow)  // Limiteer tot 1 week
+                ->get();
 
             // Groepeer slots per datum en formatteer voor frontend
             $grouped = $slots->groupBy('date')->map(function ($daySlots, $date) {
@@ -589,17 +595,17 @@ class CheckoutController extends Controller
 
                 return [
                     'date' => $date,
-                    'day_name' => $carbonDate->translatedFormat('l'), // Maandag, Dinsdag, etc. (gelokaliseerd)
-                    'formatted_date' => $carbonDate->translatedFormat('j M'), // 15 Jan (gelokaliseerd)
+                    'day_name' => $carbonDate->locale('nl')->translatedFormat('l'), // Nederlandse dag namen
+                    'formatted_date' => $carbonDate->locale('nl')->translatedFormat('j M'), // Nederlandse maand namen
                     'slots' => $daySlots->map(function ($slot) {
                         return [
                             'id' => $slot->id,
                             'start_time' => $slot->start_time,
                             'end_time' => $slot->end_time,
                             'time_display' => Carbon::parse($slot->start_time)->format('H:i') . ' - ' . Carbon::parse($slot->end_time)->format('H:i'),
-                            'price' => (float) ($slot->price ?? 0), // Zorg ervoor dat prijs altijd een float is
-                            'available_slots' => (int) ($slot->available_slots ?? 0), // Zorg ervoor dat het altijd een integer is
-                            'current_available' => $slot->getCurrentAvailableSlots(), // Real-time beschikbaarheid
+                            'price' => (float) ($slot->price ?? 0),
+                            'available_slots' => (int) ($slot->available_slots ?? 0),
+                            'current_available' => $slot->getCurrentAvailableSlots(),
                             'last_updated' => $slot->updated_at
                         ];
                     })->values()
@@ -614,7 +620,6 @@ class CheckoutController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
-            // Return lege array bij fout om frontend crashes te voorkomen
             return collect([]);
         }
     }

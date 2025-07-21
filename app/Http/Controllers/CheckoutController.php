@@ -3,9 +3,9 @@
 /**
  * Bestandsnaam: CheckoutController.php
  * Auteur: Fabio Vreede
- * Versie: v1.0.9
- * Datum: 2025-07-01
- * Tijd: 01:25:04
+ * Versie: v1.0.10
+ * Datum: 2025-07-21
+ * Tijd: 21:20:56
  * Doel: Controller voor het complete afrekproces. Behandelt een meersstaps checkout flow inclusief bezorgslot selectie, bestelling validatie, order aanmaak en betalingsafhandeling.
  */
 

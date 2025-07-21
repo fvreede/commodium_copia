@@ -173,14 +173,22 @@ class User extends Authenticatable
             // Stel standaard status in op actief
             $user->status = User::STATUS_ACTIVE;
             Log::info('Status set', ['status' => $user->status]);
+        });
+
+        // Event handler voor nadat gebruiker is opgeslagen (NA opslaan)
+        static::created(function ($user) {
+            Log::info('User created, assigning role', ['user_id' => $user->id, 'email' => $user->email]);
             
-            // Wijs customer rol toe aan nieuwe gebruikers (tenzij ze al een rol hebben)
+            // Rol is altijd klant na registreren (wordt automatisch ingesteld)
             if (!$user->hasAnyRole()) {
                 try {
                     $user->assignRole('customer');
-                    Log::info('Role assigned successfully');
+                    Log::info('Customer role assigned successfully', ['user_id' => $user->id]);
                 } catch (\Exception $e) {
-                    Log::error('Failed to assign role', ['error' => $e->getMessage()]);
+                    Log::error('Failed to assign customer role', [
+                        'user_id' => $user->id,
+                        'error' => $e->getMessage()
+                    ]);
                 }
             }
         });

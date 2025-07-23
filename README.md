@@ -725,6 +725,13 @@ Hier volgt een overzicht van de belangrijkste bestanden en mappen binnen het pro
 
 ↑ [Terug naar Inhoudsopgave](#inhoudsopgave)
 
+### Seeders
+
+- [**DeliverySlotSeeder.php**](database/seeders/DeliverySlotSeeder.php)   
+  Deze seeder genereert bezorgslots voor de komende 60 dagen (exclusief zondagen).
+  Voor elke dag worden standaard vier tijdvakken aangemaakt. Op vrijdagen en zaterdagen worden extra premium bezorgmomenten toegevoegd.
+  Ideaal voor het testen van het afrekenproces en de beschikbaarheid van tijdsloten in de checkout-flow.
+
 ## Installatie en Setup
 
 ### Vereisten
@@ -786,17 +793,22 @@ mariadb -u root -p -e "CREATE DATABASE commodium_copia;"
 # Of gebruik: mysql -u root -p -e "CREATE DATABASE commodium_copia;"
 ```
 
-- Importeer complete database inclusief testdata:
+- Importeer complete database inclusief testdata:   
 ```bash
 mariadb -u root -p -D commodium_copia < database/commodium_copia_export.sql
 
 # Of gebruik: mysql -u root -p -D commodium_copia < database/commodium_copia_export.sql
 ```
 
-- Maak storage symlink voor afbeeldingen:
-```bash
-php artisan storage:link
-```
+- Genereer bezorgslots voor checkout functionaliteit:   
+  ```bash
+  php artisan db:seed --class=DeliverySlotSeeder
+  ```
+
+- Maak storage symlink voor afbeeldingen:   
+  ```bash
+  php artisan storage:link
+  ```
 
 ### Frontend Dependencies (Vue.js)
 - Open een terminal in de root-directory van het project en voer het volgende commando uit:

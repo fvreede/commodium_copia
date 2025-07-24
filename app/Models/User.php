@@ -3,9 +3,9 @@
 /**
  * Bestandsnaam: User.php
  * Auteur: Fabio Vreede
- * Versie: v1.0.12
- * Datum: 2025-07-21
- * Tijd: 17:22:57
+ * Versie: v1.0.14
+ * Datum: 2025-07-24
+ * Tijd: 21:16:00
  * Doel: Eloquent User Model voor het authenticatie systeem. Beheert gebruikersaccounts met rol-gebaseerde toegang, adressen, bestellingen en account status. Gebruikt Spatie permissions voor uitgebreide role & permission management.
  */
 
@@ -13,6 +13,8 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
@@ -27,28 +29,43 @@ use Illuminate\Support\Facades\Log;
  * @property int $id De unieke identifier
  * @property string $name De volledige naam van de gebruiker
  * @property string $email Het email adres van de gebruiker
- * @property \DateTime|null $email_verified_at Wanneer het email geverifieerd werd
+ * @property \Illuminate\Support\Carbon|null $email_verified_at Wanneer het email geverifieerd werd
  * @property string $password Het gehashte wachtwoord
  * @property string $status De account status van de gebruiker (active/suspended)
  * @property string|null $remember_token Het "onthoud mij" token
- * @property \DateTime $created_at Wanneer de gebruiker aangemaakt werd
- * @property \DateTime $updated_at Wanneer de gebruiker laatst bijgewerkt werd
- *
- * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Order[] $orders
+ * @property \Illuminate\Support\Carbon $created_at Wanneer de gebruiker aangemaakt werd
+ * @property \Illuminate\Support\Carbon $updated_at Wanneer de gebruiker laatst bijgewerkt werd
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Order> $orders
  * @property-read \App\Models\UserAddress|null $address
  * @property-read \App\Models\UserAddress|null $userAddress
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \Spatie\Permission\Models\Role> $roles
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \Spatie\Permission\Models\Permission> $permissions
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\CartItem> $cartItems
  *
  * @method static \Database\Factories\UserFactory factory($count = null, $state = [])
+ * @method static \Illuminate\Database\Eloquent\Builder|User newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|User newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|User query()
+ * @method static \Illuminate\Database\Eloquent\Builder|User whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|User whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|User whereEmail($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|User whereEmailVerifiedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|User wherePassword($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|User whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|User whereRememberToken($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|User whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|User whereUpdatedAt($value)
+ * @method static User|null find($id, $columns = ['*'])
+ * @method static User findOrFail($id, $columns = ['*'])
+ * @method static \Illuminate\Database\Eloquent\Collection|User[] all($columns = ['*'])
  * @method bool hasRole(string|array $roles, string $guard = null)
  * @method bool hasAnyRole(string|array $roles)
  * @method void assignRole(string|array $roles)
  * @method bool can(string $permission, string $guard = null)
- * @method \Illuminate\Database\Eloquent\Relations\HasMany orders()
- * @method \Illuminate\Database\Eloquent\Relations\HasOne address()
- * @method \Illuminate\Database\Eloquent\Relations\HasOne userAddress()
- *
- * @property-read \Illuminate\Database\Eloquent\Collection|\Spatie\Permission\Models\Role[] $roles
- * @property-read \Illuminate\Database\Eloquent\Collection|\Spatie\Permission\Models\Permission[] $permissions
+ * @method \Illuminate\Database\Eloquent\Relations\HasMany<\App\Models\Order> orders()
+ * @method \Illuminate\Database\Eloquent\Relations\HasOne<\App\Models\UserAddress> address()
+ * @method \Illuminate\Database\Eloquent\Relations\HasOne<\App\Models\UserAddress> userAddress()
+ * @method \Illuminate\Database\Eloquent\Relations\HasMany<\App\Models\CartItem> cartItems()
  *
  * @uses \Illuminate\Database\Eloquent\Factories\HasFactory
  * @uses \Illuminate\Notifications\Notifiable
@@ -81,6 +98,11 @@ class User extends Authenticatable
      */
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, HasRoles;
+
+    /**
+     * De database tabel geassocieerd met het model
+     */
+    protected $table = 'users';
 
     /**
      * Attributen die mass assignable zijn
@@ -202,9 +224,9 @@ class User extends Authenticatable
      * Krijg alle bestellingen van deze gebruiker
      * Een gebruiker kan meerdere bestellingen hebben (One-to-Many)
      * 
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<\App\Models\Order>
      */
-    public function orders()
+    public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
     }
@@ -215,9 +237,9 @@ class User extends Authenticatable
      * Definieert een een-op-een relatie tussen gebruiker en bezorgadres.
      * Wordt primair gebruikt om het standaard adres op te halen tijdens checkout.
      * 
-     * @return \Illuminate\Database\Eloquent\Relations\HasOne
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne<\App\Models\UserAddress>
      */
-    public function address()
+    public function address(): HasOne
     {
         return $this->hasOne(UserAddress::class);
     }
@@ -225,10 +247,21 @@ class User extends Authenticatable
     /**
      * Krijg het adres van de gebruiker (alias voor address relatie)
      * 
-     * @return \Illuminate\Database\Eloquent\Relations\HasOne
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne<\App\Models\UserAddress>
      */
-    public function userAddress()
+    public function userAddress(): HasOne
     {
         return $this->hasOne(UserAddress::class);
+    }
+
+    /**
+     * Krijg alle winkelwagen items van deze gebruiker
+     * Een gebruiker kan meerdere cart items hebben (One-to-Many)
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<\App\Models\CartItem>
+     */
+    public function cartItems(): HasMany
+    {
+        return $this->hasMany(CartItem::class);
     }
 }

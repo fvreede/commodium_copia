@@ -3,9 +3,9 @@
 /**
  * Bestandsnaam: web.php
  * Auteur: Fabio Vreede
- * Versie: v1.0.25
- * Datum: 2025-07-20
- * Tijd: 21:55:27
+ * Versie: v1.0.26
+ * Datum: 2025-07-24
+ * Tijd: 21:40
  * Doel: Hoofdroute definitie bestand voor de webshop applicatie. Bevat alle web routes voor publieke content, admin/editor dashboards, e-commerce functionaliteit, checkout proces, order management en API endpoints.
  */
 
@@ -28,7 +28,7 @@ use App\Http\Controllers\Editor\BannerController;
 use App\Http\Controllers\EditorController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\CheckoutController;
-use App\Http\Controllers\OrderController; // NIEUW voor order management
+use App\Http\Controllers\OrderController;
 use App\Http\Controllers\SessionExpiredController;
 use App\Http\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
@@ -94,8 +94,9 @@ Route::get('/categories', function () {
  * SUBCATEGORIEËN BINNEN CATEGORIE ROUTE
  * Toont alle subcategorieën en producten binnen een specifieke hoofdcategorie
  */
-Route::get('/subcategories/{categoryId}', function ($categoryId) {
+Route::get('/subcategories/{categoryId}', function (int $categoryId) {
     // Haal categorie op met alle subcategorieën en bijbehorende producten
+    /** @var \App\Models\Category $category */
     $category = Category::with('subcategories.products')->findOrFail($categoryId);
     
     return Inertia::render('SubcategoryPage', [
@@ -103,10 +104,12 @@ Route::get('/subcategories/{categoryId}', function ($categoryId) {
         'categoryName' => $category->name,
         'bannerSrc' => $category->banner_path ?? 'default-banner.jpg',
         'subcategories' => $category->subcategories->map(function ($subcategory) {
+            /** @var \App\Models\Subcategory $subcategory */
             return [
                 'id' => $subcategory->id,
                 'name' => $subcategory->name,
                 'products' => $subcategory->products->map(function ($product) {
+                    /** @var \App\Models\Product $product */
                     return [
                         'id' => $product->id,
                         'name' => $product->name,
@@ -210,7 +213,13 @@ Route::middleware(['auth', 'role:editor'])->prefix('editor')->name('editor.')->g
  * ================================================================================
  */
 Route::get('/dashboard', function () {
-    $user = auth()->user();
+    /** @var \App\Models\User|null $user */
+    $user = Auth::user();
+    
+    // Controleer of gebruiker ingelogd is
+    if (!$user) {
+        return redirect()->route('login');
+    }
     
     // Redirect naar juiste dashboard op basis van gebruikersrol
     if ($user->isSystemAdmin()) {

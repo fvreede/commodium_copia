@@ -3,9 +3,9 @@
 /**
  * Bestandsnaam: UserAddress.php
  * Auteur: Fabio Vreede
- * Versie: v1.0.3
- * Datum: 2025-06-24
- * Tijd: 20:49:53
+ * Versie: v1.0.5
+ * Datum: 2025-07-24
+ * Tijd: 19:41
  * Doel: Eloquent Model voor gebruikersadressen. Beheert bezorg- en factuuradressen van klanten met geformatteerde weergave functionaliteit voor checkout en order management.
  */
 
@@ -14,8 +14,28 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * UserAddress Model
+ *
+ * @property int $id De unieke identifier van het adres
+ * @property int $user_id De ID van de gebruiker die eigenaar is van dit adres
+ * @property string $street Straatnaam van het adres
+ * @property string $house_number Huisnummer (inclusief toevoegingen zoals 12A)
+ * @property string $city Woonplaats
+ * @property string $postal_code Postcode in Nederlands formaat
+ * @property string $country Land (standaard Nederland voor lokale bezorging)
+ * @property \Illuminate\Support\Carbon $created_at Aanmaakdatum
+ * @property \Illuminate\Support\Carbon $updated_at Laatste wijzigingsdatum
+ * @property-read \App\Models\User $user De gebruiker die eigenaar is van dit adres
+ * @property-read string $formatted_address Geformatteerd adres voor weergave
+ */
 class UserAddress extends Model
 {
+    /**
+     * De database tabel geassocieerd met het model
+     */
+    protected $table = 'user_addresses';
+
     /**
      * Attributen die mass assignable zijn
      * Deze velden kunnen veilig bulk toegewezen worden via create() of update()
@@ -27,6 +47,14 @@ class UserAddress extends Model
         'city',         // Woonplaats
         'postal_code',  // Postcode in Nederlands formaat
         'country'       // Land (standaard Nederland voor lokale bezorging)
+    ];
+
+    /**
+     * De attributen die gecast moeten worden naar specifieke types
+     */
+    protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     /**
@@ -65,7 +93,7 @@ class UserAddress extends Model
         $address .= ', ' . $this->postal_code . ' ' . $this->city;
 
         // Voeg land toe alleen als het niet Nederland is (voor internationale orders)
-        if ($this->country && $this->country !== 'Netherlands') {
+        if ($this->country && $this->country !== 'Netherlands' && $this->country !== 'Nederland') {
             $address .= ', ' . $this->country;
         }
 

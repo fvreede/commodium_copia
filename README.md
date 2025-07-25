@@ -115,6 +115,9 @@ Hier volgt een overzicht van de belangrijkste bestanden en mappen binnen het pro
   - [**NewsLetterSignup.vue**](resources/js/Components/NewsLetterSignup.vue): Een compact inschrijfformulier voor de nieuwsbrief van Commodium Copia.
   - [**CustomerService.vue**](resources/js/Components/CustomerService.vue): Bevat de contactgegevens van de klantenservice, inclusief telefoonnummer, openingstijden en e-mailadres. Deze sectie biedt klanten een gemakkelijke manier om contact op te nemen met de klantenservice en om te weten wanneer ze bereikbaar zijn.
 
+- [**AddressFormModal.vue**](resources/js/Components/AddressFormModal.vue)    
+  Een herbruikbare modal component voor het toevoegen en bewerken van gebruikersadressen. Ondersteunt zowel create als edit modes met dynamische UI switching, Nederlandse postcode validatie (1234 AB format), en CSRF-beveiligde API calls. Bevat session stability handling voor nieuwe gebruikers, field-specific validation met real-time error display, en RESTful API integration. Essential voor checkout flow en user account management.
+
 - [**ApplicationLogo**](resources/js/Components/ApplicationLogo.vue)  
   Toont de merknaam van Commodium Copia in tekstvorm, met een compacte variant ("ComCopia") op mobiel en de volledige naam op grotere schermen. Past zich responsief aan met TailwindCSS classes.
 

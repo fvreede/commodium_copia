@@ -3,9 +3,9 @@
 /**
  * Bestandsnaam: ProfileController.php
  * Auteur: Fabio Vreede
- * Versie: v1.0.5
- * Datum: 2025-07-20
- * Tijd: 15:16:55
+ * Versie: v1.0.6
+ * Datum: 2025-07-25
+ * Tijd: 16:32
  * Doel: Controller voor gebruikersprofiel beheer. Behandelt profiel weergave, bijwerken van 
  *       gebruikersgegevens, account verwijdering en volledig adresbeheer (aanmaken, bijwerken, 
  *       ophalen) voor checkout en bezorgfunctionaliteit. Ondersteunt zowel web als API endpoints.
@@ -25,6 +25,9 @@ use Illuminate\Support\Facades\Redirect;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+
+// TEST
+use Illuminate\Support\Facades\DB;        // ← NIEUWE IMPORT
 
 /**
  * ProfileController
@@ -157,6 +160,24 @@ class ProfileController extends Controller
     public function storeAddress(Request $request): JsonResponse
     {
         try {
+            $this->ensureSessionConsistency($request);
+
+            // ========== ENHANCED DEBUG LOGGING - START ==========
+            Log::info('=== ADDRESS CREATION ATTEMPT STARTED ===', [
+                'timestamp' => now()->toISOString(),
+                'auth_check' => Auth::check(),
+                'auth_id' => Auth::id(),
+                'session_id' => session()->getId(),
+                'csrf_token' => $request->header('X-CSRF-TOKEN') ? 'Present' : 'Missing',
+                'user_agent' => $request->userAgent(),
+                'ip' => $request->ip(),
+                'request_method' => $request->method(),
+                'request_url' => $request->url(),
+                'session_data_keys' => array_keys(session()->all()),
+                'has_login_web_session' => session()->has('login.web'),
+                'session_lifetime' => config('session.lifetime')
+            ]);
+
             // Valideer adres gegevens met Nederlandse postcode format en vereiste velden
             $validated = $request->validate([
                 'street' => 'required|string|max:255',                                    // Straatnaam (verplicht)
@@ -166,25 +187,107 @@ class ProfileController extends Controller
                 'country' => 'required|string|max:100',                                   // Land (standaard Nederland)
             ]);
 
+            Log::info('Address validation passed', [
+                'validated_fields' => array_keys($validated)
+            ]);
+
             $user = $request->user();
             
-            // Controleer authenticatie status
+            // ========== ENHANCED USER AUTHENTICATION DEBUG ==========
             if (!$user) {
-                Log::warning('Unauthorized address save attempt');
+                Log::error('=== NO AUTHENTICATED USER FOUND ===', [
+                    'auth_check' => Auth::check(),
+                    'auth_id' => Auth::id(),
+                    'session_id' => session()->getId(),
+                    'session_all' => session()->all(),
+                    'request_headers' => $request->headers->all(),
+                    'middleware_passed' => 'auth middleware should have blocked this'
+                ]);
+                
                 return response()->json([
-                    'message' => 'Niet geautoriseerd'
+                    'message' => 'DEBUG - Geen geauthenticeerde gebruiker gevonden',
+                    'auth_check' => Auth::check(),
+                    'auth_id' => Auth::id(),
+                    'session_id' => session()->getId()
                 ], 401);
             }
 
-            // Controleer of gebruiker al een adres heeft
-            $existingAddress = $user->address;
+            // ========== USER DATABASE VERIFICATION ==========
+            Log::info('User found in session, verifying database consistency', [
+                'session_user_id' => $user->id,
+                'session_user_email' => $user->email,
+                'user_object_type' => get_class($user),
+                'user_created_at' => $user->created_at,
+                'user_updated_at' => $user->updated_at
+            ]);
+
+            // Controleer of user echt bestaat in database
+            $dbUser = \App\Models\User::find($user->id);
+            if (!$dbUser) {
+                Log::error('=== USER EXISTS IN SESSION BUT NOT IN DATABASE ===', [
+                    'session_user_id' => $user->id,
+                    'session_user_email' => $user->email,
+                    'db_query_result' => 'null',
+                    'possible_cause' => 'Database transaction not committed or user deleted'
+                ]);
+                
+                return response()->json([
+                    'message' => 'DEBUG - Gebruiker bestaat in sessie maar niet in database',
+                    'session_user_id' => $user->id,
+                    'user_email' => $user->email
+                ], 500);
+            }
+
+            Log::info('User database verification successful', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'db_user_created_at' => $dbUser->created_at,
+                'session_vs_db_match' => $user->email === $dbUser->email
+            ]);
+
+            // ========== ADDRESS RELATIONSHIP DEBUG ==========
+            Log::info('Checking existing address relationship', [
+                'user_id' => $user->id
+            ]);
+
+            // Controleer of gebruiker al een adres heeft (met extra debug info)
+            try {
+                $existingAddress = $user->address;
+                Log::info('Address relationship query completed', [
+                    'has_existing_address' => $existingAddress !== null,
+                    'existing_address_id' => $existingAddress?->id,
+                    'existing_address_data' => $existingAddress ? [
+                        'street' => $existingAddress->street,
+                        'city' => $existingAddress->city,
+                        'created_at' => $existingAddress->created_at
+                    ] : null
+                ]);
+            } catch (\Exception $relationError) {
+                Log::error('Error accessing user address relationship', [
+                    'user_id' => $user->id,
+                    'error' => $relationError->getMessage(),
+                    'trace' => $relationError->getTraceAsString()
+                ]);
+                throw $relationError;
+            }
             
             if ($existingAddress) {
-                // Update bestaand adres met nieuwe gegevens
+                // ========== UPDATE EXISTING ADDRESS ==========
+                Log::info('Updating existing address', [
+                    'user_id' => $user->id,
+                    'address_id' => $existingAddress->id,
+                    'old_data' => [
+                        'street' => $existingAddress->street,
+                        'house_number' => $existingAddress->house_number,
+                        'city' => $existingAddress->city
+                    ],
+                    'new_data' => $validated
+                ]);
+
                 $existingAddress->update($validated);
                 $address = $existingAddress;
                 
-                Log::info('Address updated for user', [
+                Log::info('Address updated successfully', [
                     'user_id' => $user->id,
                     'address_id' => $address->id,
                     'updated_fields' => array_keys($validated)
@@ -193,23 +296,54 @@ class ProfileController extends Controller
                 $message = 'Adres succesvol bijgewerkt';
                 $statusCode = 200;
             } else {
-                // Maak nieuw adres aan voor gebruiker
-                $address = UserAddress::create([
+                // ========== CREATE NEW ADDRESS ==========
+                Log::info('Creating new address for user', [
                     'user_id' => $user->id,
-                    ...$validated
+                    'address_data' => $validated
                 ]);
-                
-                Log::info('New address created for user', [
-                    'user_id' => $user->id,
-                    'address_id' => $address->id
-                ]);
+
+                try {
+                    $address = UserAddress::create([
+                        'user_id' => $user->id,
+                        ...$validated
+                    ]);
+                    
+                    Log::info('New address created successfully', [
+                        'user_id' => $user->id,
+                        'address_id' => $address->id,
+                        'address_created_at' => $address->created_at
+                    ]);
+                } catch (\Exception $createError) {
+                    Log::error('Error creating new address', [
+                        'user_id' => $user->id,
+                        'error' => $createError->getMessage(),
+                        'sql_error' => $createError instanceof \Illuminate\Database\QueryException ? $createError->getSql() : 'Not SQL error',
+                        'trace' => $createError->getTraceAsString(),
+                        'address_data' => $validated
+                    ]);
+                    throw $createError;
+                }
                 
                 $message = 'Adres succesvol aangemaakt';
                 $statusCode = 201;
             }
 
+            // ========== FINAL VERIFICATION ==========
+            Log::info('Address operation completed, performing final verification', [
+                'user_id' => $user->id,
+                'address_id' => $address->id,
+                'message' => $message,
+                'status_code' => $statusCode
+            ]);
+
             // Refresh het adres object met relaties voor complete response
             $address->load('user');
+
+            Log::info('=== ADDRESS CREATION ATTEMPT COMPLETED SUCCESSFULLY ===', [
+                'user_id' => $user->id,
+                'address_id' => $address->id,
+                'final_status' => 'success'
+            ]);
 
             return response()->json([
                 'message' => $message,
@@ -217,10 +351,11 @@ class ProfileController extends Controller
             ], $statusCode);
 
         } catch (ValidationException $e) {
-            Log::warning('Address validation failed', [
+            Log::warning('=== ADDRESS VALIDATION FAILED ===', [
                 'user_id' => Auth::id(),
                 'errors' => $e->errors(),
-                'input_data' => $request->except(['_token'])
+                'input_data' => $request->except(['_token']),
+                'auth_check' => Auth::check()
             ]);
             
             return response()->json([
@@ -229,15 +364,30 @@ class ProfileController extends Controller
             ], 422);
             
         } catch (\Exception $e) {
-            Log::error('Error saving address', [
+            Log::error('=== CRITICAL ERROR SAVING ADDRESS ===', [
                 'user_id' => Auth::id(),
                 'error' => $e->getMessage(),
+                'error_type' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
-                'input_data' => $request->except(['_token'])
+                'input_data' => $request->except(['_token']),
+                'auth_check' => Auth::check(),
+                'session_id' => session()->getId(),
+                'csrf_token' => $request->header('X-CSRF-TOKEN') ? 'Present' : 'Missing',
+                'database_connection' => DB::connection()->getPdo() ? 'Connected' : 'Disconnected'
             ]);
 
+            // TEMPORARY DEBUG: Return detailed error information
             return response()->json([
-                'message' => 'Er is een onverwachte fout opgetreden bij het opslaan van het adres'
+                'message' => 'DEBUG - Critical Error: ' . $e->getMessage(),
+                'error_type' => get_class($e),
+                'file' => basename($e->getFile()),
+                'line' => $e->getLine(),
+                'user_authenticated' => Auth::check(),
+                'user_id' => Auth::id(),
+                'session_id' => session()->getId(),
+                'sql_error' => $e instanceof \Illuminate\Database\QueryException ? $e->getSql() : 'Not SQL error'
             ], 500);
         }
     }
@@ -453,6 +603,43 @@ class ProfileController extends Controller
             return response()->json([
                 'message' => 'Er is een fout opgetreden bij het verwijderen van het adres'
             ], 500);
+        }
+    }
+
+    /**
+     * ========== SESSIE TIMING FIX METHODE ==========
+     */
+
+    /**
+     * Zorg voor sessie consistentie na gebruiker registratie
+     * 
+     * Lost timing probleem op waarbij gebruiker wel geauthenticeerd is maar login.web 
+     * sessie marker ontbreekt. Dit gebeurt soms direct na registratie wanneer sessie
+     * regeneratie nog niet volledig voltooid is.
+     * 
+     * @param \Illuminate\Http\Request $request Het HTTP request object
+     * @return void
+     */
+    private function ensureSessionConsistency(Request $request): void
+    {
+        // Controleer of gebruiker geauthenticeerd is maar login.web sessie ontbreekt
+        if (Auth::check() && !session()->has('login.web')) {
+            Log::info('Session timing fix toegepast voor gebruiker', [
+                'user_id' => Auth::id(),
+                'session_id_before' => session()->getId()
+            ]);
+            
+            // Regenereer sessie om consistentie te waarborgen
+            $request->session()->regenerate();
+            
+            // Forceer re-authenticatie om login.web marker te zetten
+            Auth::login(Auth::user(), true);
+            
+            Log::info('Session timing fix voltooid', [
+                'user_id' => Auth::id(),
+                'session_id_after' => session()->getId(),
+                'has_login_web_after' => session()->has('login.web')
+            ]);
         }
     }
 }

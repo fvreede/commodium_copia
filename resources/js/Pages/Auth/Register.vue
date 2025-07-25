@@ -19,6 +19,10 @@ const form = useForm({
 const submit = () => {
     form.post(route('register'), {
         onFinish: () => form.reset('password', 'password_confirmation'),
+        onSuccess: () => {
+            // Mark user as recently registered
+            sessionStorage.setItem('user_registered_recently', 'true');
+        }
     });
 };
 

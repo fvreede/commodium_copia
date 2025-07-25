@@ -606,7 +606,8 @@ class ProfileController extends Controller
         }
     }
 
-    /**
+
+     /**
      * ========== SESSIE TIMING FIX METHODE ==========
      */
 
@@ -622,24 +623,56 @@ class ProfileController extends Controller
      */
     private function ensureSessionConsistency(Request $request): void
     {
-        // Controleer of gebruiker geauthenticeerd is maar login.web sessie ontbreekt
-        if (Auth::check() && !session()->has('login.web')) {
-            Log::info('Session timing fix toegepast voor gebruiker', [
-                'user_id' => Auth::id(),
-                'session_id_before' => session()->getId()
+        $user = Auth::user();
+        if (!$user) return;
+        
+        // Kijk of er een geldige login sessie bestaat (Laravel maakt dynamische keys)
+        $hasValidLoginSession = collect(session()->all())
+            ->keys()
+            ->contains(function ($key) {
+                return str_starts_with($key, 'login_web_');
+            });
+        
+        if (!$hasValidLoginSession) {
+            Log::info('Sessie fix toegepast voor gebruiker', [
+                'user_id' => $user->id,
+                'session_keys_voor' => array_keys(session()->all()),
+                'session_id_voor' => session()->getId()
             ]);
             
-            // Regenereer sessie om consistentie te waarborgen
-            $request->session()->regenerate();
+            // Probeer logout/login cyclus om sessie te fixen
+            Auth::logout(); 
+            Auth::login($user, true); 
             
-            // Forceer re-authenticatie om login.web marker te zetten
-            Auth::login(Auth::user(), true);
+            // Check of het werkte
+            $hasValidLoginSessionAfter = collect(session()->all())
+                ->keys()
+                ->contains(function ($key) {
+                    return str_starts_with($key, 'login_web_');
+                });
             
-            Log::info('Session timing fix voltooid', [
-                'user_id' => Auth::id(),
-                'session_id_after' => session()->getId(),
-                'has_login_web_after' => session()->has('login.web')
+            Log::info('Sessie fix klaar', [
+                'user_id' => $user->id,
+                'session_keys_na' => array_keys(session()->all()),
+                'session_id_na' => session()->getId(),
+                'heeft_login_sessie_na' => $hasValidLoginSessionAfter,
+                'fix_gelukt' => $hasValidLoginSessionAfter
             ]);
+            
+            // Als het nog steeds niet werkt, regenereer de hele sessie
+            if (!$hasValidLoginSessionAfter) {
+                Log::warning('Sessie fix werkte niet, probeer sessie regeneratie', [
+                    'user_id' => $user->id
+                ]);
+                
+                $request->session()->regenerate();
+                Auth::login($user, true);
+                
+                // Let op: dit breekt CSRF tokens
+                Log::warning('Sessie geregenereerd - CSRF tokens mogelijk kapot', [
+                    'user_id' => $user->id
+                ]);
+            }
         }
     }
 }

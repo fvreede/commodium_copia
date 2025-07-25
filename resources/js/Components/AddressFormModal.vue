@@ -38,6 +38,13 @@ const isEditing = computed(() => !!props.address);
 const saveAddress = async () => {
     if (isProcessing.value) return;
     
+    const userRegisteredRecently = sessionStorage.getItem('user_registered_recently');
+    if (userRegisteredRecently) {
+        console.log('New user detected, adding half-second delay for session stability...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        sessionStorage.removeItem('user_registered_recently'); // Clear flag
+    }
+
     isProcessing.value = true;
     errors.value = {};
     

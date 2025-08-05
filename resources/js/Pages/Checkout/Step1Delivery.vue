@@ -379,39 +379,6 @@ const updateSelectedSlotDetails = () => {
     <CheckoutLayout :current-step="1" title="Bezorgmoment kiezen">
         <div class="max-w-4xl mx-auto space-y-8">
             
-            <!-- Progress Bar Sectie -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-4">
-                        <!-- Bezorgadres Stap -->
-                        <div class="flex items-center space-x-2">
-                            <div :class="[
-                                'w-8 h-8 rounded-full flex items-center justify-center',
-                                hasValidAddress ? 'bg-green-500' : 'bg-blue-500'
-                            ]">
-                                <CheckCircleIcon v-if="hasValidAddress" class="w-5 h-5 text-white" />
-                                <span v-else class="text-sm font-bold text-white">2</span>
-                            </div>
-                            <span class="text-sm font-medium text-gray-900">Bezorgadres</span>
-                        </div>
-                        <!-- Progress Lijn -->
-                        <div :class="['w-12 h-px', hasValidAddress ? 'bg-gray-300' : 'bg-gray-200']"></div>
-                        <!-- Bezorgmoment Stap -->
-                        <div class="flex items-center space-x-2">
-                            <div :class="[
-                                'w-8 h-8 rounded-full flex items-center justify-center',
-                                selectedSlotId ? 'bg-green-500' : hasValidAddress ? 'bg-blue-500' : 'bg-gray-300'
-                            ]">
-                                <CheckCircleIcon v-if="selectedSlotId" class="w-5 h-5 text-white" />
-                                <span v-else-if="hasValidAddress" class="text-sm font-bold text-white">3</span>
-                                <span v-else class="text-sm font-bold text-gray-600">3</span>
-                            </div>
-                            <span class="text-sm font-medium text-gray-900">Bezorgmoment</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Hoofdinhoud Grid Layout -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 

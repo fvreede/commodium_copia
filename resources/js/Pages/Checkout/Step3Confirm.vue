@@ -329,40 +329,7 @@ onMounted(async () => {
 <template>
     <CheckoutLayout :current-step="3" title="Bestelling bevestigen">
         <div class="max-w-4xl mx-auto space-y-6">
-            
-            <!-- Progress Bar Sectie -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
-                <div class="flex items-center justify-between overflow-x-auto">
-                    <div class="flex items-center space-x-3 sm:space-x-4 min-w-max">
-                        <!-- Bezorgmoment Stap (Voltooid) -->
-                        <div class="flex items-center space-x-2">
-                            <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                                <CheckCircleIcon class="w-5 h-5 text-white" />
-                            </div>
-                            <span class="text-sm font-medium text-gray-900 hidden sm:inline">Bezorgmoment</span>
-                        </div>
-                        <!-- Progress Lijn -->
-                        <div class="w-8 sm:w-12 h-px bg-green-300"></div>
-                        <!-- Controleren Stap (Voltooid) -->
-                        <div class="flex items-center space-x-2">
-                            <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                                <CheckCircleIcon class="w-5 h-5 text-white" />
-                            </div>
-                            <span class="text-sm font-medium text-gray-900 hidden sm:inline">Controleren</span>
-                        </div>
-                        <!-- Progress Lijn -->
-                        <div class="w-8 sm:w-12 h-px bg-green-300"></div>
-                        <!-- Bevestigen Stap (Actief) -->
-                        <div class="flex items-center space-x-2">
-                            <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                                <span class="text-sm font-bold text-white">4</span>
-                            </div>
-                            <span class="text-sm font-medium text-gray-900 hidden sm:inline">Bevestigen</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
+        
             <!-- Validatie Problemen Alert -->
             <div v-if="validationIssues.length > 0" class="bg-red-50 border-2 border-red-200 rounded-xl p-4 sm:p-6">
                 <div class="flex flex-col sm:flex-row sm:items-start">

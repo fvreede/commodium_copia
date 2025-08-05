@@ -148,11 +148,6 @@ Hier volgt een overzicht van de belangrijkste bestanden en mappen binnen het pro
 - [**Sidebar.vue**](resources/js/Components/Editor/Layout/Sidebar.vue)    
   Zijbalknavigatie voor het editor dashboard. Ondersteunt zowel een vaste weergave op desktop als een slide-in paneel op mobiel via ```Headless UI```. Bevat links naar homepagebeheer (aanbiedingen, nieuws), catalogusbeheer (producten, banners) en instellingen. Actieve routes worden dynamisch gemarkeerd via Inertia.js.
 
-### Composables
-
-- [**useSearch.js**](resources/js/Composables/useSearch.js)   
-  Een herbruikbare Vue composable voor het beheren van zoekfunctionaliteit, inclusief debounce-zoekopdrachten, suggesties ophalen via ```axios```, localStorage voor recente zoekopdrachten, en caching van populaire resultaten. Werkt met Inertia.js voor navigatie en biedt fallback bij netwerkfouten.
-
 ### Layouts
 
 - [***AuthenticatedLayout.vue***](resources/js/Layouts/AuthenticatedLayout.vue)   
